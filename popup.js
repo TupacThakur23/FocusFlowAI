@@ -20,7 +20,7 @@ document.getElementById("getData").addEventListener("click", async () => {
 
             
             chrome.storage.local.set({ pageData: response }, () => {
-                
+                console.log("DATA STORED:", response)
                 
                 chrome.tabs.create({
                     url: chrome.runtime.getURL("result.html")
