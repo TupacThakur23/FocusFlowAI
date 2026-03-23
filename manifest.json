@@ -19,5 +19,14 @@
       "matches": ["<all_urls>"],
       "js": ["content.js"]
     }
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["react-ui/dist/*"],
+      "matches": ["<all_urls>"]
+    }
+
   ]
+
 }
