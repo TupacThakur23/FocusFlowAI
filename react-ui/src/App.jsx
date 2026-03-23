@@ -1,193 +1,149 @@
 import { useEffect, useState } from "react";
 
-function App() {
+export default function App() {
   const [data, setData] = useState(null);
+  const [search, setSearch] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saved, setSaved] = useState([]);
 
   useEffect(() => {
     chrome.storage.local.get("pageData", (result) => {
-      setData(result?.pageData || null);
+      setData(result.pageData);
+    });
+
+    chrome.storage.local.get("savedItems", (res) => {
+      setSaved(res.savedItems || []);
     });
   }, []);
 
+  const saveItem = (item) => {
+    const updated = [...saved, item];
+    setSaved(updated);
+    chrome.storage.local.set({ savedItems: updated });
+  };
+
   if (!data) {
-    return <div style={styles.center}>No data found...</div>;
+    return (
+      <div className="h-screen flex items-center justify-center text-white bg-black">
+        Loading...
+      </div>
+    );
   }
 
+  const filteredHeadings = data.headings?.filter((h) =>
+    h.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
-    <div style={styles.app}>
-      {/* SIDEBAR */}
-      <div style={styles.sidebar}>
-        <h2 style={styles.logo}>FocusFlow</h2>
+    <div className="min-h-screen bg-[#0a0f1c] text-white flex">
 
-        <div style={styles.navItem}>Overview</div>
-        <div style={styles.navItem}>Headings</div>
-        <div style={styles.navItem}>Links</div>
+      {/* 🔥 SIDEBAR */}
+      <div className="w-64 bg-white/5 border-r border-white/10 p-5 backdrop-blur-xl">
+        <h1 className="text-xl font-bold mb-6 text-blue-400">
+          ⚡ FocusFlow
+        </h1>
 
-        <div style={styles.footer}>
-          <p>AI Research Tool</p>
+        <div className="space-y-3 text-sm">
+          <p className="opacity-70">Dashboard</p>
+          <p className="opacity-70">Saved</p>
+          <p className="opacity-70">Notes</p>
         </div>
       </div>
 
-      {/* MAIN */}
-      <div style={styles.main}>
+      {/* 🔥 MAIN */}
+      <div className="flex-1 p-6">
+
         {/* HEADER */}
-        <div style={styles.header}>
-          <h1>{data.title || "Untitled Page"}</h1>
-          <p style={styles.url}>{data.url}</p>
+        <div className="mb-6">
+          <h2 className="text-2xl font-semibold">{data.title}</h2>
+          <p className="text-gray-400 text-sm">{data.url}</p>
         </div>
 
-        {/* INSIGHTS */}
-        <div style={styles.grid}>
-          <div style={styles.card}>
-            <h3>Total Headings</h3>
-            <p style={styles.metric}>{data.headings?.length || 0}</p>
+        {/* SEARCH */}
+        <input
+          type="text"
+          placeholder="Search..."
+          className="w-full mb-6 p-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+
+        {/* GRID */}
+        <div className="grid grid-cols-2 gap-6">
+
+          {/* HEADINGS */}
+          <div className="p-5 rounded-2xl bg-white/5 border border-white/10 shadow-lg hover:shadow-blue-500/10 transition">
+            <h3 className="text-lg mb-3 text-blue-400">Headings</h3>
+
+            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+              {filteredHeadings?.map((h, i) => (
+                <div
+                  key={i}
+                  className="p-2 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer flex justify-between"
+                >
+                  <span>{h}</span>
+                  <button
+                    onClick={() => saveItem(h)}
+                    className="text-xs text-blue-400"
+                  >
+                    Save
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div style={styles.card}>
-            <h3>Total Links</h3>
-            <p style={styles.metric}>{data.links?.length || 0}</p>
-          </div>
+          {/* LINKS */}
+          <div className="p-5 rounded-2xl bg-white/5 border border-white/10 shadow-lg hover:shadow-purple-500/10 transition">
+            <h3 className="text-lg mb-3 text-purple-400">Links</h3>
 
-          <div style={styles.card}>
-            <h3>Page Type</h3>
-            <p style={styles.metric}>
-              {data.links?.length > 50 ? "Content Heavy" : "Simple Page"}
-            </p>
+            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+              {data.links?.slice(0, 15).map((l, i) => (
+                <a
+                  key={i}
+                  href={l}
+                  target="_blank"
+                  className="block p-2 rounded-lg bg-white/5 hover:bg-white/10 text-blue-300 truncate"
+                >
+                  {l}
+                </a>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* HEADINGS */}
-        <div style={styles.section}>
-          <h2>Headings</h2>
-          <div style={styles.list}>
-            {data.headings?.map((h, i) => (
-              <div key={i} style={styles.item}>
-                {h}
-              </div>
-            ))}
-          </div>
+        {/* 🧠 NOTES SECTION */}
+        <div className="mt-6 p-5 rounded-2xl bg-white/5 border border-white/10">
+          <h3 className="text-lg mb-3 text-green-400">Notes</h3>
+
+          <textarea
+            placeholder="Write notes..."
+            className="w-full p-3 rounded-xl bg-black/40 border border-white/10 focus:outline-none"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+
+          <button
+            className="mt-3 px-4 py-2 bg-green-500 rounded-lg hover:bg-green-600"
+            onClick={() =>
+              chrome.storage.local.set({ notes: notes })
+            }
+          >
+            Save Notes
+          </button>
         </div>
 
-        {/* LINKS */}
-        <div style={styles.section}>
-          <h2>Top Links</h2>
-          <div style={styles.list}>
-            {data.links?.slice(0, 10).map((l, i) => (
-              <a key={i} href={l} target="_blank" style={styles.link}>
-                {l}
-              </a>
-            ))}
-          </div>
+        {/* ⭐ SAVED */}
+        <div className="mt-6 p-5 rounded-2xl bg-white/5 border border-white/10">
+          <h3 className="text-lg mb-3 text-yellow-400">Saved Items</h3>
+
+          {saved.map((item, i) => (
+            <div key={i} className="text-sm opacity-80 mb-1">
+              {item}
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
-
-<div className="bg-red-500 text-white p-5">
-  Tailwind is working
-</div>
-
-
-
-
 }
-
-/* 🎨 PREMIUM STYLES */
-const styles = {
-  app: {
-    display: "flex",
-    height: "100vh",
-    fontFamily: "Inter, sans-serif",
-    backgroundColor: "#0f172a",
-    color: "white",
-  },
-
-  sidebar: {
-    width: "220px",
-    backgroundColor: "#020617",
-    padding: "20px",
-    borderRight: "1px solid #1e293b",
-  },
-
-  logo: {
-    marginBottom: "30px",
-  },
-
-  navItem: {
-    marginBottom: "15px",
-    cursor: "pointer",
-    color: "#94a3b8",
-  },
-
-  footer: {
-    position: "absolute",
-    bottom: "20px",
-    fontSize: "12px",
-    color: "#64748b",
-  },
-
-  main: {
-    flex: 1,
-    padding: "25px",
-    overflowY: "auto",
-  },
-
-  header: {
-    marginBottom: "25px",
-  },
-
-  url: {
-    color: "#38bdf8",
-    fontSize: "14px",
-    wordBreak: "break-all",
-  },
-
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: "15px",
-    marginBottom: "25px",
-  },
-
-  card: {
-    backgroundColor: "#1e293b",
-    padding: "15px",
-    borderRadius: "10px",
-  },
-
-  metric: {
-    fontSize: "22px",
-    fontWeight: "bold",
-  },
-
-  section: {
-    marginBottom: "25px",
-  },
-
-  list: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "10px",
-  },
-
-  item: {
-    padding: "10px",
-    backgroundColor: "#334155",
-    borderRadius: "6px",
-  },
-
-  link: {
-    color: "#60a5fa",
-    textDecoration: "none",
-    wordBreak: "break-all",
-  },
-
-  center: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    height: "100vh",
-  },
-};
-
-export default App;
