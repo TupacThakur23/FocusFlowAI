@@ -123,12 +123,12 @@ User Output
 
 | Module            | Status        |
 |------------------|--------------|
-| Frontend UI       | ✅ Completed |
-| Chrome Extension  | ✅ Working   |
-| IndexedDB Storage | ✅ Implemented |
-| Backend APIs      | ✅ Implemented |
+| Frontend UI       | working       |
+| Chrome Extension  | ✅ completed  |
+| IndexedDB Storage | ✅ not yet    |
+| Backend APIs      | ✅ working |
 | AI Summarization  | ✅ Working |
-| Vector Search     | 🔄 In Progress |
+| Vector Search     | 🔄 In transit |
 | Advanced Features | ⏳ Planned   |
 
 ---
