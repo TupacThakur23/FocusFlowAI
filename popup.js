@@ -5,30 +5,49 @@ document.getElementById("getData").addEventListener("click", async () => {
         currentWindow: true
     });
 
-    
     if (tab.url.startsWith("chrome://") || tab.url.startsWith("chrome-extension://")) {
         alert("Open a normal website first.");
         return;
     }
 
-    chrome.tabs.sendMessage(tab.id, { type: "GET_DATA" }, (response) => {
-
-        if (chrome.runtime.lastError) {
-            console.error("ERROR:", chrome.runtime.lastError.message);
-            return;
-        }
+    try {
+        const response = await chrome.tabs.sendMessage(tab.id, { type: "GET_DATA" });
 
         console.log("DATA RECEIVED:", response);
 
-        // saveToIndexedDB(response)
-
-        
-        chrome.storage.local.set({ pageData: response }, () => { // LOCAL STORAGE (DELETE WHEN IndexedDB done)
-
+        chrome.storage.local.set({ pageData: response }, () => {
             chrome.tabs.create({
                 url: chrome.runtime.getURL("result.html")
             });
-
         });
+
+    } catch (error) {
+        console.error("ERROR:", error);
+    }
+});document.getElementById("getData").addEventListener("click", async () => {
+
+    const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true
     });
+
+    if (tab.url.startsWith("chrome://") || tab.url.startsWith("chrome-extension://")) {
+        alert("Open a normal website first.");
+        return;
+    }
+
+    try {
+        const response = await chrome.tabs.sendMessage(tab.id, { type: "GET_DATA" });
+
+        console.log("DATA RECEIVED:", response);
+
+        chrome.storage.local.set({ pageData: response }, () => {
+            chrome.tabs.create({
+                url: chrome.runtime.getURL("result.html")
+            });
+        });
+
+    } catch (error) {
+        console.error("ERROR:", error);
+    }
 });
