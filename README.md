@@ -1,184 +1,147 @@
 # 🚀 FocusFlow AI
 
-### *AI Research Workspace Inside Your Browser*
+### *Context-Aware AI Research Workspace Inside Your Browser*
 
 ---
 
 ## 📌 Overview
 
-FocusFlow AI is a **Chrome Extension-based AI research workspace** designed to help students and researchers **stay focused, organized, and productive** while working across multiple web resources.
+FocusFlow AI is a **Chrome Extension-based AI research workspace** designed to streamline how students and researchers interact with information.
 
-Instead of switching between tabs, notes, and tools, FocusFlow brings everything into a **unified intelligent workspace** inside the browser.
+It integrates **content capture, local storage, AI processing, and semantic search** into a unified workflow—reducing context switching and improving productivity.
 
 ---
 
 ## 🎯 Problem Statement
 
-Modern research workflows involve:
+Modern research workflows suffer from:
 
-* Constant tab switching
-* Scattered information across sources
-* Difficulty in organizing and summarizing content
+- Constant tab switching  
+- Fragmented information across multiple sources  
+- Lack of intelligent organization and summarization  
 
-This leads to **reduced focus and lower productivity**.
+This results in **cognitive overload and reduced efficiency**.
 
 ---
 
 ## 💡 Solution
 
-FocusFlow AI transforms the browser into an **intelligent research assistant** that can:
+FocusFlow AI transforms the browser into an **intelligent cowork environment** that:
 
-* 📄 Capture and store webpage content
-* 🧠 Generate AI-powered summaries
-* 🔍 Search and organize research materials
-* ✍️ Improve writing with grammar suggestions
-* 📊 Convert text into visual flowcharts
+- Captures and stores web content  
+- Uses AI to summarize and refine information  
+- Enables semantic search using vector embeddings  
+- Organizes research in a structured workspace  
 
 ---
 
 ## 🧩 Core Features
 
-### ✨ Smart Research Hub
+### 📄 Smart Research Hub
+- Save and manage web pages locally  
+- Organized sidebar interface  
+- Indexed storage for quick retrieval  
 
-* Save and manage web pages
-* Organized sidebar view
-* Quick access to research material
+---
 
-### 🧠 AI Summarization
+### 🧠 AI Summarization *(Implemented)*
+- Generate concise summaries from long content  
+- Extract key insights automatically  
 
-* Extract key points from long content
-* Understand complex topics quickly
+---
 
-### ✍️ Grammar & Style Assistant
+### 🔍 Semantic Search *(In Progress)*
+- Vector-based similarity search  
+- Meaning-based retrieval using embeddings  
 
-* Improve writing quality
-* Adjust tone (academic/professional/casual)
+---
 
-### 🔍 Search & Insights
+### ✍️ Writing Assistant *(Planned)*
+- Grammar correction and tone adjustment  
+- Context-aware writing suggestions  
 
-* Keyword-based search
-* Easy retrieval of stored information
+---
 
-### 📊 Flowchart Generator *(Optional Advanced Feature)*
+### 📊 Flowchart Generator *(Planned)*
+- Convert text into structured diagrams  
+- Visualize workflows and concepts  
 
-* Convert text into diagrams
-* Visualize logic and workflows
+---
 
-### 🤖 AI Assistant Bar *(Planned)*
-
-* Ask questions about current page
-* Get explanations and rewrites instantly
+### 🤖 AI Assistant Bar *(In Progress)*
+- Ask questions about current content  
+- Get real-time explanations and rewrites  
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Component     | Technology                 |
-| ------------- | -------------------------- |
-| Frontend      | React + Tailwind CSS       |
-| Browser Layer | Chrome Extension APIs      |
-| AI Layer      | NLP / LLM APIs             |
-| Storage       | Chrome Storage / IndexedDB |
-| Visualization | Mermaid.js / D3.js         |
+| Layer            | Technology                          |
+|------------------|------------------------------------|
+| Frontend         | React + Tailwind CSS               |
+| Extension Layer  | Chrome Extension APIs              |
+| Backend          | Node.js + Express                  |
+| Storage          | IndexedDB (Dexie)                  |
+| AI / NLP         | OpenAI API / Transformers.js       |
+| Vector Search    | Embeddings + Cosine Similarity     |
+| Visualization    | Mermaid.js / D3.js                 |
 
 ---
 
 ## 🧱 Architecture
 
-```text
-Webpage → Content Script → Background Script → Storage → UI → AI Processing
-```
-
----
+Webpage
+↓
+Content Script (Extract Data)
+↓
+Extension / Frontend UI
+↓
+IndexedDB (Local Storage)
+↓
+Embedding Generation (MiniLM / OpenAI)
+↓
+Vector Similarity Search
+↓
+AI Processing (Summarization / Insights)
+↓
+User Interface
 
 ## ⚙️ Installation
 
-1. Clone the repository:
-
+### 1. Clone the repository
 ```bash
 git clone https://github.com/TupacThakur23/FocusFlowAI.git
-```
+cd FocusFlowAI
 
-2. Open Chrome and go to:
+⚠️ Challenges
+Handling dynamic webpage content extraction
+Optimizing performance within browser limits
+Implementing efficient vector similarity search
+Balancing AI processing with responsiveness
+🔐 Privacy & Security
+All data stored locally using IndexedDB
+No unnecessary permissions required
+Designed with a privacy-first approach
+Minimal dependency on external servers
+👨‍💻 Contributors
+Yuvraj V Singh
+Lakshya Chauhan
 
-```text
-chrome://extensions/
-```
+🎓 Academic Context
 
-3. Enable **Developer Mode**
+Developed as part of an OJT (On-the-Job Training) Project focusing on:
 
-4. Click **Load Unpacked**
+AI-powered productivity tools
+Browser-based intelligent systems
+Human-centered design
+🌟 Future Scope
+Advanced semantic search with optimized vector DB
+Offline AI inference using WebGPU
+Cross-device synchronization
+Collaborative research workspace
+Real-time AI cowork assistant
+📌 Conclusion
 
-5. Select the project folder
+FocusFlow AI aims to transform the browser into an intelligent research workspace, combining AI, storage, and visualization into a seamless experience.
 
----
 
-## 🚀 Usage
-
-1. Open any website
-2. Click the FocusFlow extension
-3. Save and view page data
-4. Use AI features like summarization (if enabled)
-
----
-
-## 📈 Project Progress
-
-* ✅ Chrome Extension Setup
-* ✅ Page Data Extraction
-* ✅ Storage System
-* 🔄 Research Hub UI (In Progress)
-* 🔄 AI Integration (Upcoming)
-* ⏳ Advanced Features
-
----
-
-## ⚠️ Challenges
-
-* Efficient data extraction from dynamic websites
-* Managing performance within browser constraints
-* Integrating AI while maintaining speed
-
----
-
-## 🔐 Privacy & Security
-
-* Data stored locally using browser storage
-* No unnecessary permissions used
-* Designed with a **privacy-first approach**
-
----
-
-## 👨‍💻 Contributors
-
-* **Yuvraj V Singh**
-* **Lakshya Chauhan**
-
----
-
-## 🎓 Academic Context
-
-This project is developed as part of an **OJT (On-the-Job Training) Project** focusing on:
-
-* AI Productivity Tools
-* Browser-based Applications
-* Human-centered Design
-
----
-
-## 🌟 Future Scope
-
-* Semantic search using embeddings
-* Offline AI processing
-* Cross-device synchronization
-* Advanced visualization tools
-
----
-
-## 📌 Conclusion
-
-FocusFlow AI aims to redefine how students interact with information by combining **AI, organization, and visualization** into a single seamless workflow.
-
----
-
-> 🚀 *“Less switching, more thinking.”*
