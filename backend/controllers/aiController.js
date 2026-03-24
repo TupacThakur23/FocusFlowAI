@@ -1,18 +1,27 @@
-import { summarizeText } from "../services/openaiService.js";
+import { getEmbedding } from "../services/embeddingService.js";
+import { cosineSimilarity } from "../utils/similarity.js";
 
-export const handleSummarize = async (req, res) => {
-  try {
-    const { text } = req.body;
+// 🔹 EMBED TEXT
+export const handleEmbed = async (req, res) => {
+  const { text } = req.body;
 
-    if (!text) {
-      return res.status(400).json({ error: "Text is required" });
-    }
+  const embedding = await getEmbedding(text);
 
-    const summary = await summarizeText(text);
+  res.json({ embedding });
+};
 
-    res.json({ summary });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Something went wrong" });
-  }
+// 🔹 SEARCH SIMILAR TEXTS
+export const handleSearch = async (req, res) => {
+  const { query, data } = req.body;
+
+  const queryEmbedding = await getEmbedding(query);
+
+  const results = data.map((item) => {
+    const score = cosineSimilarity(queryEmbedding, item.embedding);
+    return { ...item, score };
+  });
+
+  results.sort((a, b) => b.score - a.score);
+
+  res.json({ results });
 };

@@ -1,14 +1,20 @@
 import express from "express";
-import { handleSummarize } from "../controllers/aiController.js";
+import {
+  handleSummarize,
+  handleEmbed,
+  handleSearch,
+} from "../controllers/aiController.js";
 
 const router = express.Router();
 
-// ✅ TEMP GET ROUTE (for browser testing)
+// test route
 router.get("/summarize", (req, res) => {
   res.send("Summarize route working");
 });
 
-// ✅ ACTUAL POST ROUTE (real API)
+// real routes
 router.post("/summarize", handleSummarize);
+router.post("/embed", handleEmbed);
+router.post("/search", handleSearch);
 
 export default router;

@@ -2,7 +2,8 @@ import express from "express";
 import dotenv from "dotenv";
 import aiRoutes from "./routes/aiRoutes.js"; // ✅ THIS LINE
 
-dotenv.config();
+dotenv.config({ path: "./.env" });
+console.log("ENV TEST:", process.env.OPENAI_API_KEY);
 
 const app = express();
 
@@ -18,3 +19,4 @@ app.get("/", (req, res) => {
 app.listen(5000, () => {
   console.log("Server running on port 5000");
 });
+
