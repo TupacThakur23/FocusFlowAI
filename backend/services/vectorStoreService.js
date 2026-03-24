@@ -1,15 +1,13 @@
 import fs from "fs";
 
-const FILE_PATH = "./data/vectorStore.json";
+const FILE_PATH = "./vectorStore.json";
 
-const readDB = () => {
-  const data = fs.readFileSync(FILE_PATH);
-  return JSON.parse(data);
-};
+if (!fs.existsSync(FILE_PATH)) {
+  fs.writeFileSync(FILE_PATH, JSON.stringify([]));
+}
 
-const writeDB = (data) => {
-  fs.writeFileSync(FILE_PATH, JSON.stringify(data, null, 2));
-};
+const readDB = () => JSON.parse(fs.readFileSync(FILE_PATH));
+const writeDB = (data) => fs.writeFileSync(FILE_PATH, JSON.stringify(data, null, 2));
 
 export const addToVectorDB = (doc) => {
   const db = readDB();
@@ -17,6 +15,4 @@ export const addToVectorDB = (doc) => {
   writeDB(db);
 };
 
-export const getVectorDB = () => {
-  return readDB();
-};
+export const getVectorDB = () => readDB();
