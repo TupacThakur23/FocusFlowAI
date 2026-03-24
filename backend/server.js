@@ -1,15 +1,12 @@
 import express from "express";
-import dotenv from "dotenv";
-import aiRoutes from "./routes/aiRoutes.js"; 
-
-dotenv.config({ path: "./.env" });
-console.log("ENV TEST:", process.env.OPENAI_API_KEY);
+import cors from "cors";
+import aiRoutes from "./routes/aiRoutes.js";
 
 const app = express();
 
+app.use(cors());
 app.use(express.json());
 
-// connect routes
 app.use("/api/ai", aiRoutes);
 
 app.get("/", (req, res) => {
@@ -19,4 +16,3 @@ app.get("/", (req, res) => {
 app.listen(5000, () => {
   console.log("Server running on port 5000");
 });
-

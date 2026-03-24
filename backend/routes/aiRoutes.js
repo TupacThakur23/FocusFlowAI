@@ -1,20 +1,18 @@
 import express from "express";
 import {
-  handleSummarize,
   handleEmbed,
   handleSearch,
+  handleSummarize,
 } from "../controllers/aiController.js";
 
 const router = express.Router();
 
-// test route
 router.get("/summarize", (req, res) => {
-  res.send("Summarize route working");
+  res.send("Route working");
 });
 
-// real routes
-router.post("/summarize", handleSummarize);
 router.post("/embed", handleEmbed);
 router.post("/search", handleSearch);
+router.post("/summarize", handleSummarize);
 
 export default router;
