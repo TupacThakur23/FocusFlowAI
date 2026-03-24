@@ -6,53 +6,53 @@
 
 ## 📌 Overview
 
-FocusFlow AI is a **Chrome Extension-based AI research workspace** designed to streamline how students and researchers interact with information.
+FocusFlow AI is a Chrome Extension-based AI research workspace designed to help students and researchers manage, organize, and understand information efficiently.
 
-It integrates **content capture, local storage, AI processing, and semantic search** into a unified workflow—reducing context switching and improving productivity.
+It combines content capture, local storage, and AI-powered processing to create a seamless research experience inside the browser.
 
 ---
 
 ## 🎯 Problem Statement
 
-Modern research workflows suffer from:
+Modern research workflows involve:
 
 - Constant tab switching  
-- Fragmented information across multiple sources  
-- Lack of intelligent organization and summarization  
+- Scattered information across multiple sources  
+- Difficulty in organizing and summarizing content  
 
-This results in **cognitive overload and reduced efficiency**.
+This leads to reduced focus and lower productivity.
 
 ---
 
 ## 💡 Solution
 
-FocusFlow AI transforms the browser into an **intelligent cowork environment** that:
+FocusFlow AI transforms the browser into an intelligent workspace that:
 
-- Captures and stores web content  
-- Uses AI to summarize and refine information  
+- Captures and stores webpage content  
+- Uses AI for summarization and insights  
 - Enables semantic search using vector embeddings  
-- Organizes research in a structured workspace  
+- Organizes research data efficiently  
 
 ---
 
 ## 🧩 Core Features
 
 ### 📄 Smart Research Hub
-- Save and manage web pages locally  
+- Save and manage web pages  
 - Organized sidebar interface  
-- Indexed storage for quick retrieval  
+- Quick retrieval of stored content  
 
 ---
 
-### 🧠 AI Summarization *(Implemented)*
+### 🧠 AI Summarization
 - Generate concise summaries from long content  
 - Extract key insights automatically  
 
 ---
 
-### 🔍 Semantic Search *(In Progress)*
-- Vector-based similarity search  
-- Meaning-based retrieval using embeddings  
+### 🔍 Semantic Search
+- Meaning-based search using embeddings  
+- Retrieves relevant content beyond keywords  
 
 ---
 
@@ -68,9 +68,9 @@ FocusFlow AI transforms the browser into an **intelligent cowork environment** t
 
 ---
 
-### 🤖 AI Assistant Bar *(In Progress)*
-- Ask questions about current content  
-- Get real-time explanations and rewrites  
+### 🤖 AI Assistant *(In Progress)*
+- Ask questions about content  
+- Get explanations and rewrites  
 
 ---
 
@@ -81,67 +81,108 @@ FocusFlow AI transforms the browser into an **intelligent cowork environment** t
 | Frontend         | React + Tailwind CSS               |
 | Extension Layer  | Chrome Extension APIs              |
 | Backend          | Node.js + Express                  |
-| Storage          | IndexedDB (Dexie)                  |
+| Storage          | IndexedDB                          |
 | AI / NLP         | OpenAI API / Transformers.js       |
-| Vector Search    | Embeddings + Cosine Similarity     |
-| Visualization    | Mermaid.js / D3.js                 |
+| Vector System    | Embeddings + Cosine Similarity     |
 
 ---
 
 ## 🧱 Architecture
 
+
 Webpage
 ↓
 Content Script (Extract Data)
 ↓
-Extension / Frontend UI
+Extension UI
 ↓
 IndexedDB (Local Storage)
 ↓
-Embedding Generation (MiniLM / OpenAI)
+Embedding Generation
 ↓
-Vector Similarity Search
+Vector Comparison (Cosine Similarity)
 ↓
-AI Processing (Summarization / Insights)
+AI Processing (Backend)
 ↓
-User Interface
+User Output
 
-## ⚙️ Installation
 
-### 1. Clone the repository
-```bash
-git clone https://github.com/TupacThakur23/FocusFlowAI.git
-cd FocusFlowAI
+---
 
-⚠️ Challenges
-Handling dynamic webpage content extraction
-Optimizing performance within browser limits
-Implementing efficient vector similarity search
-Balancing AI processing with responsiveness
-🔐 Privacy & Security
-All data stored locally using IndexedDB
-No unnecessary permissions required
-Designed with a privacy-first approach
-Minimal dependency on external servers
-👨‍💻 Contributors
-Yuvraj V Singh
-Lakshya Chauhan
+## 🚀 Usage
 
-🎓 Academic Context
+1. Open any webpage  
+2. Use the FocusFlow extension  
+3. Save page content  
+4. View stored data  
+5. Use AI features like summarization and search  
+
+---
+
+## 📈 Project Progress
+
+| Module            | Status        |
+|------------------|--------------|
+| Frontend UI       | 🔄 Working       |
+| Chrome Extension  | ✅ Completed  |
+| IndexedDB Storage | 🔄 Working    |
+| Backend APIs      | 🔄 Working |
+| AI Summarization  | 🔄 Working |
+| Vector Search     | 🔄 In-Transit |
+| Advanced Features | ⏳ Planned   |
+
+---
+
+## ⚠️ Challenges
+
+- Extracting structured data from dynamic webpages  
+- Managing performance within browser limits  
+- Implementing efficient semantic search  
+- Integrating AI while maintaining responsiveness  
+
+---
+
+## 🔐 Privacy & Security
+
+- Data stored locally using IndexedDB  
+- API keys managed via environment variables  
+- Sensitive data excluded using `.gitignore`  
+- Minimal external dependencies  
+
+---
+
+## 👨‍💻 Contributors
+
+- **Yuvraj V Singh**  
+- **Lakshya Chauhan**
+
+---
+
+## 🎓 Academic Context
 
 Developed as part of an OJT (On-the-Job Training) Project focusing on:
 
-AI-powered productivity tools
-Browser-based intelligent systems
-Human-centered design
-🌟 Future Scope
-Advanced semantic search with optimized vector DB
-Offline AI inference using WebGPU
-Cross-device synchronization
-Collaborative research workspace
-Real-time AI cowork assistant
-📌 Conclusion
+- AI-powered productivity tools  
+- Browser-based intelligent systems  
+- Human-centered design  
 
-FocusFlow AI aims to transform the browser into an intelligent research workspace, combining AI, storage, and visualization into a seamless experience.
+---
 
+## 🌟 Future Scope
+
+- Integration with dedicated vector databases  
+- Offline AI processing  
+- Cross-device synchronization  
+- Advanced visualization tools  
+- Real-time AI assistant  
+
+---
+
+## 📌 Conclusion
+
+FocusFlow AI aims to redefine research workflows by combining AI, structured storage, and semantic understanding into a unified system.
+
+---
+
+> 🚀 *“Less switching, more thinking.”*
 
