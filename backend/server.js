@@ -1,6 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
-import aiRoutes from "./routes/aiRoutes.js"; // ✅ THIS LINE
+import aiRoutes from "./routes/aiRoutes.js"; 
 
 dotenv.config({ path: "./.env" });
 console.log("ENV TEST:", process.env.OPENAI_API_KEY);

@@ -25,3 +25,13 @@ export const handleSearch = async (req, res) => {
 
   res.json({ results });
 };
+
+export const handleSummarize = async (req, res) => {
+  try {
+    const { text } = req.body;
+
+    res.json({ summary: "Test summary" });
+  } catch (err) {
+    res.status(500).json({ error: "Error" });
+  }
+};
