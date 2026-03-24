@@ -1,148 +1,120 @@
 import { useEffect, useState } from "react";
+import Sidebar from "./components/Sidebar";
 
 export default function App() {
-  const [data, setData] = useState(null);
-  const [search, setSearch] = useState("");
-  const [notes, setNotes] = useState("");
-  const [saved, setSaved] = useState([]);
+  const [pageData, setPageData] = useState(null);
 
   useEffect(() => {
     chrome.storage.local.get("pageData", (result) => {
-      setData(result.pageData);
-    });
-
-    chrome.storage.local.get("savedItems", (res) => {
-      setSaved(res.savedItems || []);
+      setPageData(result.pageData);
     });
   }, []);
 
-  const saveItem = (item) => {
-    const updated = [...saved, item];
-    setSaved(updated);
-    chrome.storage.local.set({ savedItems: updated });
-  };
-
-  if (!data) {
-    return (
-      <div className="h-screen flex items-center justify-center text-white bg-black">
-        Loading...
-      </div>
-    );
-  }
-
-  const filteredHeadings = data.headings?.filter((h) =>
-    h.toLowerCase().includes(search.toLowerCase())
-  );
-
   return (
-    <div className="min-h-screen bg-[#0a0f1c] text-white flex">
+    <div className="flex h-screen bg-[#0b1220] text-white">
 
-      {/* 🔥 SIDEBAR */}
-      <div className="w-64 bg-white/5 border-r border-white/10 p-5 backdrop-blur-xl">
-        <h1 className="text-xl font-bold mb-6 text-blue-400">
-          ⚡ FocusFlow
+      {/* Sidebar */}
+      <Sidebar pageData={pageData} />
+
+      {/* Main Content */}
+      <div className="flex-1 p-6 overflow-auto space-y-6">
+
+        {/* ✅ INTRO / LANDING SECTION */}
+        <div className="bg-[#0f172a] border border-gray-800 rounded-xl p-6">
+          <h2 className="text-2xl font-semibold mb-2">
+            Welcome to FocusFlow AI 🚀
+          </h2>
+
+          <p className="text-gray-400 text-sm leading-relaxed">
+            This workspace helps you extract, organize, and analyze information from any webpage using AI.
+            <br /><br />
+            • Capture page data (headings, links, content) <br />
+            • Save and manage research sessions <br />
+            • Ask AI questions about your data <br />
+            • Combine local files + web content for deeper insights
+          </p>
+        </div>
+
+        {/* Title */}
+        <h1 className="text-2xl font-semibold">
+          {pageData?.title || "Loading..."}
         </h1>
 
-        <div className="space-y-3 text-sm">
-          <p className="opacity-70">Dashboard</p>
-          <p className="opacity-70">Saved</p>
-          <p className="opacity-70">Notes</p>
-        </div>
-      </div>
+        {/* Content + Image */}
+        <div className="flex gap-6">
 
-      {/* 🔥 MAIN */}
-      <div className="flex-1 p-6">
+          <div className="flex-1 bg-[#111827] p-4 rounded-lg border border-gray-800">
+            <div className="text-gray-300 text-sm leading-relaxed space-y-2">
 
-        {/* HEADER */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-semibold">{data.title}</h2>
-          <p className="text-gray-400 text-sm">{data.url}</p>
-        </div>
+  <p>
+    You are currently analyzing:
+  </p>
 
-        {/* SEARCH */}
-        <input
-          type="text"
-          placeholder="Search..."
-          className="w-full mb-6 p-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+  <p className="text-white font-medium">
+    {pageData?.title || "Loading page..."}
+  </p>
 
-        {/* GRID */}
-        <div className="grid grid-cols-2 gap-6">
+  <p className="text-blue-400 break-all">
+    {pageData?.url}
+  </p>
 
-          {/* HEADINGS */}
-          <div className="p-5 rounded-2xl bg-white/5 border border-white/10 shadow-lg hover:shadow-blue-500/10 transition">
-            <h3 className="text-lg mb-3 text-blue-400">Headings</h3>
+  <p className="text-gray-400 mt-2">
+    This page has been processed by FocusFlow AI. 
+    Key elements such as links and content have been extracted and are ready for analysis.
+  </p>
 
-            <div className="space-y-2 max-h-[300px] overflow-y-auto">
-              {filteredHeadings?.map((h, i) => (
-                <div
-                  key={i}
-                  className="p-2 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer flex justify-between"
-                >
-                  <span>{h}</span>
-                  <button
-                    onClick={() => saveItem(h)}
-                    className="text-xs text-blue-400"
-                  >
-                    Save
-                  </button>
-                </div>
-              ))}
-            </div>
+</div>
           </div>
 
-          {/* LINKS */}
-          <div className="p-5 rounded-2xl bg-white/5 border border-white/10 shadow-lg hover:shadow-purple-500/10 transition">
-            <h3 className="text-lg mb-3 text-purple-400">Links</h3>
-
-            <div className="space-y-2 max-h-[300px] overflow-y-auto">
-              {data.links?.slice(0, 15).map((l, i) => (
-                <a
-                  key={i}
-                  href={l}
-                  target="_blank"
-                  className="block p-2 rounded-lg bg-white/5 hover:bg-white/10 text-blue-300 truncate"
-                >
-                  {l}
-                </a>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* 🧠 NOTES SECTION */}
-        <div className="mt-6 p-5 rounded-2xl bg-white/5 border border-white/10">
-          <h3 className="text-lg mb-3 text-green-400">Notes</h3>
-
-          <textarea
-            placeholder="Write notes..."
-            className="w-full p-3 rounded-xl bg-black/40 border border-white/10 focus:outline-none"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+          <img
+            src="https://images.unsplash.com/photo-1677442136019-21780ecad995"
+            className="w-80 rounded-lg object-cover"
           />
+        </div>
 
-          <button
-            className="mt-3 px-4 py-2 bg-green-500 rounded-lg hover:bg-green-600"
-            onClick={() =>
-              chrome.storage.local.set({ notes: notes })
-            }
-          >
-            Save Notes
+        {/* ✅ ONLY ONE LINKS CARD */}
+        <div className="bg-[#0f172a] border border-gray-800 rounded-xl p-4">
+          <h3 className="text-purple-400 font-semibold mb-2">
+            Extracted Links
+          </h3>
+
+          <ul className="text-sm text-gray-300 space-y-1 max-h-40 overflow-auto">
+            {pageData?.links?.slice(0, 10).map((link, i) => (
+              <li key={i}>
+                <a
+                  href={link}
+                  target="_blank"
+                  className="text-blue-400 hover:underline"
+                >
+                  {link}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* AI Summary */}
+        <div className="bg-[#111827] p-4 rounded-lg">
+          <p className="text-green-400 text-sm mb-2">AI Summary</p>
+
+          <div className="bg-[#020617] p-3 rounded text-sm text-gray-300">
+            {pageData
+              ? "This page discusses key ideas, extracted links, and important content. AI summary coming next..."
+              : "Waiting for data..."}
+          </div>
+        </div>
+
+        {/* Input Bar */}
+        <div className="flex gap-2">
+          <input
+            className="flex-1 bg-[#020617] border border-gray-700 px-4 py-2 rounded-lg text-white outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Ask your assistant..."
+          />
+          <button className="bg-blue-600 px-4 py-2 rounded-lg hover:bg-blue-700">
+            Ask
           </button>
         </div>
 
-        {/* ⭐ SAVED */}
-        <div className="mt-6 p-5 rounded-2xl bg-white/5 border border-white/10">
-          <h3 className="text-lg mb-3 text-yellow-400">Saved Items</h3>
-
-          {saved.map((item, i) => (
-            <div key={i} className="text-sm opacity-80 mb-1">
-              {item}
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );
