@@ -9,7 +9,7 @@ export const handleEmbed = async (req, res) => {
 
     const embedding = await getEmbedding(text);
 
-    console.log("Saving to vector DB...");  // ✅ here
+    console.log("Saving to vector DB...");  
 
     addToVectorDB({ text, embedding });
 
