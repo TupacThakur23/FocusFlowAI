@@ -1,49 +1,66 @@
 import { getEmbedding } from "../services/embeddingService.js";
-import { cosineSimilarity } from "../utils/similarity.js";
 import { addToVectorDB, getVectorDB } from "../services/vectorStoreService.js";
+import { cosineSimilarity } from "../utils/similarity.js";
 
-// EMBED + STORE
+
+
+
 export const handleEmbed = async (req, res) => {
   try {
     const { text } = req.body;
 
+    if (!text) {
+      return res.status(400).json({ error: "Text is required" });
+    }
+
+    
     const embedding = await getEmbedding(text);
 
-    console.log("Saving to vector DB...");  // ✅ here
+    console.log("Saving to vector DB...");
 
+    
     addToVectorDB({ text, embedding });
 
     res.json({ embedding });
 
   } catch (err) {
-    console.log(err);
+    console.log("❌ EMBED ERROR:", err);
     res.status(500).json({ error: "Embedding failed" });
   }
 };
 
-// SEARCH
+
+
+
 export const handleSearch = async (req, res) => {
   try {
     const { query } = req.body;
 
+    if (!query) {
+      return res.status(400).json({ error: "Query is required" });
+    }
+
+    
     const queryEmbedding = await getEmbedding(query);
 
-    const data = getVectorDB();
+    const db = getVectorDB();
 
-    const results = data.map((item) => {
+    
+    const results = db.map((item) => {
       const score = cosineSimilarity(queryEmbedding, item.embedding);
-      return { ...item, score };
+      return {
+        text: item.text,
+        score,
+      };
     });
 
+    
     results.sort((a, b) => b.score - a.score);
 
     res.json({ results });
+
   } catch (err) {
+    console.log("❌ SEARCH ERROR:", err);
     res.status(500).json({ error: "Search failed" });
   }
-};
-
-// SIMPLE TEST
-export const handleSummarize = async (req, res) => {
-  res.json({ summary: "Test summary working" });
 };

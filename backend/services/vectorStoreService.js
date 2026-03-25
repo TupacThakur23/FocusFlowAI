@@ -1,18 +1,26 @@
 import fs from "fs";
+import path from "path";
 
-const FILE_PATH = "./vectorStore.json";
 
-if (!fs.existsSync(FILE_PATH)) {
-  fs.writeFileSync(FILE_PATH, JSON.stringify([]));
-}
+const FILE_PATH = path.resolve("data/vectorStore.json");
 
-const readDB = () => JSON.parse(fs.readFileSync(FILE_PATH));
-const writeDB = (data) => fs.writeFileSync(FILE_PATH, JSON.stringify(data, null, 2));
 
-export const addToVectorDB = (doc) => {
-  const db = readDB();
-  db.push(doc);
-  writeDB(db);
+export const getVectorDB = () => {
+  if (!fs.existsSync(FILE_PATH)) {
+    fs.writeFileSync(FILE_PATH, JSON.stringify([]));
+  }
+
+  const data = fs.readFileSync(FILE_PATH, "utf-8");
+  return JSON.parse(data);
 };
 
-export const getVectorDB = () => readDB();
+
+export const addToVectorDB = (entry) => {
+  const db = getVectorDB();
+
+  db.push(entry);
+
+  fs.writeFileSync(FILE_PATH, JSON.stringify(db, null, 2));
+
+  console.log("Data saved to vector DB");
+};
