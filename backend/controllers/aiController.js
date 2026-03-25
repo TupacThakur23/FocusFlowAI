@@ -16,11 +16,11 @@ export const handleEmbed = async (req, res) => {
     
     const embedding = await getEmbedding(text);
 
-<<<<<<< HEAD
+
     console.log("Saving to vector DB...");
-=======
+
     console.log("Saving to vector DB...");  
->>>>>>> 46fc0f612b58351d49c49e171f1284ebd8bdca25
+
 
     
     addToVectorDB({ text, embedding });
@@ -28,7 +28,7 @@ export const handleEmbed = async (req, res) => {
     res.json({ embedding });
 
   } catch (err) {
-    console.log("❌ EMBED ERROR:", err);
+    console.log("EMBED ERROR:", err);
     res.status(500).json({ error: "Embedding failed" });
   }
 };
@@ -64,7 +64,7 @@ export const handleSearch = async (req, res) => {
     res.json({ results });
 
   } catch (err) {
-    console.log("❌ SEARCH ERROR:", err);
+    console.log(" SEARCH ERROR:", err);
     res.status(500).json({ error: "Search failed" });
   }
 };
