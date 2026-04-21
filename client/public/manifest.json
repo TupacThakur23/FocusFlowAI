@@ -1,0 +1,12 @@
+{
+  "name": "FocusFlow AI",
+  "short_name": "FocusFlow",
+  "version": "1.0.0",
+  "manifest_version": 3,
+  "action": {
+    "default_popup": "index.html"
+  },
+  "icons": {
+    "192": "/icon.png"
+  }
+}
