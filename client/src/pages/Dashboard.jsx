@@ -1,8 +1,36 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import {
+  FolderPlus,
+  Upload,
+  FileText,
+  Sparkles,
+  BookOpen,
+  Layers,
+  Download,
+  Brain,
+  Send, 
+  Link,
+  Type,
+  UploadCloud,
+  History,
+  Trash2,
+  ClipboardList,
+  Lightbulb
+} from "lucide-react";
+
 
 export default function Dashboard() {
-  const [activeView, setActiveView] = useState("menu");
+  const getInitialView = () => {
+  const hash = window.location.hash;
+
+  if (hash === "#/rag") return "focus";
+  if (hash === "#/research") return "research";
+
+  return "menu";
+};
+
+const [activeView, setActiveView] = useState(getInitialView());
 
   const [researchList, setResearchList] = useState([]);
 
@@ -125,8 +153,20 @@ export default function Dashboard() {
         <h1 style={{ fontSize: "3rem", margin: "0 0 10px 0", color: "#00ff88" }}>FocusFlow AI</h1>
         <p style={{ color: "#aaa", marginBottom: "40px", fontSize: "1.2rem" }}>Choose your workspace to begin</p>
         <div style={{ display: "flex", gap: "20px" }}>
-          <button style={{...styles.btn, padding: "20px 40px", fontSize: "1.2rem"}} onClick={() => setActiveView("focus")}>🧠 Focus RAG Mode</button>
-          <button style={{...styles.btn, padding: "20px 40px", fontSize: "1.2rem"}} onClick={() => setActiveView("research")}>📁 Research Hub</button>
+          <button style={{ ...styles.btn, padding: "20px 40px", fontSize: "1.2rem" }}
+              onClick={() => {
+              chrome.tabs.create({
+              url: chrome.runtime.getURL("index.html#/rag")
+                    } );
+                window.close();
+              }}>🧠 Focus RAG Mode</button>
+          <button style={{ ...styles.btn, padding: "20px 40px", fontSize: "1.2rem" }}
+  onClick={() => {
+    chrome.tabs.create({
+      url: chrome.runtime.getURL("index.html#/research")
+    });
+    window.close();
+  }}>📁 Research Hub</button>
         </div>
       </div>
     );
@@ -139,107 +179,325 @@ export default function Dashboard() {
         <h2 style={{ margin: 0 }}>{activeView === "focus" ? "Focus RAG Workspace" : "Research Hub"}</h2>
       </div>
 
-      {activeView === "focus" && (
-        <div style={{ display: "flex", flex: 1, flexDirection: "column", overflow: "hidden" }}>
-          {/* Top Ingest Area */}
-          <div style={{ padding: "15px", backgroundColor: "#1a1a1a", borderBottom: "1px solid #333", display: "flex", gap: "10px", alignItems: "center" }}>
-            <strong style={{color: "#4ade80", whiteSpace: "nowrap"}}>Inject Context:</strong>
-            <input style={styles.input} placeholder="Paste http:// URL..." value={ingestUrl} onChange={e=>setIngestUrl(e.target.value)} />
-            <span style={{color: "#aaa"}}>OR</span>
-            <input style={styles.input} placeholder="Paste raw text block..." value={ingestRaw} onChange={e=>setIngestRaw(e.target.value)} />
-            <button style={{...styles.btn, ...styles.btnAction, width: "150px"}} onClick={handleIngest} disabled={ragLoading}>Load Context</button>
-          </div>
+     
+       {activeView === "focus" && (
+  <div className="flex flex-1 overflow-hidden bg-[#050816] text-white">
 
-          {/* Split Content View */}
-          <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-            {/* Left: Main Content */}
-            <div style={{ width: "60%", padding: "20px", borderRight: "1px solid #333", overflowY: "auto", fontSize: "16px", lineHeight: "1.6", whiteSpace: "pre-wrap" }}>
-              {documentText || <span style={{color:"#555"}}>Load a URL or Text above to extract and embed document chunks for analysis.</span>}
+    {/* Left Panel */}
+    <div className="w-[26%] border-r border-white/10 p-4 bg-white/5 flex flex-col gap-4">
+
+      <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
+        <h3 className="text-lg font-semibold text-emerald-300 mb-3">Source</h3>
+
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <button className="flex items-center justify-center gap-2 py-2 rounded-xl bg-white/10">
+  <div className="p-1 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 shadow-md">
+    <Link size={14} />
+  </div>
+  URL
+</button>
+          <button className="flex items-center justify-center gap-2 py-2 rounded-xl bg-white/5">
+  <div className="p-1 rounded-lg bg-gradient-to-br from-violet-500 to-pink-500 shadow-md">
+    <Type size={14} />
+  </div>
+  Text
+</button>
+        </div>
+
+        <input
+          className="w-full p-3 rounded-xl bg-black/30 border border-white/10 mb-3"
+          placeholder="Paste URL..."
+          value={ingestUrl}
+          onChange={(e) => setIngestUrl(e.target.value)}
+        />
+
+        <textarea
+          className="w-full p-3 rounded-xl bg-black/30 border border-white/10 mb-3 h-28 resize-none"
+          placeholder="Paste raw text..."
+          value={ingestRaw}
+          onChange={(e) => setIngestRaw(e.target.value)}
+        />
+
+       <button
+  onClick={handleIngest}
+  className="w-full py-3 rounded-xl bg-emerald-400 text-black font-semibold flex items-center justify-center gap-2"
+>
+  <UploadCloud size={16} />
+  {ragLoading ? "Loading..." : "Load Context"}
+</button>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 text-center text-sm">
+        <div className="rounded-xl bg-white/5 p-3">
+          {ragChunks.length}
+          <div className="text-white/50 text-xs">Chunks</div>
+        </div>
+        <div className="rounded-xl bg-white/5 p-3">
+          12.4k
+          <div className="text-white/50 text-xs">Tokens</div>
+        </div>
+        <div className="rounded-xl bg-white/5 p-3">
+          2.8s
+          <div className="text-white/50 text-xs">Speed</div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl bg-white/5 p-4 border border-white/10 flex-1 overflow-auto">
+        <h4 className="font-semibold mb-2 text-white/80">Document Preview</h4>
+        <p className="text-sm text-white/60 whitespace-pre-wrap">
+          {documentText || "Load content to preview extracted text here."}
+        </p>
+      </div>
+    </div>
+
+    {/* Center Panel */}
+    <div className="flex-1 flex flex-col p-4 gap-4">
+
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">Chat with your context</h2>
+        <div className="flex gap-2">
+          <button className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5">
+  <div className="p-1 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 shadow-md">
+    <History size={14} />
+  </div>
+  History
+</button>
+         <button
+  onClick={() => {
+    setRagAnswer("");
+    setRagChunks([]);
+  }}
+  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-500/10 text-red-300"
+>
+  <div className="p-1 rounded-lg bg-gradient-to-br from-red-500 to-orange-500 shadow-md">
+    <Trash2 size={14} />
+  </div>
+  Clear
+</button>
+        </div>
+      </div>
+
+      <div className="flex-1 rounded-2xl bg-white/5 border border-white/10 p-4 overflow-auto space-y-4">
+
+        {ragQuestion && (
+          <div className="flex justify-end">
+            <div className="max-w-[70%] bg-violet-500/20 px-4 py-3 rounded-2xl">
+              {ragQuestion}
             </div>
-            
-            {/* Right: AI Output & Chunks */}
-            <div style={{ width: "40%", padding: "20px", overflowY: "auto", backgroundColor: "#111", display: "flex", flexDirection: "column" }}>
-              <h3 style={{margin: "0 0 10px 0"}}>AI Assistant Response</h3>
-              <div style={{ padding: "15px", backgroundColor: "#222", border: "1px solid #4ade80", borderRadius: "5px", whiteSpace: "pre-wrap", lineHeight: "1.5", marginBottom: "20px" }}>
-                {ragAnswer || "Ask a question below to trigger Semantic Search."}
-              </div>
-
-              {ragChunks.length > 0 && (
-                <>
-                  <h4 style={{margin: "0 0 10px 0", color: "#aaa"}}>Relevant Context Sources Identified</h4>
-                  {ragChunks.map((chunk, i) => (
-                    <div key={i} style={{ padding: "10px", backgroundColor: "#1a1a1a", borderLeft: "3px solid #3b82f6", marginBottom: "10px", fontSize: "14px" }}>
-                       {chunk}
-                    </div>
-                  ))}
-                </>
-              )}
-            </div>
           </div>
+        )}
 
-          {/* Bottom Bar */}
-          <div style={{ padding: "15px", borderTop: "1px solid #333", backgroundColor: "#1a1a1a", display: "flex", gap: "10px" }}>
-            <input 
-              style={{...styles.input, padding: "12px", border: "1px solid #555", fontSize: "16px"}}
-              placeholder="Ask anything about the document..." 
-              value={ragQuestion}
-              onChange={e=>setRagQuestion(e.target.value)}
-              onKeyDown={e=>e.key === 'Enter' && handleRagQuery()}
-            />
-            <button style={{...styles.btn, ...styles.btnAction, width: "120px"}} disabled={ragLoading} onClick={handleRagQuery}>
-              {ragLoading ? "..." : "Ask"}
-            </button>
+        <div className="flex justify-start">
+          <div className="max-w-[75%] bg-white/5 px-4 py-3 rounded-2xl border border-white/10 whitespace-pre-wrap">
+            {ragAnswer || "Ask a question about the loaded content."}
           </div>
         </div>
-      )}
+
+        {ragChunks.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-sm text-white/50">Relevant Sources</div>
+            {ragChunks.map((chunk, i) => (
+              <div
+                key={i}
+                className="p-3 rounded-xl bg-black/30 border-l-4 border-emerald-400 text-sm text-white/70"
+              >
+                {chunk}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-3">
+        <input
+          className="flex-1 p-4 rounded-2xl bg-white/5 border border-white/10"
+          placeholder="Ask anything about this content..."
+          value={ragQuestion}
+          onChange={(e) => setRagQuestion(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleRagQuery()}
+        />
+
+        <button className="flex items-center gap-2 px-5 rounded-xl bg-emerald-400 text-black font-semibold">
+  <Send size={16} />
+  Ask
+</button>
+      </div>
+
+      <div className="grid grid-cols-4 gap-3">
+        <button className="flex items-center gap-2 p-3 rounded-xl bg-white/5">
+  <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500 to-green-400 shadow-md">
+    <FileText size={16} />
+  </div>
+  Summarize
+</button>
+        <button className="flex items-center gap-2 p-3 rounded-xl bg-white/5">
+  <div className="p-2 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-400 shadow-md">
+    <Sparkles size={16} />
+  </div>
+  Key Points
+</button>
+      <button className="flex items-center gap-2 p-3 rounded-xl bg-white/5">
+  <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-pink-500 shadow-md">
+    <ClipboardList size={16} />
+  </div>
+  Quiz
+</button>
+        <button className="flex items-center gap-2 p-3 rounded-xl bg-white/5">
+  <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 shadow-md">
+    <Lightbulb size={16} />
+  </div>
+  Explain
+</button>
+      </div>
+    </div>
+  </div>
+)}
 
       {activeView === "research" && (
-        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-          {/* Sidebar */}
-          <div style={{ width: "25%", backgroundColor: "#1a1a1a", borderRight: "1px solid #333", display: "flex", flexDirection: "column" }}>
-            <div style={{ padding: "10px", borderBottom: "1px solid #333" }}>
-              <input style={{...styles.input, marginBottom: "5px"}} placeholder="Topic..." value={newTopic} onChange={e=>setNewTopic(e.target.value)} />
-              <input style={{...styles.input, marginBottom: "5px"}} placeholder="Notes..." value={newNotes} onChange={e=>setNewNotes(e.target.value)} />
-              <button style={{...styles.btn, ...styles.btnAction, width: "100%"}} onClick={handleAddFile}>+ Add</button>
-            </div>
-            <div style={{ flex: 1, overflowY: "auto" }}>
-              {researchList.slice().reverse().map(f => (
-                <div key={f._id} style={{ padding: "15px", cursor: "pointer", borderBottom: "1px solid #333", backgroundColor: selectedFile?._id === f._id ? "#333" : "transparent" }} onClick={() => setSelectedFile(f)}>
-                  📄 {f.topic}
-                </div>
-              ))}
-            </div>
-          </div>
+  <div className="flex flex-1 overflow-hidden bg-[#050816] text-white">
 
-          {/* Center */}
-          <div style={{ width: "50%", padding: "20px", borderRight: "1px solid #333", overflowY: "auto", display: "flex", flexDirection: "column" }}>
-            {selectedFile ? (
-              <div style={{ flex: 1 }}>
-                <h1 style={{color: "#00ff88", margin: "0 0 10px 0"}}>{selectedFile.topic}</h1>
-                <p style={{whiteSpace: "pre-wrap", lineHeight: 1.5}}>{selectedFile.notes || "No notes..."}</p>
-              </div>
-            ) : <div style={{flex: 1, display: "flex", alignItems: "center", justifyContent: "center"}}><p style={{color: "#555"}}>Select a file to view.</p></div>}
-            
-            <div style={{ borderTop: "1px solid #333", paddingTop: "10px", marginTop: "auto" }}>
-              <p style={{color: "#4ade80", fontSize: "14px", marginBottom: "10px", minHeight: "20px"}}>{assistantResponse || "Ask AI about this file"}</p>
-              <div style={{ display: "flex", gap: "10px" }}>
-                <input style={{...styles.input, marginBottom: 0}} placeholder="Ask..." value={question} onChange={e=>setQuestion(e.target.value)} onKeyDown={e=>e.key==='Enter' && askAI("question", question)}/>
-                <button style={{...styles.btn, ...styles.btnAction, margin: 0, width: "100px"}} onClick={()=>askAI("question", question)}>{loading ? "..." : "Ask"}</button>
+    {/* Left Sidebar */}
+    <div className="w-[22%] border-r border-white/10 bg-white/5 p-4 flex flex-col gap-4">
+
+      <div>
+        <h3 className="text-lg font-semibold text-violet-300 mb-3">My Topics</h3>
+
+        <input
+          placeholder="Search topics..."
+          className="w-full p-3 rounded-xl bg-black/30 border border-white/10 mb-3"
+        />
+
+        <div className="space-y-2 max-h-[70vh] overflow-auto">
+          {researchList.slice().reverse().map((f) => (
+            <div
+              key={f.id}
+              onClick={() => setSelectedFile(f)}
+              className={`p-3 rounded-xl cursor-pointer border transition ${
+                selectedFile?.id === f.id
+                  ? "bg-violet-500/20 border-violet-400"
+                  : "bg-white/5 border-white/10 hover:bg-white/10"
+              }`}
+            >
+              <div className="font-medium">{f.topic}</div>
+              <div className="text-xs text-white/50 mt-1">
+                {f.notes?.length || 0} notes
               </div>
             </div>
-          </div>
-
-          {/* Right */}
-          <div style={{ width: "25%", padding: "15px", display: "flex", flexDirection: "column", backgroundColor: "#111" }}>
-            <button style={{...styles.btn, marginBottom: "5px"}} onClick={()=>askAI("summarize")}>Summarize</button>
-            <button style={{...styles.btn, marginBottom: "15px"}} onClick={()=>askAI("keypoints")}>Key Points</button>
-            <h4 style={{ margin: "0 0 10px 0" }}>AI Result</h4>
-            <div style={{ flex: 1, padding: "10px", backgroundColor: "#222", borderRadius: "5px", overflowY: "auto", whiteSpace: "pre-wrap" }}>
-              {aiResponse || "Results here..."}
-            </div>
-          </div>
+          ))}
         </div>
-      )}
+      </div>
+
+      <div className="mt-auto grid grid-cols-2 gap-2">
+        <button className="flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 shadow-lg hover:bg-white/10">
+  <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-pink-500 shadow-md">
+    <FolderPlus size={16} />
+  </div>
+  New Topic
+</button>
+        <button className="flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 shadow-lg hover:bg-white/10">
+  <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 shadow-md">
+    <Upload size={16} />
+  </div>
+  Upload File
+</button>
+      </div>
+    </div>
+
+    {/* Center Content */}
+    <div className="flex-1 flex flex-col p-4 gap-4">
+
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">
+          {selectedFile ? selectedFile.topic : "Research Workspace"}
+        </h2>
+
+        <div className="flex gap-2">
+          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10">
+  <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500 to-green-400 shadow-md">
+    <FileText size={16} />
+  </div>
+  Summarize
+</button>
+
+          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10">
+  <div className="p-2 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-400 shadow-md">
+    <Sparkles size={16} />
+  </div>
+  Key Points
+</button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-white/5 flex-1 overflow-auto p-5 whitespace-pre-wrap text-white/80">
+        {selectedFile
+          ? selectedFile.notes || "No notes available."
+          : "Select a topic to view notes or files."}
+      </div>
+
+      <div className="grid grid-cols-4 gap-3">
+        <button className="flex items-center gap-2 p-3 rounded-xl bg-white/5">
+  <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 shadow-md">
+    <BookOpen size={16} />
+  </div>
+  Notes
+</button>
+        <button className="flex items-center gap-2 p-3 rounded-xl bg-white/5">
+  <div className="p-2 rounded-lg bg-gradient-to-br from-pink-500 to-rose-500 shadow-md">
+    <Layers size={16} />
+  </div>
+  Flashcards
+</button>
+        <button className="flex items-center gap-2 p-3 rounded-xl bg-white/5">
+  <div className="p-2 rounded-lg bg-gradient-to-br from-red-500 to-orange-500 shadow-md">
+    <Download size={16} />
+  </div>
+  Export
+</button>
+        <button className="flex items-center gap-2 p-3 rounded-xl bg-white/5">
+  <div className="p-2 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-500 shadow-md">
+    <Brain size={16} />
+  </div>
+  Organize
+</button>
+      </div>
+    </div>
+
+    {/* Right AI Panel */}
+    <div className="w-[30%] border-l border-white/10 bg-white/5 p-4 flex flex-col gap-4">
+
+      <h3 className="text-lg font-semibold text-emerald-300">
+        AI Assistant
+      </h3>
+
+      <div className="flex-1 rounded-2xl bg-black/20 border border-white/10 p-4 overflow-auto whitespace-pre-wrap text-white/80">
+        {assistantResponse || "Ask AI about your selected topic, notes or files."}
+      </div>
+
+      <div className="flex gap-2">
+        <input
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && askAI("question", question)}
+          placeholder="Ask AI..."
+          className="flex-1 p-3 rounded-xl bg-black/30 border border-white/10"
+        />
+
+        <button
+          onClick={() => askAI("question", question)}
+          className="px-5 rounded-xl bg-emerald-400 text-black font-semibold"
+        >
+          Ask
+        </button>
+      </div>
+    </div>
+  </div>
+  
+)}
+
     </div>
   );
 }
+
+
+
+
