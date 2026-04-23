@@ -1,30 +1,34 @@
 import express from "express";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const router = express.Router();
 
-router.post("/summarize", async (req, res) => {
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+const model = genAI.getGenerativeModel({
+  model: "gemini-1.5-flash",
+});
+
+
+router.post("/", async (req, res) => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    const { text } = req.body;
-    
-    try {
-        const response = await ai.models.generateContent({
-          model: "gemini-2.0-flash",
-          contents: text.substring(0, 50000) // Cap the string arbitrarily to protect token allowance
-        });
-        res.json({ summary: response.text });
-    } catch(geminiErr) {
-        if (geminiErr.status === 429 || geminiErr.status === 503) {
-            res.json({ summary: "⚠️ Google Gemini Free Tier Quota Exceeded (Speed Limit).\n\nPlease wait about 60 seconds for your rate limit to refresh before triggering this operation again." });
-        } else {
-            throw geminiErr;
-        }
+    const { prompt } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({ error: "Prompt is required" });
     }
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "Failed to generate AI content" });
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+
+    res.json({ reply: response.text() });
+
+  } catch (error) {
+    console.error("Gemini Error:", error);
+    res.status(500).json({ error: "AI failed" });
   }
 });
 
-export default router;
+
+export default router; 
