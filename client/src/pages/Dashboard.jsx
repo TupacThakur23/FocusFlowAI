@@ -139,7 +139,7 @@ export default function Dashboard() {
     if (action === "Summarize") targetQ = "Provide a concise summary of this content.";
     if (action === "Key Points") targetQ = "Extract key ideas and essential points.";
     if (action === "Compare") targetQ = "Compare and contrast the main arguments inside this context.";
-    if (action === "Explain") targetQ = "Get simple beginner-friendly explanations of complex concepts inside this document.";
+    
     if (action === "Mind Map") targetQ = "Generate a textual mind map layout of all components mapped in this document.";
 
     try {
@@ -344,13 +344,7 @@ export default function Dashboard() {
                              </div>
                           </button>
                           
-                          <button onClick={() => askRagAction("Explain")} className="flex items-start gap-4 hover:bg-[#151515] p-3 rounded-lg text-left transition-colors group">
-                             <MessageSquare size={18} className="text-green-500 mt-0.5 group-hover:scale-110 transition-transform" />
-                             <div>
-                                <div className="text-sm font-semibold text-gray-200">Explain</div>
-                                <div className="text-xs text-gray-500 mt-1">Get simple explanations of complex concepts</div>
-                             </div>
-                          </button>
+                         
                           
                           <button onClick={() => askRagAction("Mind Map")} className="flex items-start gap-4 hover:bg-[#151515] p-3 rounded-lg text-left transition-colors group">
                              <Network size={18} className="text-green-500 mt-0.5 group-hover:scale-110 transition-transform" />

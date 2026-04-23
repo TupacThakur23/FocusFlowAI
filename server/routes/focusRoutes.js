@@ -1,6 +1,9 @@
 import express from "express";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+import dotenv from "dotenv"
+dotenv.config()
+
 const router = express.Router();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -47,7 +50,7 @@ router.post("/ingest", async (req, res) => {
         .trim();
 
       const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash-lite",
       });
 
       const result = await model.generateContent(
@@ -64,24 +67,12 @@ router.post("/ingest", async (req, res) => {
 
     const chunks = chunkText(text, 250);
 
-    const embeddingModel = genAI.getGenerativeModel({
-      model: "embedding-001",
-    });
-
-    const embeddings = await Promise.all(
-      chunks.map(async (chunk) => {
-        const result = await embeddingModel.embedContent(chunk);
-        return result.embedding.values;
-      })
-    );
-
     vectorStore = chunks.map((chunk, i) => ({
-      id: Date.now() + i,
-      text: chunk,
-      embedding: embeddings[i],
-    }));
+  id: Date.now() + i,
+  text: chunk
+}));
 
-    res.json({ message: "Content ingested successfully" });
+    res.json({ message: "Content ingested successfully", text });
 
   } catch (err) {
     console.error(err);
@@ -103,29 +94,38 @@ router.post("/query", async (req, res) => {
       return res.status(400).json({ error: "Ingest content first" });
     }
 
-    const embeddingModel = genAI.getGenerativeModel({
-      model: "embedding-001",
+    const words = question.toLowerCase().split(/\s+/);
+
+    const scored = vectorStore.map((chunk) => {
+      const text = chunk.text.toLowerCase();
+
+      const score = words.filter(word => text.includes(word)).length;
+
+      return {
+        ...chunk,
+        score
+      };
     });
 
-    const queryEmbeddingResp = await embeddingModel.embedContent(question);
-    const queryEmbedding = queryEmbeddingResp.embedding.values;
-
-    const scored = vectorStore.map((c) => ({
-      ...c,
-      score: cosineSimilarity(queryEmbedding, c.embedding),
-    }));
-
-    const topChunks = scored.sort((a, b) => b.score - a.score).slice(0, 3);
+    const topChunks = scored
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
 
     const context = topChunks.map(c => c.text).join("\n\n");
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash-lite",
     });
 
-    const result = await model.generateContent(
-      `Answer using context:\n\n${context}\n\nQuestion: ${question}`
-    );
+    const result = await model.generateContent(`
+Use the context below to answer clearly.
+
+Context:
+${context}
+
+Question:
+${question}
+    `);
 
     const response = await result.response;
 
@@ -135,7 +135,7 @@ router.post("/query", async (req, res) => {
     });
 
   } catch (err) {
-    console.error(err);
+    console.error("QUERY ERROR:", err);
     res.status(500).json({ error: "Query failed" });
   }
 });
