@@ -1,10 +1,24 @@
-import axios from "axios";
+const API_URL = import.meta.env.VITE_API_URL;
 
-const API = axios.create({
-  baseURL: "http://localhost:5000/api",
-});
+export const fetchResearch = async (url) => {
+  try {
+    const res = await fetch(`${API_URL}/api/research`, {
+      method: "POST", // 
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ url })
+    });
 
-export const getData = () => API.get("/data");
-export const createData = (data) => API.post("/data", data);
-export const getFocusSessions = () => API.get("/focus");
-export const getResearch = () => API.get("/research");
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    return data;
+
+  } catch (err) {
+    console.error("API ERROR:", err);
+    throw err;
+  }
+};
