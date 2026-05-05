@@ -1,9 +1,9 @@
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
 
 export const fetchResearch = async (url) => {
   try {
-    const res = await fetch(`${API_URL}/api/research`, {
-      method: "POST", // 
+    const res = await fetch(`${API_URL}/api/focus/ingest`, {
+      method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
@@ -16,7 +16,6 @@ export const fetchResearch = async (url) => {
 
     const data = await res.json();
     return data;
-
   } catch (err) {
     console.error("API ERROR:", err);
     throw err;

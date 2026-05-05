@@ -23,7 +23,7 @@ import {
   Link
 } from "lucide-react";
 
-const API_URL = import.meta.env.VITE_API_URL; // ✅ FIX
+const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
 
 export default function Dashboard() {
   const [activeView, setActiveView] = useState("focus");
@@ -47,7 +47,6 @@ export default function Dashboard() {
   const [ragChunks, setRagChunks] = useState([]);
   const [extractSuccess, setExtractSuccess] = useState(false);
 
-  // ✅ FIXED API CALL
   useEffect(() => {
     const fetchResearch = async () => {
       try {
@@ -117,7 +116,6 @@ export default function Dashboard() {
     }
   };
 
-  // 🔥 MAIN FIX (THIS WAS BROKEN)
   const handleIngest = async () => {
     if (!ingestUrl) return;
 
@@ -126,13 +124,12 @@ export default function Dashboard() {
     setDocumentText("Extracting...");
 
     try {
-      const res = await axios.post(`${API_URL}/api/research`, {
+      const res = await axios.post(`${API_URL}/api/focus/ingest`, {
         url: ingestUrl
       });
 
-      setDocumentText(res.data.content);
+      setDocumentText(res.data.text || "No content extracted.");
       setExtractSuccess(true);
-
     } catch (e) {
       console.error(e);
       setDocumentText("Error loading content.");
@@ -146,12 +143,14 @@ export default function Dashboard() {
 
     setRagLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/api/ai/summarize`, {
-        text: ragQuestion
+      const res = await axios.post(`${API_URL}/api/focus/query`, {
+        question: ragQuestion
       });
-      setRagAnswer(res.data.summary);
+      setRagAnswer(res.data.answer || "No answer returned.");
+      setRagChunks(res.data.topRelevantChunks || []);
     } catch (e) {
-      setRagAnswer("Error querying AI.");
+      setRagAnswer("Error querying focus assistant.");
+      setRagChunks([]);
     } finally {
       setRagLoading(false);
     }
@@ -159,16 +158,12 @@ export default function Dashboard() {
 
   return (
     <div className="flex w-full h-screen bg-black text-white">
-
-      {/* SIDEBAR */}
       <div className="w-64 p-4 bg-[#111]">
         <button onClick={() => setActiveView("focus")}>Focus Mode</button>
         <button onClick={() => setActiveView("research")}>Research Hub</button>
       </div>
 
-      {/* MAIN */}
       <div className="flex-1 p-6">
-
         {activeView === "focus" && (
           <>
             <input
@@ -189,7 +184,6 @@ export default function Dashboard() {
             <div>{ragAnswer}</div>
           </>
         )}
-
       </div>
     </div>
   );
