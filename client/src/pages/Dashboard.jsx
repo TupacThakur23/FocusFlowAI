@@ -1,190 +1,266 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
-import {
-  Settings,
-  FolderOpen,
-  Search,
-  Plus,
-  Trash2,
-  Paperclip,
-  Download,
-  MoreVertical,
-  Send,
-  FileText,
-  List,
-  Scale,
-  MessageSquare,
-  Network,
-  Save,
-  CheckCircle,
-  Calendar,
-  Activity,
-  TrendingUp,
-  Link
-} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import api, { API_URL } from "../services/api";
 
-const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
+const quickActions = ["Summarize", "Explain", "Notes", "Questions", "Sources"];
 
 export default function Dashboard() {
-  const [activeView, setActiveView] = useState("focus");
-
-  // --- RESEARCH HUB STATES ---
+  const [mode, setMode] = useState("launcher");
   const [researchList, setResearchList] = useState([]);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [newTopic, setNewTopic] = useState("");
-  const [newNotes, setNewNotes] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [question, setQuestion] = useState("");
-  const [assistantResponse, setAssistantResponse] = useState("");
-  const [isCreatingTopic, setIsCreatingTopic] = useState(false);
-
-  // --- FOCUS STATES ---
+  const [workbooks, setWorkbooks] = useState([]);
+  const [selectedWorkbook, setSelectedWorkbook] = useState("General");
+  const [newWorkbook, setNewWorkbook] = useState("");
   const [ingestUrl, setIngestUrl] = useState("");
   const [documentText, setDocumentText] = useState("");
-  const [ragLoading, setRagLoading] = useState(false);
-  const [ragQuestion, setRagQuestion] = useState("");
-  const [ragAnswer, setRagAnswer] = useState("");
-  const [ragChunks, setRagChunks] = useState([]);
-  const [extractSuccess, setExtractSuccess] = useState(false);
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [summary, setSummary] = useState("");
+  const [saveInstruction, setSaveInstruction] = useState("");
+  const [includeSummary, setIncludeSummary] = useState(true);
+  const [includeQuestions, setIncludeQuestions] = useState(true);
+  const [includeNotes, setIncludeNotes] = useState(false);
+  const [includeSources, setIncludeSources] = useState(false);
+  const [relatedSources, setRelatedSources] = useState([]);
+  const [selectedText, setSelectedText] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
+  const [studyOutput, setStudyOutput] = useState({ notes: "", questions: [], flashcards: [] });
+  const [workbookContext, setWorkbookContext] = useState("");
+  const [sessionPages, setSessionPages] = useState([]);
+  const [saveMode, setSaveMode] = useState("page");
+  const [currentTab, setCurrentTab] = useState(null);
+  const [autoIngestedUrl, setAutoIngestedUrl] = useState("");
+  const [currentSource, setCurrentSource] = useState(null);
+  const syncRef = useRef(null);
 
   useEffect(() => {
-    const fetchResearch = async () => {
+    loadResearch();
+
+    if (!window.chrome?.storage?.session) return;
+
+    const syncFromExtension = async () => {
       try {
-        const rRes = await axios.get(`${API_URL}/api/research`);
-        setResearchList(rRes.data);
-        if (rRes.data.length > 0) setSelectedFile(rRes.data[rRes.data.length - 1]);
-      } catch (e) {
-        console.error(e);
+        const data = await window.chrome.storage.session.get([
+          "aideCurrentSelection",
+          "aideLastSource",
+          "aideSessionPages",
+          "aideCurrentTab"
+        ]);
+        if (data.aideCurrentSelection) setSelectedText(data.aideCurrentSelection);
+        if (data.aideCurrentTab) {
+          setCurrentTab(data.aideCurrentTab);
+          setIngestUrl((current) => current || data.aideCurrentTab.url || "");
+        } else if (data.aideLastSource?.url) {
+          setIngestUrl((current) => current || data.aideLastSource.url);
+        }
+        setSessionPages(data.aideSessionPages || []);
+      } catch (error) {
+        console.error(error);
       }
     };
-    fetchResearch();
+
+    const requestActiveTab = () => {
+      if (!window.chrome?.runtime?.sendMessage) return;
+      window.chrome.runtime.sendMessage({ type: "AIDE_GET_ACTIVE_TAB" }, (response) => {
+        if (window.chrome.runtime.lastError) return;
+        if (response?.tab?.url) {
+          setCurrentTab({ title: response.tab.title, url: response.tab.url });
+          setIngestUrl((current) => current || response.tab.url);
+        }
+      });
+    };
+
+    requestActiveTab();
+    syncFromExtension();
+    syncRef.current = window.setInterval(syncFromExtension, 1200);
+
+    return () => {
+      if (syncRef.current) window.clearInterval(syncRef.current);
+    };
   }, []);
 
-  const handleAddFile = async () => {
-    if (!newTopic) return;
+  useEffect(() => {
+    if (mode !== "aide" || !currentTab?.url || currentTab.url === autoIngestedUrl || isLoading) return;
+
+    const runAutoIngest = async () => {
+      setIsLoading(true);
+      setSaveMessage("");
+      try {
+        setIngestUrl(currentTab.url);
+        const res = await api.post(`${API_URL}/api/focus/ingest`, { url: currentTab.url });
+        setDocumentText(res.data.text || "No content extracted.");
+        setCurrentSource(res.data.source || null);
+        setSummary("");
+        setAnswer("");
+        setAutoIngestedUrl(currentTab.url);
+      } catch (error) {
+        console.error(error);
+        setDocumentText("Error loading content.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    runAutoIngest();
+  }, [mode, currentTab, autoIngestedUrl]);
+
+  const loadResearch = async () => {
     try {
-      const res = await axios.post(`${API_URL}/api/research`, {
-        topic: newTopic,
-        notes: newNotes,
-        link: ""
-      });
-      setResearchList([...researchList, res.data]);
-      setSelectedFile(res.data);
-      setNewTopic("");
-      setNewNotes("");
-      setIsCreatingTopic(false);
-    } catch (e) {
-      console.error(e);
+      const res = await api.get(`${API_URL}/api/research`);
+      const items = res.data || [];
+      setResearchList(items);
+      const workbookNames = [...new Set(items.map((item) => item.workbook || "General"))];
+      setWorkbooks(workbookNames.length ? workbookNames : ["General"]);
+    } catch (error) {
+      console.error(error);
     }
   };
 
-  const saveToHub = async () => {
-    if (!documentText) return;
-    try {
-      const res = await axios.post(`${API_URL}/api/research`, {
-        topic: ingestUrl || "Saved RAG Document",
-        notes: documentText
-      });
-      setResearchList([...researchList, res.data]);
-      alert("Saved to Research Hub!");
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  const groupedResearch = useMemo(() => {
+    return researchList.reduce((acc, item) => {
+      const key = item.workbook || "General";
+      acc[key] = acc[key] || [];
+      acc[key].push(item);
+      return acc;
+    }, {});
+  }, [researchList]);
 
-  const deleteFile = async (id) => {
-    try {
-      await axios.delete(`${API_URL}/api/research/${id}`);
-      const updatedList = researchList.filter(f => f._id !== id);
-      setResearchList(updatedList);
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  const isYoutubeUrl = (value = "") => /(?:youtube\.com|youtu\.be)/i.test(value);
 
-  const askAI = async (promptType, customQuestion = "") => {
-    setLoading(true);
-    try {
-      const res = await axios.post(`${API_URL}/api/ai/summarize`, {
-        text: customQuestion || promptType
-      });
-      setAssistantResponse(res.data.summary);
-    } catch (e) {
-      setAssistantResponse("Error reaching AI.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleIngest = async () => {
+  const handleExtract = async () => {
     if (!ingestUrl) return;
-
-    setRagLoading(true);
-    setExtractSuccess(false);
-    setDocumentText("Extracting...");
-
+    setIsLoading(true);
+    setSaveMessage("");
     try {
-      const res = await axios.post(`${API_URL}/api/focus/ingest`, {
-        url: ingestUrl
-      });
-
+      const res = await api.post(`${API_URL}/api/focus/ingest`, { url: ingestUrl });
       setDocumentText(res.data.text || "No content extracted.");
-      setExtractSuccess(true);
-    } catch (e) {
-      console.error(e);
+      setSummary("");
+      setAnswer("");
+    } catch (error) {
+      console.error(error);
       setDocumentText("Error loading content.");
     } finally {
-      setRagLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const handleRagQuery = async () => {
-    if (!ragQuestion) return;
+  const handleUseCurrentTab = async () => {
+    if (!currentTab?.url) return;
+    setIngestUrl(currentTab.url);
+    setTimeout(handleExtract, 0);
+  };
 
-    setRagLoading(true);
+  const handleSummarize = async (customText) => {
+    const text = customText || documentText;
+    if (!text) return;
+    setIsLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/api/focus/query`, {
-        question: ragQuestion
+      const res = await api.post(`${API_URL}/api/ai/summarize`, {
+        text: `Summarize this page in concise study notes:\n\n${text}`
       });
-      setRagAnswer(res.data.answer || "No answer returned.");
-      setRagChunks(res.data.topRelevantChunks || []);
-    } catch (e) {
-      setRagAnswer("Error querying focus assistant.");
-      setRagChunks([]);
+      setSummary(res.data.summary || "");
+    } catch (error) {
+      console.error(error);
+      setSummary("Error generating summary.");
     } finally {
-      setRagLoading(false);
+      setIsLoading(false);
     }
   };
 
-  return (
-    <div className="flex w-full h-screen bg-black text-white">
-      <div className="w-64 p-4 bg-[#111]">
-        <button onClick={() => setActiveView("focus")}>Focus Mode</button>
-        <button onClick={() => setActiveView("research")}>Research Hub</button>
-      </div>
+  const handleAsk = async () => {
+    if (!question) return;
+    setIsLoading(true);
+    try {
+      const res = await api.post(`${API_URL}/api/focus/query`, { question });
+      setAnswer(res.data.answer || "No answer returned.");
+    } catch (error) {
+      console.error(error);
+      setAnswer("Error querying Aide.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-      <div className="flex-1 p-6">
-        {activeView === "focus" && (
-          <>
-            <input
-              value={ingestUrl}
-              onChange={(e) => setIngestUrl(e.target.value)}
-              placeholder="Enter URL"
-            />
-            <button onClick={handleIngest}>Extract</button>
+  const handleExplainSelection = async () => {
+    if (!selectedText) return;
+    setIsLoading(true);
+    try {
+      const res = await api.post(`${API_URL}/api/ai/summarize`, {
+        text: `Explain this selected section in simple terms:\n\n${selectedText}`
+      });
+      setAnswer(res.data.summary || "");
+    } catch (error) {
+      console.error(error);
+      setAnswer("Error explaining selection.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-            <div>{documentText}</div>
+  const handleRelatedSources = async () => {
+    const baseText = summary || documentText;
+    if (!baseText) return;
+    setIsLoading(true);
+    try {
+      const res = await api.post(`${API_URL}/api/ai/summarize`, {
+        text: `Based on this page, suggest 5 related sources with title and url only in plain text list format:\n\n${baseText.slice(0, 4000)}`
+      });
+      const parsed = (res.data.summary || "")
+        .split("\n")
+        .filter(Boolean)
+        .slice(0, 5)
+        .map((line, index) => ({ id: index + 1, text: line }));
+      setRelatedSources(parsed);
+    } catch (error) {
+      console.error(error);
+      setRelatedSources([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-            <input
-              value={ragQuestion}
-              onChange={(e) => setRagQuestion(e.target.value)}
-            />
-            <button onClick={handleRagQuery}>Ask</button>
+  const handleCreateWorkbook = () => {
+    if (!newWorkbook.trim()) return;
+    if (!workbooks.includes(newWorkbook.trim())) {
+      setWorkbooks((prev) => [...prev, newWorkbook.trim()]);
+    }
+    setSelectedWorkbook(newWorkbook.trim());
+    setNewWorkbook("");
+  };
 
-            <div>{ragAnswer}</div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
+  const handleSaveToWorkspace = async () => {
+    const workbook = selectedWorkbook || "General";
+    const sourceList = saveMode === "session" ? sessionPages : [];
+    const compiledNotes = [
+      saveInstruction ? `Save instruction: ${saveInstruction}` : "",
+      includeSummary && summary ? `Summary:\n${summary}` : "",
+      includeQuestions && answer ? `Q&A:\nQ: ${question}\nA: ${answer}` : "",
+      includeNotes && documentText ? `Extracted content:\n${documentText}` : "",
+      includeSources && relatedSources.length ? `Related sources:\n${relatedSources.map((s) => s.text).join("\n")}` : ""
+    ].filter(Boolean).join("\n\n");
+
+    try {
+      const res = await api.post(`${API_URL}/api/research`, {
+        topic: saveMode === "session" ? `Session capture (${sourceList.length} pages)` : ingestUrl || currentTab?.title || "Untitled page",
+        notes: compiledNotes || documentText,
+        link: saveMode === "session" ? (sourceList[0]?.url || ingestUrl) : ingestUrl,
+        workbook,
+        outputs: {
+          summary,
+          answer,
+          question,
+          selectedText,
+          relatedSources,
+          sessionPages: sourceList
+        }
+      });
+      setSaveMessage(`Saved to ${workbook}`);
+      setResearchList((prev) => [res.data, ...prev]);
+      if (!workbooks.includes(workbook)) {
+        setWorkbooks((prev) => [...prev, workbook]);
+      }
+    } catch (error) {
+      console.error(error);
+      setSaveMessage("Failed to save.");
+    }
+  };
+  

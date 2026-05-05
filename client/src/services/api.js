@@ -1,23 +1,9 @@
-const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
+import axios from "axios";
 
-export const fetchResearch = async (url) => {
-  try {
-    const res = await fetch(`${API_URL}/api/focus/ingest`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ url })
-    });
+export const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
 
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
+const api = axios.create({
+  baseURL: API_URL,
+});
 
-    const data = await res.json();
-    return data;
-  } catch (err) {
-    console.error("API ERROR:", err);
-    throw err;
-  }
-};
+export default api;
