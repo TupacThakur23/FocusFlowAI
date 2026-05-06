@@ -1,13 +1,17 @@
 {
+  "manifest_version": 3,
   "name": "FocusFlow AI",
   "short_name": "FocusFlow",
   "version": "1.0.0",
-  "manifest_version": 3,
-  "permissions": ["tabs"],
+  "permissions": ["storage", "activeTab", "tabs"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "index.html"
   },
   "icons": {
-    "192": "/icon.png"
+    "192": "icon.png"
   }
 }
