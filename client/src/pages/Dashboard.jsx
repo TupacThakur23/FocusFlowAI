@@ -1,39 +1,58 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import api, { API_URL } from "../services/api";
+import {
+  Settings,
+  FileText,
+  Sparkles,
+  AlignLeft,
+  Lightbulb,
+  MessageSquare,
+  Layers,
+  BookOpen,
+  Copy,
+  Send,
+  Book,
+  FolderDown,
+  ShieldCheck,
+  ExternalLink,
+  Loader2,
+  LayoutTemplate,
+  ArrowLeft
+} from "lucide-react";
 
-const quickActions = ["Summarize", "Explain", "Notes", "Questions", "Sources"];
+// Minimal Logo Component
+const AideLogo = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M7 21L14 4H18L11 21H7Z" fill="#3b82f6"/>
+    <path d="M4 21L9 9H13L8 21H4Z" fill="#1e3a8a"/>
+  </svg>
+);
 
-export default function Dashboard() {
-  const [mode, setMode] = useState("launcher");
+export default function Dashboard({ onBack }) {
   const [researchList, setResearchList] = useState([]);
-  const [workbooks, setWorkbooks] = useState([]);
-  const [selectedWorkbook, setSelectedWorkbook] = useState("General");
-  const [newWorkbook, setNewWorkbook] = useState("");
+  const [workbooks, setWorkbooks] = useState(["Research Workbook"]);
+  const [selectedWorkbook, setSelectedWorkbook] = useState("Research Workbook");
   const [ingestUrl, setIngestUrl] = useState("");
+  
+  // Data States
   const [documentText, setDocumentText] = useState("");
+  const [summary, setSummary] = useState("");
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
-  const [summary, setSummary] = useState("");
-  const [saveInstruction, setSaveInstruction] = useState("");
-  const [includeSummary, setIncludeSummary] = useState(true);
-  const [includeQuestions, setIncludeQuestions] = useState(true);
-  const [includeNotes, setIncludeNotes] = useState(false);
-  const [includeSources, setIncludeSources] = useState(false);
   const [relatedSources, setRelatedSources] = useState([]);
   const [selectedText, setSelectedText] = useState("");
+  const [studyNotes, setStudyNotes] = useState("");
+  
+  // UI States
+  const [activeView, setActiveView] = useState("summary"); // summary, explain, ask, sources, study
   const [isLoading, setIsLoading] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
-  const [studyOutput, setStudyOutput] = useState({
-    notes: "",
-    questions: [],
-    flashcards: [],
-  });
-  const [workbookContext, setWorkbookContext] = useState("");
-  const [sessionPages, setSessionPages] = useState([]);
-  const [saveMode, setSaveMode] = useState("page");
+  const [copyStatus, setCopyStatus] = useState("Copy");
+
+  // Chrome Extension States
   const [currentTab, setCurrentTab] = useState(null);
   const [autoIngestedUrl, setAutoIngestedUrl] = useState("");
-  const [currentSource, setCurrentSource] = useState(null);
   const syncRef = useRef(null);
 
   useEffect(() => {
@@ -45,8 +64,6 @@ export default function Dashboard() {
       try {
         const data = await window.chrome.storage.session.get([
           "aideCurrentSelection",
-          "aideLastSource",
-          "aideSessionPages",
           "aideCurrentTab",
         ]);
 
@@ -54,12 +71,8 @@ export default function Dashboard() {
 
         if (data.aideCurrentTab) {
           setCurrentTab(data.aideCurrentTab);
-          setIngestUrl((current) => current || data.aideCurrentTab.url || "");
-        } else if (data.aideLastSource?.url) {
-          setIngestUrl((current) => current || data.aideLastSource.url);
+          if (!ingestUrl) setIngestUrl(data.aideCurrentTab.url || "");
         }
-
-        setSessionPages(data.aideSessionPages || []);
       } catch (error) {
         console.error(error);
       }
@@ -67,13 +80,11 @@ export default function Dashboard() {
 
     const requestActiveTab = () => {
       if (!window.chrome?.runtime?.sendMessage) return;
-
       window.chrome.runtime.sendMessage({ type: "AIDE_GET_ACTIVE_TAB" }, (response) => {
         if (window.chrome.runtime.lastError) return;
-
         if (response?.tab?.url) {
           setCurrentTab({ title: response.tab.title, url: response.tab.url });
-          setIngestUrl((current) => current || response.tab.url);
+          if (!ingestUrl) setIngestUrl(response.tab.url);
         }
       });
     };
@@ -85,94 +96,79 @@ export default function Dashboard() {
     return () => {
       if (syncRef.current) window.clearInterval(syncRef.current);
     };
-  }, []);
+  }, [ingestUrl]);
 
+  // Auto-ingest: when running as extension and a new tab URL is detected, extract automatically
   useEffect(() => {
-    if (mode !== "aide" || !currentTab?.url || currentTab.url === autoIngestedUrl || isLoading) {
-      return;
-    }
-
-    const runAutoIngest = async () => {
-      setIsLoading(true);
-      setSaveMessage("");
-
+    if (!window.chrome?.storage?.session) return;
+    if (!currentTab?.url || currentTab.url === autoIngestedUrl || isExtracting || isLoading) return;
+    
+    const autoIngest = async () => {
+      setIsExtracting(true);
+      setIngestUrl(currentTab.url);
       try {
-        setIngestUrl(currentTab.url);
         const res = await api.post(`${API_URL}/api/focus/ingest`, { url: currentTab.url });
-        setDocumentText(res.data.text || "No content extracted.");
-        setCurrentSource(res.data.source || null);
+        setDocumentText(res.data.text || "");
+        setAutoIngestedUrl(currentTab.url);
         setSummary("");
         setAnswer("");
-        setAutoIngestedUrl(currentTab.url);
+        // Auto-summarize after extraction
+        if (res.data.text) {
+          handleSummarize(res.data.text);
+        }
       } catch (error) {
-        console.error(error);
-        setDocumentText("Error loading content.");
-      } finally {
-        setIsLoading(false);
+        console.error("Auto-ingest failed:", error);
+        setIsExtracting(false);
       }
     };
 
-    runAutoIngest();
-  }, [mode, currentTab, autoIngestedUrl, isLoading]);
+    autoIngest();
+  }, [currentTab?.url, autoIngestedUrl, isExtracting, isLoading]);
 
   const loadResearch = async () => {
     try {
       const res = await api.get(`${API_URL}/api/research`);
       const items = res.data || [];
       setResearchList(items);
-      const workbookNames = [...new Set(items.map((item) => item.workbook || "General"))];
-      setWorkbooks(workbookNames.length ? workbookNames : ["General"]);
+      const workbookNames = [...new Set(items.map((item) => item.workbook || "Research Workbook"))];
+      setWorkbooks(workbookNames.length ? workbookNames : ["Research Workbook"]);
     } catch (error) {
       console.error(error);
     }
   };
 
-  const groupedResearch = useMemo(() => {
-    return researchList.reduce((acc, item) => {
-      const key = item.workbook || "General";
-      acc[key] = acc[key] || [];
-      acc[key].push(item);
-      return acc;
-    }, {});
-  }, [researchList]);
-
-  const isYoutubeUrl = (value = "") => /(?:youtube\.com|youtu\.be)/i.test(value);
+  const handleUseCurrentTab = () => {
+    if (currentTab?.url) {
+      setIngestUrl(currentTab.url);
+    }
+  };
 
   const handleExtract = async () => {
     if (!ingestUrl) return;
-
-    setIsLoading(true);
+    setIsExtracting(true);
     setSaveMessage("");
 
     try {
       const res = await api.post(`${API_URL}/api/focus/ingest`, { url: ingestUrl });
       setDocumentText(res.data.text || "No content extracted.");
-      setCurrentSource(res.data.source || null);
       setSummary("");
       setAnswer("");
+      handleSummarize(res.data.text);
     } catch (error) {
       console.error(error);
       setDocumentText("Error loading content.");
-    } finally {
-      setIsLoading(false);
+      setIsExtracting(false);
     }
   };
 
-  const handleUseCurrentTab = async () => {
-    if (!currentTab?.url) return;
-    setIngestUrl(currentTab.url);
-    setTimeout(handleExtract, 0);
-  };
-
-  const handleSummarize = async (customText) => {
-    const text = customText || documentText;
-    if (!text) return;
-
+  const handleSummarize = async (textToUse = documentText) => {
+    if (!textToUse) return;
     setIsLoading(true);
+    setActiveView("summary");
 
     try {
       const res = await api.post(`${API_URL}/api/ai/summarize`, {
-        text: `Summarize this page in concise study notes:\n\n${text}`,
+        text: `Summarize this page in a concise, professional paragraph:\n\n${textToUse}`,
       });
       setSummary(res.data.summary || "");
     } catch (error) {
@@ -180,17 +176,19 @@ export default function Dashboard() {
       setSummary("Error generating summary.");
     } finally {
       setIsLoading(false);
+      setIsExtracting(false);
     }
   };
 
   const handleAsk = async () => {
     if (!question) return;
-
     setIsLoading(true);
+    setActiveView("ask");
 
     try {
       const res = await api.post(`${API_URL}/api/focus/query`, { question });
       setAnswer(res.data.answer || "No answer returned.");
+      setQuestion("");
     } catch (error) {
       console.error(error);
       setAnswer("Error querying Aide.");
@@ -200,18 +198,20 @@ export default function Dashboard() {
   };
 
   const handleExplainSelection = async () => {
-    if (!selectedText) return;
-
+    if (!selectedText && !documentText) return;
     setIsLoading(true);
+    setActiveView("explain");
+    
+    const context = selectedText || documentText.substring(0, 1000);
 
     try {
       const res = await api.post(`${API_URL}/api/ai/summarize`, {
-        text: `Explain this selected section in simple terms:\n\n${selectedText}`,
+        text: `Explain this section simply:\n\n${context}`,
       });
       setAnswer(res.data.summary || "");
     } catch (error) {
       console.error(error);
-      setAnswer("Error explaining selection.");
+      setAnswer("Error explaining.");
     } finally {
       setIsLoading(false);
     }
@@ -220,18 +220,18 @@ export default function Dashboard() {
   const handleRelatedSources = async () => {
     const baseText = summary || documentText;
     if (!baseText) return;
-
     setIsLoading(true);
+    setActiveView("sources");
 
     try {
       const res = await api.post(`${API_URL}/api/ai/summarize`, {
-        text: `Based on this page, suggest 5 related sources with title and url only in plain text list format:\n\n${baseText.slice(0, 4000)}`,
+        text: `Based on this text, list 3 related sources/topics to explore:\n\n${baseText.slice(0, 4000)}`,
       });
-
+      
       const parsed = (res.data.summary || "")
         .split("\n")
-        .filter(Boolean)
-        .slice(0, 5)
+        .filter(line => line.trim().length > 5)
+        .slice(0, 3)
         .map((line, index) => ({ id: index + 1, text: line }));
 
       setRelatedSources(parsed);
@@ -243,335 +243,291 @@ export default function Dashboard() {
     }
   };
 
-  const handleCreateWorkbook = () => {
-    const trimmed = newWorkbook.trim();
-    if (!trimmed) return;
+  const handleStudy = async () => {
+    const baseText = documentText;
+    if (!baseText) return;
+    setIsLoading(true);
+    setActiveView("study");
 
-    if (!workbooks.includes(trimmed)) {
-      setWorkbooks((prev) => [...prev, trimmed]);
+    try {
+      const res = await api.post(`${API_URL}/api/ai/summarize`, {
+        text: `Create 3 flashcards or study questions based on this text:\n\n${baseText.slice(0, 4000)}`,
+      });
+      setStudyNotes(res.data.summary || "");
+    } catch (error) {
+      console.error(error);
+      setStudyNotes("Error generating study notes.");
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    setSelectedWorkbook(trimmed);
-    setNewWorkbook("");
+  const handleCopy = () => {
+    let content = "";
+    if (activeView === "summary") content = summary;
+    if (activeView === "explain" || activeView === "ask") content = answer;
+    if (activeView === "sources") content = relatedSources.map(s => s.text).join('\n');
+    if (activeView === "study") content = studyNotes;
+
+    if (content) {
+      navigator.clipboard.writeText(content);
+      setCopyStatus("Copied!");
+      setTimeout(() => setCopyStatus("Copy"), 2000);
+    }
   };
 
   const handleSaveToWorkspace = async () => {
-    const workbook = selectedWorkbook || "General";
-    const sourceList = saveMode === "session" ? sessionPages : [];
-
     const compiledNotes = [
-      saveInstruction ? `Save instruction: ${saveInstruction}` : "",
-      includeSummary && summary ? `Summary:\n${summary}` : "",
-      includeQuestions && answer ? `Q&A:\nQ: ${question}\nA: ${answer}` : "",
-      includeNotes && documentText ? `Extracted content:\n${documentText}` : "",
-      includeSources && relatedSources.length
-        ? `Related sources:\n${relatedSources.map((s) => s.text).join("\n")}`
-        : "",
-    ]
-      .filter(Boolean)
-      .join("\n\n");
+      summary ? `Summary:\n${summary}` : "",
+      answer ? `Q&A / Explanation:\n${answer}` : "",
+      studyNotes ? `Study Notes:\n${studyNotes}` : "",
+      relatedSources.length ? `Sources:\n${relatedSources.map((s) => s.text).join("\n")}` : "",
+    ].filter(Boolean).join("\n\n");
 
     try {
       const res = await api.post(`${API_URL}/api/research`, {
-        topic:
-          saveMode === "session"
-            ? `Session capture (${sourceList.length} pages)`
-            : ingestUrl || currentTab?.title || "Untitled page",
+        topic: currentTab?.title || "Untitled Source",
         notes: compiledNotes || documentText,
-        link: saveMode === "session" ? sourceList[0]?.url || ingestUrl : ingestUrl,
-        workbook,
-        outputs: {
-          summary,
-          answer,
-          question,
-          selectedText,
-          relatedSources,
-          sessionPages: sourceList,
-          studyOutput,
-          workbookContext,
-          currentSource,
-        },
+        link: ingestUrl,
+        workbook: selectedWorkbook,
       });
 
-      setSaveMessage(`Saved to ${workbook}`);
-      setResearchList((prev) => [res.data, ...prev]);
-
-      if (!workbooks.includes(workbook)) {
-        setWorkbooks((prev) => [...prev, workbook]);
-      }
+      setSaveMessage("Saved!");
+      setTimeout(() => setSaveMessage(""), 3000);
     } catch (error) {
       console.error(error);
-      setSaveMessage("Failed to save.");
+      setSaveMessage("Error");
     }
   };
 
+  const getActiveContent = () => {
+    if (isLoading) return <div className="flex items-center justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-[#3b82f6]" /></div>;
+    
+    switch (activeView) {
+      case "summary":
+        return summary ? <p className="leading-relaxed">{summary}</p> : <p className="italic text-[#9ca3af]">No summary available. Extract content first.</p>;
+      case "explain":
+        return answer ? <p className="leading-relaxed">{answer}</p> : <p className="italic text-[#9ca3af]">No explanation available.</p>;
+      case "ask":
+        return answer ? <p className="leading-relaxed">{answer}</p> : <p className="italic text-[#9ca3af]">Ask a question below.</p>;
+      case "sources":
+        return relatedSources.length > 0 ? (
+          <ul className="space-y-3">
+            {relatedSources.map(s => <li key={s.id} className="leading-relaxed">{s.text}</li>)}
+          </ul>
+        ) : <p className="italic text-[#9ca3af]">No sources found.</p>;
+      case "study":
+        return studyNotes ? <p className="leading-relaxed whitespace-pre-wrap">{studyNotes}</p> : <p className="italic text-[#9ca3af]">No study notes available.</p>;
+      default:
+        return null;
+    }
+  };
+
+  const getWordCount = () => {
+    let content = "";
+    if (activeView === "summary") content = summary;
+    if (activeView === "explain" || activeView === "ask") content = answer;
+    if (activeView === "study") content = studyNotes;
+    
+    if (!content) return 0;
+    return content.trim().split(/\s+/).length;
+  };
+
   return (
-    <div className="min-h-screen bg-zinc-950 text-white p-4 md:p-6">
-      <div className="mx-auto max-w-7xl grid gap-6 lg:grid-cols-[280px_1fr]">
-        <aside className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-          <h2 className="text-lg font-semibold mb-4">FocusFlow AI</h2>
-
-          <div className="space-y-2 mb-4">
-            <button
-              onClick={() => setMode("launcher")}
-              className={`w-full rounded-lg px-3 py-2 text-left ${
-                mode === "launcher" ? "bg-indigo-600" : "bg-zinc-800"
-              }`}
-            >
-              Launcher
+    <div className="w-[400px] h-[600px] bg-[#0a0a0b] text-[#f3f4f6] font-sans flex flex-col relative overflow-hidden mx-auto border border-[#26272b] rounded-xl shadow-2xl">
+      
+      {/* Header */}
+      <header className="flex items-center justify-between px-4 py-3 border-b border-[#26272b] shrink-0">
+        <div className="flex items-center gap-2">
+          {onBack && (
+            <button onClick={onBack} className="p-1 rounded-md hover:bg-[#17181c] transition-colors">
+              <ArrowLeft className="w-4 h-4 text-[#9ca3af]" />
             </button>
-            <button
-              onClick={() => setMode("aide")}
-              className={`w-full rounded-lg px-3 py-2 text-left ${
-                mode === "aide" ? "bg-indigo-600" : "bg-zinc-800"
-              }`}
-            >
-              Aide
-            </button>
+          )}
+          <AideLogo />
+          <h1 className="text-sm font-semibold tracking-wide text-white">Aide</h1>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+            <span className="text-xs font-medium text-[#9ca3af]">Ready</span>
           </div>
+          <div className="h-4 w-px bg-[#26272b]"></div>
+          <Settings className="w-4 h-4 text-[#9ca3af] hover:text-white cursor-pointer transition-colors" />
+        </div>
+      </header>
 
-          <div className="mb-4">
-            <label className="block text-sm mb-2">Select workbook</label>
-            <select
-              value={selectedWorkbook}
-              onChange={(e) => setSelectedWorkbook(e.target.value)}
-              className="w-full rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2"
-            >
-              {workbooks.map((book) => (
-                <option key={book} value={book}>
-                  {book}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm mb-2">Create workbook</label>
-            <div className="flex gap-2">
-              <input
-                value={newWorkbook}
-                onChange={(e) => setNewWorkbook(e.target.value)}
-                placeholder="New workbook"
-                className="w-full rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2"
-              />
-              <button
-                onClick={handleCreateWorkbook}
-                className="rounded-lg bg-indigo-600 px-3 py-2"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="font-medium mb-2">Saved research</h3>
-            <div className="space-y-2 max-h-[320px] overflow-auto">
-              {(groupedResearch[selectedWorkbook] || []).map((item) => (
-                <div key={item._id || item.id} className="rounded-lg bg-zinc-800 p-3 text-sm">
-                  <p className="font-medium">{item.topic}</p>
-                  <p className="text-zinc-400 line-clamp-3">{item.notes}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </aside>
-
-        <main className="space-y-6">
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-            <div className="flex flex-wrap gap-2 mb-4">
-              {quickActions.map((action) => (
-                <button
-                  key={action}
-                  onClick={() => {
-                    if (action === "Summarize") handleSummarize();
-                    if (action === "Explain") handleExplainSelection();
-                    if (action === "Sources") handleRelatedSources();
-                  }}
-                  className="rounded-full bg-zinc-800 px-4 py-2 text-sm hover:bg-zinc-700"
-                >
-                  {action}
-                </button>
-              ))}
-            </div>
-
-            <label className="block text-sm mb-2">Page URL</label>
-            <div className="flex flex-col md:flex-row gap-2">
-              <input
-                value={ingestUrl}
-                onChange={(e) => setIngestUrl(e.target.value)}
-                placeholder="Paste article or video URL"
-                className="flex-1 rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2"
-              />
-              <button
-                onClick={handleExtract}
-                disabled={isLoading}
-                className="rounded-lg bg-indigo-600 px-4 py-2 disabled:opacity-50"
-              >
-                {isLoading ? "Loading..." : "Extract"}
-              </button>
-              <button
-                onClick={handleUseCurrentTab}
-                className="rounded-lg bg-zinc-800 px-4 py-2"
-              >
-                Use Current Tab
-              </button>
-            </div>
-
-            {currentTab?.url && (
-              <p className="mt-3 text-sm text-zinc-400">
-                Current tab: {currentTab.title || currentTab.url}
-              </p>
-            )}
-
-            {isYoutubeUrl(ingestUrl) && (
-              <p className="mt-2 text-xs text-amber-400">
-                YouTube URL detected. Make sure your backend supports transcript extraction.
-              </p>
-            )}
-          </section>
-
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-            <h3 className="text-lg font-semibold mb-3">Extracted Content</h3>
-            <textarea
-              value={documentText}
-              onChange={(e) => setDocumentText(e.target.value)}
-              rows={10}
-              className="w-full rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2"
-              placeholder="Extracted content will appear here..."
-            />
-          </section>
-
-          <section className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-semibold">Summary</h3>
-                <button
-                  onClick={() => handleSummarize()}
-                  className="rounded-lg bg-indigo-600 px-3 py-2 text-sm"
-                >
-                  Generate
-                </button>
+      {/* Main Scrollable Content */}
+      <main className="flex-1 overflow-y-auto p-5 flex flex-col gap-5 custom-scrollbar">
+        
+        {/* Source Section */}
+        <section className="flex flex-col gap-2 shrink-0">
+          <label className="text-[10px] font-semibold text-[#9ca3af] uppercase tracking-wider">Source</label>
+          <div className="bg-[#111214] border border-[#26272b] rounded-xl p-3 flex flex-col gap-3">
+            <div className="flex items-start gap-3">
+              <div className="bg-[#17181c] p-2.5 rounded-lg flex shrink-0">
+                <FileText className="w-5 h-5 text-[#3b82f6]" />
               </div>
-              <textarea
-                value={summary}
-                onChange={(e) => setSummary(e.target.value)}
-                rows={10}
-                className="w-full rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2"
-                placeholder="Summary will appear here..."
-              />
+              <div className="flex flex-col overflow-hidden">
+                <h3 className="text-sm font-medium text-white line-clamp-1">
+                  {currentTab?.title || "No page selected"}
+                </h3>
+                <p className="text-xs text-[#9ca3af] line-clamp-1 mt-0.5">
+                  {ingestUrl || currentTab?.url || "Navigate to an article to extract"}
+                </p>
+              </div>
             </div>
-
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-              <h3 className="text-lg font-semibold mb-3">Ask Aide</h3>
-              <input
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                placeholder="Ask a question about the content"
-                className="w-full rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2 mb-3"
-              />
-              <button
-                onClick={handleAsk}
-                className="rounded-lg bg-indigo-600 px-4 py-2 mb-3"
+            
+            <div className="flex items-center gap-2 mt-1">
+              <button 
+                onClick={handleUseCurrentTab}
+                className="flex-1 bg-[#17181c] border border-[#26272b] hover:bg-[#26272b] text-[#f3f4f6] text-xs font-medium py-2 rounded-lg flex items-center justify-center gap-2 transition-colors"
               >
-                Ask
+                <LayoutTemplate className="w-3.5 h-3.5" /> Use Current Tab
               </button>
-              <textarea
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                rows={8}
-                className="w-full rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2"
-                placeholder="Answer will appear here..."
-              />
+              <button 
+                onClick={handleExtract}
+                disabled={isExtracting || !ingestUrl}
+                className="flex-1 bg-[#3b82f6] hover:bg-blue-600 text-white text-xs font-medium py-2 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+              >
+                {isExtracting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} 
+                Extract
+              </button>
             </div>
-          </section>
+          </div>
+        </section>
 
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-            <h3 className="text-lg font-semibold mb-3">Related Sources</h3>
-            <div className="space-y-2 mb-4">
-              {relatedSources.map((source) => (
-                <div key={source.id} className="rounded-lg bg-zinc-800 p-3 text-sm">
-                  {source.text}
-                </div>
-              ))}
-            </div>
+        {/* Action Pills */}
+        <section className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 shrink-0">
+          <Pill 
+            active={activeView === "summary"} 
+            onClick={() => setActiveView("summary")}
+            icon={<AlignLeft className="w-3.5 h-3.5" />} 
+            label="Summarize" 
+          />
+          <Pill 
+            active={activeView === "explain"} 
+            onClick={handleExplainSelection}
+            icon={<Lightbulb className="w-3.5 h-3.5" />} 
+            label="Explain" 
+          />
+          <Pill 
+            active={activeView === "ask"} 
+            onClick={() => setActiveView("ask")}
+            icon={<MessageSquare className="w-3.5 h-3.5" />} 
+            label="Ask" 
+          />
+          <Pill 
+            active={activeView === "sources"} 
+            onClick={handleRelatedSources}
+            icon={<Layers className="w-3.5 h-3.5" />} 
+            label="Sources" 
+          />
+          <Pill 
+            active={activeView === "study"} 
+            onClick={handleStudy}
+            icon={<BookOpen className="w-3.5 h-3.5" />} 
+            label="Study" 
+          />
+        </section>
 
-            <h4 className="font-medium mb-2">Save to workspace</h4>
-            <input
-              value={saveInstruction}
-              onChange={(e) => setSaveInstruction(e.target.value)}
-              placeholder="Optional save instruction"
-              className="w-full rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2 mb-3"
-            />
-
-            <div className="grid gap-2 md:grid-cols-2 mb-4">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={includeSummary}
-                  onChange={(e) => setIncludeSummary(e.target.checked)}
-                />
-                Include summary
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={includeQuestions}
-                  onChange={(e) => setIncludeQuestions(e.target.checked)}
-                />
-                Include Q&A
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={includeNotes}
-                  onChange={(e) => setIncludeNotes(e.target.checked)}
-                />
-                Include notes
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={includeSources}
-                  onChange={(e) => setIncludeSources(e.target.checked)}
-                />
-                Include sources
-              </label>
-            </div>
-
-            <div className="flex flex-wrap gap-3 mb-3">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="saveMode"
-                  value="page"
-                  checked={saveMode === "page"}
-                  onChange={(e) => setSaveMode(e.target.value)}
-                />
-                Save page
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="saveMode"
-                  value="session"
-                  checked={saveMode === "session"}
-                  onChange={(e) => setSaveMode(e.target.value)}
-                />
-                Save session
-              </label>
-            </div>
-
-            <button
-              onClick={handleSaveToWorkspace}
-              className="rounded-lg bg-emerald-600 px-4 py-2"
+        {/* AI Output Section */}
+        <section className="bg-[#111214] border border-[#26272b] rounded-xl p-4 flex flex-col gap-3 min-h-[140px] shrink-0">
+          <label className="text-[10px] font-semibold text-[#9ca3af] uppercase tracking-wider">
+            AI {activeView.toUpperCase()}
+          </label>
+          <div className="text-[13px] text-[#d1d5db] flex-1">
+            {getActiveContent()}
+          </div>
+          <div className="flex items-center justify-between mt-2 text-xs text-[#9ca3af]">
+            <button 
+              onClick={handleCopy}
+              className="flex items-center gap-1.5 hover:text-white transition-colors"
             >
-              Save
+              <Copy className="w-3.5 h-3.5" /> {copyStatus}
             </button>
+            <span>~ {getWordCount()} words</span>
+          </div>
+        </section>
 
-            {saveMessage && <p className="mt-3 text-sm text-emerald-400">{saveMessage}</p>}
-          </section>
-        </main>
-      </div>
+        {/* Ask Input */}
+        <section className="bg-[#111214] border border-[#26272b] rounded-xl p-1.5 flex items-center gap-2 shrink-0">
+          <MessageSquare className="w-4 h-4 text-[#9ca3af] ml-2 shrink-0" />
+          <input 
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleAsk();
+              }
+            }}
+            placeholder="Ask a question about this content..."
+            className="flex-1 bg-transparent border-none outline-none text-[13px] text-[#f3f4f6] placeholder:text-[#6b7280]"
+          />
+          <button 
+            onClick={handleAsk}
+            disabled={!question || isLoading}
+            className="bg-[#3b82f6] hover:bg-blue-600 text-white text-[13px] font-medium px-4 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50"
+          >
+            <Send className="w-3.5 h-3.5" /> Ask
+          </button>
+        </section>
+
+        {/* Save to Workspace */}
+        <section className="bg-[#111214] border border-[#26272b] rounded-xl p-4 flex flex-col gap-3 shrink-0">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-semibold text-[#9ca3af] uppercase tracking-wider">Save to Workspace</label>
+            {saveMessage && <span className="text-[10px] text-green-400 font-medium">{saveMessage}</span>}
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 relative">
+              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                <Book className="w-4 h-4 text-[#9ca3af]" />
+              </div>
+              <select 
+                value={selectedWorkbook}
+                onChange={(e) => setSelectedWorkbook(e.target.value)}
+                className="w-full bg-[#17181c] border border-[#26272b] text-[#f3f4f6] text-[13px] rounded-lg py-2 pl-9 pr-3 appearance-none outline-none focus:border-[#3b82f6]"
+              >
+                {workbooks.map(book => <option key={book} value={book}>{book}</option>)}
+              </select>
+            </div>
+            <button 
+              onClick={handleSaveToWorkspace}
+              className="flex-1 bg-[#3b82f6] hover:bg-blue-600 text-white text-[13px] font-medium py-2 rounded-lg flex items-center justify-center gap-2 transition-colors"
+            >
+              <FolderDown className="w-4 h-4" /> Save to Workspace
+            </button>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="flex items-center justify-between mt-auto pt-1 pb-2">
+          <div className="flex items-center gap-1.5 text-[#9ca3af]">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span className="text-[11px]">Your data stays private and secure.</span>
+          </div>
+          <a href="#" className="flex items-center gap-1 text-[11px] text-[#9ca3af] hover:text-white transition-colors">
+            Learn more <ExternalLink className="w-3 h-3" />
+          </a>
+        </footer>
+
+      </main>
     </div>
   );
 }
+
+const Pill = ({ active, onClick, icon, label }) => {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-medium border transition-colors whitespace-nowrap shrink-0 ${
+        active 
+          ? "bg-transparent border-[#3b82f6] text-[#3b82f6]" 
+          : "bg-transparent border-[#26272b] text-[#9ca3af] hover:text-[#f3f4f6] hover:border-[#374151]"
+      }`}
+    >
+      {icon} {label}
+    </button>
+  );
+};

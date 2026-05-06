@@ -1,34 +1,19 @@
-<<<<<<< HEAD
-﻿
-=======
-﻿# Environment variables
->>>>>>> 005c9954df3b7e72449e84bd8c930b5733298cdb
+# Environment variables
 .env
 .env.local
 .env.*.local
 
-<<<<<<< HEAD
-
-=======
 # Dependencies
->>>>>>> 005c9954df3b7e72449e84bd8c930b5733298cdb
 node_modules/
 package-lock.json
 yarn.lock
 
-<<<<<<< HEAD
-
-=======
 # Build outputs
->>>>>>> 005c9954df3b7e72449e84bd8c930b5733298cdb
 dist/
 build/
 *.tsbuildinfo
 
-<<<<<<< HEAD
-=======
 # IDE and editor files
->>>>>>> 005c9954df3b7e72449e84bd8c930b5733298cdb
 .vscode/
 .idea/
 *.swp
@@ -37,36 +22,19 @@ build/
 *.sublime-project
 *.sublime-workspace
 
-<<<<<<< HEAD
-=======
 # Logs
->>>>>>> 005c9954df3b7e72449e84bd8c930b5733298cdb
 logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-<<<<<<< HEAD
-
-=======
 # Runtime data
->>>>>>> 005c9954df3b7e72449e84bd8c930b5733298cdb
 pids/
 *.pid
 *.seed
 *.pid.lock
 
-<<<<<<< HEAD
-
-Thumbs.db
-
-
-coverage/
-.nyc_output/
-
-
-=======
 # OS files
 Thumbs.db
 
@@ -75,7 +43,6 @@ coverage/
 .nyc_output/
 
 # Misc
->>>>>>> 005c9954df3b7e72449e84bd8c930b5733298cdb
 .cache/
 temp/
 tmp/
