@@ -2,8 +2,6 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
-import itemsRouter from "./routes/items.js";
-import dataRoutes from "./routes/dataRoutes.js";
 import focusRoutes from "./routes/focusRoutes.js";
 import researchRoutes from "./routes/researchRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
@@ -31,27 +29,33 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: "5mb" }));
 
-app.use("/api/items", itemsRouter);
-app.use("/api/data", dataRoutes);
+// Routes
 app.use("/api/focus", focusRoutes);
 app.use("/api/research", researchRoutes);
 app.use("/api/ai", aiRoutes);
 
 app.get("/", (req, res) => {
-  res.send("API Running");
+  res.send("FocusFlow AI API Running");
 });
 
 app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+  console.error("Unhandled error:", err.message);
+  res.status(500).json({ error: err.message || "Internal server error" });
 });
 
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
+    console.log("MongoDB connected");
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
   })
-  .catch((err) => console.log(err));
+  .catch((err) => console.log("MongoDB connection failed:", err.message));

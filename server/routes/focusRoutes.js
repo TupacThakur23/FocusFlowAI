@@ -1,14 +1,12 @@
 import express from "express";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import VectorChunk from "../models/VectorChunk.js";
+import dotenv from "dotenv";
 
-import dotenv from "dotenv"
-dotenv.config()
+dotenv.config();
 
 const router = express.Router();
-
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-let vectorStore = [];
 
 // ------------------ UTIL FUNCTIONS ------------------
 
@@ -32,21 +30,28 @@ const cosineSimilarity = (vecA, vecB) => {
   return dot / (Math.sqrt(a) * Math.sqrt(b));
 };
 
+const getEmbedding = async (text) => {
+  const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
+  const result = await model.embedContent(text);
+  return result.embedding.values;
+};
+
 // ------------------ INGEST ------------------
 
 router.post("/ingest", async (req, res) => {
   try {
     let text = req.body.rawText || "";
+    const sourceUrl = req.body.url || "manual-input";
 
     if (req.body.url) {
       const resp = await fetch(req.body.url);
       const html = await resp.text();
 
       const stripped = html
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
         .trim();
 
       const model = genAI.getGenerativeModel({
@@ -65,17 +70,46 @@ router.post("/ingest", async (req, res) => {
       return res.status(400).json({ error: "No content provided" });
     }
 
+    // Chunk the text
     const chunks = chunkText(text, 250);
 
-    vectorStore = chunks.map((chunk, i) => ({
-  id: Date.now() + i,
-  text: chunk
-}));
+    // Clear old chunks for this source
+    await VectorChunk.deleteMany({ sourceUrl });
+
+    // Generate embeddings and store in MongoDB
+    const chunkDocs = [];
+    for (let i = 0; i < chunks.length; i++) {
+      try {
+        const embedding = await getEmbedding(chunks[i]);
+        chunkDocs.push({
+          sourceUrl,
+          text: chunks[i],
+          embedding,
+          chunkIndex: i,
+        });
+      } catch (embErr) {
+        console.error(`Embedding failed for chunk ${i}:`, embErr.message);
+        // Still store the chunk without embedding for fallback keyword search
+        chunkDocs.push({
+          sourceUrl,
+          text: chunks[i],
+          embedding: [],
+          chunkIndex: i,
+        });
+      }
+    }
+
+    if (chunkDocs.length > 0) {
+      await VectorChunk.insertMany(chunkDocs);
+    }
+
+    console.log(
+      `Ingested ${chunkDocs.length} chunks for ${sourceUrl} (${chunkDocs.filter((c) => c.embedding.length > 0).length} with embeddings)`
+    );
 
     res.json({ message: "Content ingested successfully", text });
-
   } catch (err) {
-    console.error(err);
+    console.error("INGEST ERROR:", err);
     res.status(500).json({ error: "Ingestion failed" });
   }
 });
@@ -84,34 +118,60 @@ router.post("/ingest", async (req, res) => {
 
 router.post("/query", async (req, res) => {
   try {
-    const { question } = req.body;
+    const { question, sourceUrl } = req.body;
 
     if (!question) {
       return res.status(400).json({ error: "Question required" });
     }
 
-    if (vectorStore.length === 0) {
+    // Find chunks — either for a specific source or the most recent ones
+    let chunks;
+    if (sourceUrl) {
+      chunks = await VectorChunk.find({ sourceUrl });
+    } else {
+      // Get the most recently ingested source
+      const latest = await VectorChunk.findOne().sort({ createdAt: -1 });
+      if (!latest) {
+        return res.status(400).json({ error: "Ingest content first" });
+      }
+      chunks = await VectorChunk.find({ sourceUrl: latest.sourceUrl });
+    }
+
+    if (chunks.length === 0) {
       return res.status(400).json({ error: "Ingest content first" });
     }
 
-    const words = question.toLowerCase().split(/\s+/);
+    let topChunks;
 
-    const scored = vectorStore.map((chunk) => {
-      const text = chunk.text.toLowerCase();
+    // Check if we have real embeddings
+    const hasEmbeddings = chunks.some((c) => c.embedding && c.embedding.length > 0);
 
-      const score = words.filter(word => text.includes(word)).length;
+    if (hasEmbeddings) {
+      // Vector similarity search using Gemini embeddings
+      const questionEmbedding = await getEmbedding(question);
 
-      return {
-        ...chunk,
-        score
-      };
-    });
+      const scored = chunks
+        .filter((c) => c.embedding && c.embedding.length > 0)
+        .map((chunk) => ({
+          text: chunk.text,
+          score: cosineSimilarity(questionEmbedding, chunk.embedding),
+        }));
 
-    const topChunks = scored
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 3);
+      topChunks = scored.sort((a, b) => b.score - a.score).slice(0, 3);
+    } else {
+      // Fallback: keyword matching
+      const words = question.toLowerCase().split(/\s+/);
 
-    const context = topChunks.map(c => c.text).join("\n\n");
+      const scored = chunks.map((chunk) => {
+        const text = chunk.text.toLowerCase();
+        const score = words.filter((word) => text.includes(word)).length;
+        return { text: chunk.text, score };
+      });
+
+      topChunks = scored.sort((a, b) => b.score - a.score).slice(0, 3);
+    }
+
+    const context = topChunks.map((c) => c.text).join("\n\n");
 
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash-lite",
@@ -131,12 +191,32 @@ ${question}
 
     res.json({
       answer: response.text(),
-      topRelevantChunks: topChunks.map(c => c.text),
+      topRelevantChunks: topChunks.map((c) => c.text),
     });
-
   } catch (err) {
     console.error("QUERY ERROR:", err);
     res.status(500).json({ error: "Query failed" });
+  }
+});
+
+// ------------------ STATS ------------------
+
+router.get("/stats", async (req, res) => {
+  try {
+    const totalChunks = await VectorChunk.countDocuments();
+    const sources = await VectorChunk.distinct("sourceUrl");
+    const withEmbeddings = await VectorChunk.countDocuments({
+      "embedding.0": { $exists: true },
+    });
+
+    res.json({
+      totalChunks,
+      totalSources: sources.length,
+      chunksWithEmbeddings: withEmbeddings,
+      sources,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to get stats" });
   }
 });
 
