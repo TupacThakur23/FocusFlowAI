@@ -1,88 +1,78 @@
-import {
-  BrainCircuit,
-  BookOpen,
-  Sparkles,
-  ChevronRight,
-  ShieldCheck,
-} from "lucide-react";
-
-const AideLogo = () => (
-  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M7 21L14 4H18L11 21H7Z" fill="#3b82f6"/>
-    <path d="M4 21L9 9H13L8 21H4Z" fill="#1e3a8a"/>
-  </svg>
-);
+import { BrainCircuit, BookOpen, ChevronRight } from "lucide-react";
 
 export default function Launcher({ onNavigate }) {
+  console.log('🎯 LAUNCHER: Pure component mounting');
+
+  const handleOpenAide = () => {
+    console.log('🚀 CLICK: Aide button clicked');
+    if (onNavigate) {
+      onNavigate("aide");
+    }
+  };
+
+  const handleOpenResearchHub = () => {
+    console.log('🚀 CLICK: Research Hub button clicked');
+    if (onNavigate) {
+      onNavigate("research");
+    }
+  };
+
   return (
-    <div className="w-[320px] bg-[#0a0a0b] text-[#f3f4f6] font-sans flex flex-col overflow-hidden border border-[#26272b] rounded-xl shadow-2xl">
-      
+    <div className="w-full h-full flex flex-col bg-[#050816] text-white">
       {/* Header */}
-      <header className="flex flex-col items-center pt-8 pb-5 px-6">
-        <AideLogo />
-        <h1 className="text-lg font-semibold tracking-wide text-white mt-3">FocusFlow AI</h1>
-        <p className="text-xs text-[#9ca3af] mt-1 text-center">Your AI research workspace</p>
-      </header>
+      <div className="h-16 flex items-center justify-between px-6 border-b border-[#26272b]">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
+            <BrainCircuit className="w-4 h-4 text-blue-500" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-white">FocusFlow AI</h1>
+            <p className="text-xs text-gray-400">Intelligent Assistant</p>
+          </div>
+        </div>
+      </div>
 
-      {/* Navigation Cards */}
-      <div className="px-5 pb-4 flex flex-col gap-3">
-        
-        {/* Aide Card */}
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col justify-start py-6 px-6 space-y-4">
+        {/* Aide Button */}
         <button
-          onClick={() => {
-            // Send to background which uses storage to communicate with content script
-            if (window.chrome?.runtime?.sendMessage) {
-              window.chrome.runtime.sendMessage({ type: 'OPEN_SIDEBAR' });
-            }
-            window.close();
-          }}
-          className="group w-full bg-[#111214] border border-[#26272b] hover:border-[#3b82f6]/50 rounded-xl p-4 flex items-center gap-4 text-left transition-all duration-200 hover:bg-[#111214]/80"
+          onClick={handleOpenAide}
+          className="w-full p-4 bg-[#111214] border border-[#26272b] rounded-xl hover:bg-[#17181c] transition-colors flex items-center justify-between group"
         >
-          <div className="bg-[#3b82f6]/10 border border-[#3b82f6]/20 p-2.5 rounded-lg shrink-0 group-hover:bg-[#3b82f6]/20 transition-colors">
-            <Sparkles className="w-5 h-5 text-[#3b82f6]" />
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+              <BrainCircuit className="w-6 h-6 text-blue-500" />
+            </div>
+            <div className="text-left">
+              <h3 className="text-lg font-semibold text-white">Aide</h3>
+              <p className="text-sm text-gray-400">Summarize & analyze current page</p>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-medium text-white">Aide</h3>
-            <p className="text-[11px] text-[#9ca3af] mt-0.5 leading-snug">Extract, summarize, ask & study any page</p>
-          </div>
-          <ChevronRight className="w-4 h-4 text-[#9ca3af] group-hover:text-[#3b82f6] transition-colors shrink-0" />
+          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
         </button>
 
-        {/* Research Hub Card */}
+        {/* Research Hub Button */}
         <button
-          onClick={() => {
-            if (window.chrome?.runtime?.sendMessage) {
-              window.chrome.runtime.sendMessage({ type: 'CLOSE_SIDEBAR' });
-            }
-            const hubUrl = chrome?.runtime?.getURL
-              ? chrome.runtime.getURL('index.html#research')
-              : `${window.location.origin}/#research`;
-            if (chrome?.tabs?.create) {
-              chrome.tabs.create({ url: hubUrl });
-            } else {
-              window.open(hubUrl, '_blank');
-            }
-            window.close();
-          }}
-          className="group w-full bg-[#111214] border border-[#26272b] hover:border-[#10b981]/50 rounded-xl p-4 flex items-center gap-4 text-left transition-all duration-200 hover:bg-[#111214]/80"
+          onClick={handleOpenResearchHub}
+          className="w-full p-4 bg-[#111214] border border-[#26272b] rounded-xl hover:bg-[#17181c] transition-colors flex items-center justify-between group"
         >
-          <div className="bg-[#10b981]/10 border border-[#10b981]/20 p-2.5 rounded-lg shrink-0 group-hover:bg-[#10b981]/20 transition-colors">
-            <BookOpen className="w-5 h-5 text-[#10b981]" />
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+              <BookOpen className="w-6 h-6 text-green-500" />
+            </div>
+            <div className="text-left">
+              <h3 className="text-lg font-semibold text-white">Research Hub</h3>
+              <p className="text-sm text-gray-400">Manage research & notes</p>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-medium text-white">Research Hub</h3>
-            <p className="text-[11px] text-[#9ca3af] mt-0.5 leading-snug">Browse saved workbooks & research notes</p>
-          </div>
-          <ChevronRight className="w-4 h-4 text-[#9ca3af] group-hover:text-[#10b981] transition-colors shrink-0" />
+          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
         </button>
-
       </div>
 
       {/* Footer */}
-      <footer className="flex items-center justify-center gap-1.5 text-[#9ca3af] py-4 border-t border-[#26272b]">
-        <ShieldCheck className="w-3 h-3" />
-        <span className="text-[10px]">Your data stays private and secure</span>
-      </footer>
+      <div className="h-16 flex items-center justify-center px-6 border-t border-[#26272b]">
+        <p className="text-xs text-gray-500">FocusFlow AI v1.0</p>
+      </div>
     </div>
   );
 }

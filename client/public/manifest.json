@@ -4,25 +4,61 @@
   "short_name": "FocusFlow",
   "description": "AI research workspace — capture pages, summarize, explain, ask questions, and save to workbooks.",
   "version": "1.0.0",
-  "permissions": ["storage", "activeTab", "tabs"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "run_at": "document_idle"
+      "js": [
+        "lib/MessageBus.js",
+        "lib/ErrorHandler.js", 
+        "lib/StateManager.js",
+        "lib/SidebarManager.js",
+        "content.js"
+      ],
+      "run_at": "document_idle",
+      "world": "ISOLATED"
     }
   ],
   "action": {
     "default_popup": "index.html",
-    "default_title": "FocusFlow AI"
+    "default_title": "FocusFlow AI",
+    "default_icon": {
+      "16": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "index.html",
+        "debug-sidebar.html",
+        "assets/*",
+        "lib/*"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' http://localhost:5000 https://apis.google.com https://generativelanguage.googleapis.com"
   },
   "icons": {
     "16": "icon.png",
     "48": "icon.png",
     "128": "icon.png"
-  }
+  },
+  "author": "FocusFlow AI Team",
+  "homepage_url": "https://focusflow.ai",
+  "minimum_chrome_version": "88"
 }

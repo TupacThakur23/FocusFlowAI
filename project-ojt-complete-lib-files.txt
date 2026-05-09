@@ -1,0 +1,2407 @@
+# FOCUSFLOW AI EXTENSION - COMPLETE LIB FILES DOCUMENTATION
+# All Library Files Line by Line - Complete Code Documentation
+
+## OVERVIEW
+This document contains the complete line-by-line code for all library files in the FocusFlow AI Chrome extension. These files are the core infrastructure components that handle content extraction, state management, sidebar injection, error handling, and messaging.
+
+## LIBRARY FILES
+
+### 1. ContentExtractor.js (600 lines)
+File: c:\Users\phila\OneDrive\Desktop\project ojt\client\public\lib\ContentExtractor.js
+
+```javascript
+/**
+ * ContentExtractor - Advanced Content Extraction for FocusFlow AI
+ * 
+ * Integrates Mozilla Readability for clean content extraction:
+ * - Removes ads, navigation, and clutter
+ * - Preserves headings and semantic structure
+ * - Extracts images and media information
+ * - Preserves code blocks and technical content
+ * - Handles different content types (articles, blogs, documentation)
+ * - Fallback extraction methods
+ * - Metadata extraction
+ */
+
+export class ContentExtractor {
+  constructor(options = {}) {
+    this.options = {
+      minContentLength: 200,
+      maxContentLength: 50000,
+      preserveImages: true,
+      preserveCode: true,
+      extractMetadata: true,
+      fallbackMode: 'auto', // 'auto', 'basic', 'full'
+      ...options
+    };
+    
+    this.readability = null;
+    this.initializeReadability();
+  }
+
+  /**
+   * Initialize Mozilla Readability
+   */
+  initializeReadability() {
+    try {
+      // Check if Readability is available
+      if (typeof window !== 'undefined' && window.readability) {
+        this.readability = window.readability;
+      } else if (typeof document !== 'undefined') {
+        // Try to load Readability script
+        this.loadReadabilityScript();
+      }
+    } catch (error) {
+      console.warn('Readability initialization failed:', error);
+    }
+  }
+
+  /**
+   * Load Readability script dynamically
+   */
+  async loadReadabilityScript() {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/@mozilla/readability@0.4.4/Readability.js';
+      script.onload = () => {
+        if (typeof window !== 'undefined' && window.Readability) {
+          this.readability = new window.Readability(document.cloneNode(true));
+          resolve();
+        } else {
+          reject(new Error('Readability failed to load'));
+        }
+      };
+      script.onerror = () => reject(new Error('Failed to load Readability script'));
+      document.head.appendChild(script);
+    });
+  }
+
+  /**
+   * Extract content from current page
+   * @returns {Object} Extracted content data
+   */
+  async extractContent() {
+    try {
+      let result = null;
+
+      // Try Readability first
+      if (this.readability) {
+        result = await this.extractWithReadability();
+      }
+
+      // Fallback to other methods if Readability fails
+      if (!result || !result.content || result.content.length < this.options.minContentLength) {
+        result = await this.extractWithFallback();
+      }
+
+      // Post-process and validate
+      if (result) {
+        result = this.postProcessContent(result);
+        result = this.validateAndCleanContent(result);
+      }
+
+      return result || this.createEmptyResult();
+    } catch (error) {
+      console.error('Content extraction failed:', error);
+      return this.createEmptyResult(error);
+    }
+  }
+
+  /**
+   * Extract content using Mozilla Readability
+   * @returns {Object} Readability extraction result
+   */
+  async extractWithReadability() {
+    try {
+      if (!this.readability) {
+        throw new Error('Readability not available');
+      }
+
+      // Create a clone of the document for parsing
+      const documentClone = document.cloneNode(true);
+      const reader = new this.readability.constructor(documentClone);
+
+      if (!reader.isProbablyReaderable()) {
+        throw new Error('Content is not readerable');
+      }
+
+      const article = reader.parse();
+
+      if (!article || !article.content) {
+        throw new Error('Failed to parse article');
+      }
+
+      return {
+        content: article.content,
+        title: article.title || document.title,
+        byline: article.byline,
+        dir: article.dir,
+        lang: article.lang || document.documentElement.lang,
+        length: article.textContent?.length || 0,
+        excerpt: article.excerpt,
+        siteName: article.siteName,
+        publishedTime: article.publishedTime,
+        method: 'readability'
+      };
+    } catch (error) {
+      console.warn('Readability extraction failed:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Extract content using fallback methods
+   * @returns {Object} Fallback extraction result
+   */
+  async extractWithFallback() {
+    const methods = [
+      () => this.extractMainContent(),
+      () => this.extractArticleContent(),
+      () => this.extractStructuredContent(),
+      () => this.extractBasicContent()
+    ];
+
+    for (const method of methods) {
+      try {
+        const result = await method();
+        if (result && result.content && result.content.length >= this.options.minContentLength) {
+          return { ...result, method: 'fallback' };
+        }
+      } catch (error) {
+        console.warn('Fallback method failed:', error);
+        continue;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Extract main content using common selectors
+   */
+  extractMainContent() {
+    const selectors = [
+      'main',
+      'article',
+      '[role="main"]',
+      '.content',
+      '#content',
+      '.post-content',
+      '.entry-content',
+      '.article-content'
+    ];
+
+    for (const selector of selectors) {
+      const element = document.querySelector(selector);
+      if (element) {
+        const content = this.cleanElement(element);
+        if (content.length >= this.options.minContentLength) {
+          return {
+            content,
+            title: document.title,
+            method: 'main-selector',
+            selector
+          };
+        }
+      }
+    }
+
+    throw new Error('Main content extraction failed');
+  }
+
+  /**
+   * Extract article content
+   */
+  extractArticleContent() {
+    const articles = document.querySelectorAll('article');
+    
+    for (const article of articles) {
+      const content = this.cleanElement(article);
+      if (content.length >= this.options.minContentLength) {
+        return {
+          content,
+          title: article.querySelector('h1, h2, h3')?.textContent || document.title,
+          method: 'article-element'
+        };
+      }
+    }
+
+    throw new Error('Article content extraction failed');
+  }
+
+  /**
+   * Extract structured content
+   */
+  extractStructuredContent() {
+    const structure = this.analyzeDocumentStructure();
+    
+    if (structure.mainContent && structure.mainContent.length >= this.options.minContentLength) {
+      return {
+        content: structure.mainContent,
+        title: structure.title,
+        headings: structure.headings,
+        method: 'structured',
+        structure
+      };
+    }
+
+    throw new Error('Structured content extraction failed');
+  }
+
+  /**
+   * Extract basic content (last resort)
+   */
+  extractBasicContent() {
+    // Remove unwanted elements
+    const unwantedSelectors = [
+      'nav', 'header', 'footer', 'aside', '.sidebar', '.navigation',
+      '.menu', '.ads', '.advertisement', '.social', '.comments',
+      'script', 'style', 'noscript', 'iframe'
+    ];
+
+    const contentClone = document.cloneNode(true);
+    
+    unwantedSelectors.forEach(selector => {
+      const elements = contentClone.querySelectorAll(selector);
+      elements.forEach(el => el.remove());
+    });
+
+    const content = this.cleanElement(contentClone.body || contentClone);
+    
+    if (content.length >= this.options.minContentLength) {
+      return {
+        content,
+        title: document.title,
+        method: 'basic'
+      };
+    }
+
+    throw new Error('Basic content extraction failed');
+  }
+
+  /**
+   * Clean element content
+   * @param {Element} element - Element to clean
+   * @returns {string} Cleaned content
+   */
+  cleanElement(element) {
+    if (!element) return '';
+
+    // Clone the element to avoid modifying the original
+    const clone = element.cloneNode(true);
+    
+    // Remove unwanted attributes
+    const unwantedAttrs = ['onclick', 'onload', 'onerror', 'style'];
+    unwantedAttrs.forEach(attr => {
+      clone.removeAttribute(attr);
+    });
+
+    // Process images if enabled
+    if (this.options.preserveImages) {
+      this.processImages(clone);
+    }
+
+    // Process code blocks if enabled
+    if (this.options.preserveCode) {
+      this.processCodeBlocks(clone);
+    }
+
+    // Get text content while preserving some structure
+    let content = '';
+    
+    if (clone.tagName === 'PRE' || clone.tagName === 'CODE') {
+      content = clone.textContent || clone.innerText;
+    } else {
+      content = clone.innerHTML || '';
+    }
+
+    // Clean up content
+    content = content
+      .replace(/<script[^>]*>.*?<\/script>/gi, '')
+      .replace(/<style[^>]*>.*?<\/style>/gi, '')
+      .replace(/\s+/g, ' ')
+      .replace(/\n+/g, '\n')
+      .trim();
+
+    return content;
+  }
+
+  /**
+   * Process images in content
+   * @param {Element} element - Element to process
+   */
+  processImages(element) {
+    const images = element.querySelectorAll('img');
+    
+    images.forEach(img => {
+      // Preserve important attributes
+      if (img.src) {
+        img.setAttribute('data-src', img.src);
+      }
+      if (img.alt) {
+        img.setAttribute('data-alt', img.alt);
+      }
+      if (img.title) {
+        img.setAttribute('data-title', img.title);
+      }
+    });
+  }
+
+  /**
+   * Process code blocks in content
+   * @param {Element} element - Element to process
+   */
+  processCodeBlocks(element) {
+    const codeBlocks = element.querySelectorAll('pre, code, .highlight, .syntaxhighlighter');
+    
+    codeBlocks.forEach(block => {
+      // Preserve code content
+      if (block.textContent || block.innerText) {
+        block.setAttribute('data-code', block.textContent || block.innerText);
+        block.setAttribute('data-language', this.detectCodeLanguage(block));
+      }
+    });
+  }
+
+  /**
+   * Detect code language
+   * @param {Element} codeBlock - Code block element
+   * @returns {string} Detected language
+   */
+  detectCodeLanguage(codeBlock) {
+    // Check for language classes
+    const classes = codeBlock.className || '';
+    const langMatch = classes.match(/language-(\w+)|\b(\w+)\b/);
+    
+    if (langMatch) {
+      return langMatch[1] || langMatch[2];
+    }
+
+    // Check for data attributes
+    const dataLang = codeBlock.getAttribute('data-language');
+    if (dataLang) {
+      return dataLang;
+    }
+
+    // Simple detection based on content
+    const content = codeBlock.textContent || '';
+    if (content.includes('function') || content.includes('const') || content.includes('let')) {
+      return 'javascript';
+    } else if (content.includes('def ') || content.includes('import ')) {
+      return 'python';
+    } else if (content.includes('{') && content.includes('}')) {
+      return 'json';
+    }
+
+    return 'unknown';
+  }
+
+  /**
+   * Analyze document structure
+   * @returns {Object} Document structure analysis
+   */
+  analyzeDocumentStructure() {
+    const headings = [];
+    const mainContent = [];
+    let currentSection = '';
+
+    // Extract headings and structure
+    const headingElements = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    
+    headingElements.forEach((heading, index) => {
+      const level = parseInt(heading.tagName.charAt(1));
+      const text = heading.textContent?.trim() || '';
+      
+      headings.push({
+        level,
+        text,
+        id: heading.id || `heading-${index}`,
+        element: heading
+      });
+    });
+
+    // Extract main content areas
+    const contentElements = document.querySelectorAll('p, div, section, article');
+    
+    contentElements.forEach(element => {
+      const text = element.textContent?.trim() || '';
+      if (text.length > 50) { // Only include substantial content
+        mainContent.push(text);
+      }
+    });
+
+    return {
+      title: document.title,
+      headings,
+      mainContent: mainContent.join('\n\n'),
+      elementCount: contentElements.length
+    };
+  }
+
+  /**
+   * Post-process extracted content
+   * @param {Object} result - Extraction result
+   * @returns {Object} Post-processed result
+   */
+  postProcessContent(result) {
+    if (!result) return result;
+
+    // Add metadata if enabled
+    if (this.options.extractMetadata) {
+      result.metadata = this.extractMetadata();
+    }
+
+    // Add word count
+    if (result.content) {
+      result.wordCount = result.content.split(/\s+/).filter(word => word.length > 0).length;
+      result.charCount = result.content.length;
+    }
+
+    // Add extraction timestamp
+    result.extractedAt = new Date().toISOString();
+
+    // Add page information
+    result.pageInfo = {
+      url: window.location.href,
+      domain: window.location.hostname,
+      path: window.location.pathname,
+      referrer: document.referrer
+    };
+
+    return result;
+  }
+
+  /**
+   * Extract page metadata
+   * @returns {Object} Page metadata
+   */
+  extractMetadata() {
+    const metadata = {};
+
+    // Basic meta tags
+    const getMetaContent = (name) => {
+      const meta = document.querySelector(`meta[name="${name}"], meta[property="${name}"]`);
+      return meta ? meta.getAttribute('content') : null;
+    };
+
+    metadata.description = getMetaContent('description');
+    metadata.keywords = getMetaContent('keywords');
+    metadata.author = getMetaContent('author');
+    metadata.published = getMetaContent('article:published_time') || getMetaContent('published_time');
+    metadata.modified = getMetaContent('article:modified_time') || getMetaContent('modified_time');
+
+    // Open Graph tags
+    const getOGContent = (property) => {
+      const meta = document.querySelector(`meta[property="${property}"], meta[property="og:${property}"]`);
+      return meta ? meta.getAttribute('content') : null;
+    };
+
+    metadata.og = {
+      title: getOGContent('title'),
+      description: getOGContent('description'),
+      image: getOGContent('image'),
+      type: getOGContent('type'),
+      site_name: getOGContent('site_name')
+    };
+
+    // Twitter Card tags
+    const getTwitterContent = (name) => {
+      const meta = document.querySelector(`meta[name="twitter:${name}"]`);
+      return meta ? meta.getAttribute('content') : null;
+    };
+
+    metadata.twitter = {
+      card: getTwitterContent('card'),
+      title: getTwitterContent('title'),
+      description: getTwitterContent('description'),
+      image: getTwitterContent('image')
+    };
+
+    // Language and encoding
+    metadata.language = document.documentElement.lang || document.querySelector('meta[http-equiv="content-language"]')?.getAttribute('content');
+    metadata.charset = document.characterSet || document.querySelector('meta[charset]')?.getAttribute('charset');
+
+    return metadata;
+  }
+
+  /**
+   * Validate and clean content
+   * @param {Object} result - Extraction result
+   * @returns {Object} Validated and cleaned result
+   */
+  validateAndCleanContent(result) {
+    if (!result || !result.content) {
+      return this.createEmptyResult(new Error('No content found'));
+    }
+
+    // Content length validation
+    if (result.content.length < this.options.minContentLength) {
+      return this.createEmptyResult(new Error('Content too short'));
+    }
+
+    // Truncate if too long
+    if (result.content.length > this.options.maxContentLength) {
+      result.content = result.content.substring(0, this.options.maxContentLength);
+      result.truncated = true;
+    }
+
+    // Clean up content
+    result.content = result.content
+      .replace(/\r\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    // Ensure we have a title
+    if (!result.title || result.title.trim() === '') {
+      result.title = document.title || 'Untitled';
+    }
+
+    return result;
+  }
+
+  /**
+   * Create empty result object
+   * @param {Error} error - Optional error
+   * @returns {Object} Empty result
+   */
+  createEmptyResult(error = null) {
+    return {
+      content: '',
+      title: document.title || 'Untitled',
+      method: 'none',
+      error: error?.message,
+      extractedAt: new Date().toISOString(),
+      pageInfo: {
+        url: window.location.href,
+        domain: window.location.hostname,
+        path: window.location.pathname
+      }
+    };
+  }
+
+  /**
+   * Get extraction statistics
+   * @returns {Object} Extraction stats
+   */
+  getStats() {
+    return {
+      hasReadability: !!this.readability,
+      options: this.options,
+      documentInfo: {
+        title: document.title,
+        url: window.location.href,
+        wordCount: document.body?.textContent?.split(/\s+/).length || 0
+      }
+    };
+  }
+
+  /**
+   * Reset extractor state
+   */
+  reset() {
+    this.readability = null;
+    this.initializeReadability();
+  }
+}
+
+// Export singleton instance
+export const contentExtractor = new ContentExtractor();
+
+// Export default
+export default ContentExtractor;
+```
+
+### 2. StateManager.js (432 lines)
+File: c:\Users\phila\OneDrive\Desktop\project ojt\client\public\lib\StateManager.js
+
+```javascript
+/**
+ * StateManager - Event-Driven State Management for FocusFlow AI Extension
+ * 
+ * Replaces storage polling with event-driven architecture:
+ * - Centralized state management
+ * - Event-driven updates using chrome.storage.onChanged
+ * - Subscriber pattern for reactive updates
+ * - Support for both local and session storage
+ * - Automatic synchronization across extension components
+ * - Memory-efficient state caching
+ * - Proper cleanup and memory management
+ */
+
+export class StateManager {
+  constructor(options = {}) {
+    this.state = new Map();
+    this.subscribers = new Map();
+    this.cache = new Map();
+    this.cacheTimeout = options.cacheTimeout || 30000; // 30 seconds
+    this.enablePersistence = options.enablePersistence !== false;
+    
+    this.setupStorageListener();
+    this.initializeState();
+  }
+
+  /**
+   * Initialize state from storage
+   */
+  async initializeState() {
+    try {
+      // Load initial state from both storage areas
+      await this.loadFromStorage('local');
+      await this.loadFromStorage('session');
+    } catch (error) {
+      console.error('StateManager initialization failed:', error);
+    }
+  }
+
+  /**
+   * Load state from specific storage area
+   * @param {string} storageArea - 'local' or 'session'
+   */
+  async loadFromStorage(storageArea) {
+    const storage = this.getStorage(storageArea);
+    if (!storage) return;
+
+    try {
+      const keys = await this.getStorageKeys(storageArea);
+      const result = await storage.get(keys);
+      
+      for (const [key, value] of Object.entries(result)) {
+        this.state.set(`${storageArea}:${key}`, value);
+        this.updateCache(`${storageArea}:${key}`, value);
+      }
+    } catch (error) {
+      console.error(`Failed to load from ${storageArea} storage:`, error);
+    }
+  }
+
+  /**
+   * Get storage keys for a specific storage area
+   * @param {string} storageArea - 'local' or 'session'
+   * @returns {Promise<Array>} Storage keys
+   */
+  async getStorageKeys(storageArea) {
+    // Define keys that should be loaded from each storage area
+    const localKeys = [
+      'aideIsCollapsed',
+      'aideCommand',
+      'focusflow_settings',
+      'focusflow_user_preferences'
+    ];
+
+    const sessionKeys = [
+      'aideCurrentTab',
+      'aideCurrentSelection',
+      'aideActiveTabId',
+      'focusflow_temp_data'
+    ];
+
+    return storageArea === 'local' ? localKeys : sessionKeys;
+  }
+
+  /**
+   * Set state value with automatic persistence
+   * @param {string} key - State key
+   * @param {*} value - State value
+   * @param {Object} options - Options for storage
+   */
+  async setState(key, value, options = {}) {
+    const storageArea = options.storage || 'local';
+    const storageKey = options.storageKey || key;
+    const fullKey = `${storageArea}:${storageKey}`;
+    
+    try {
+      // Validate value
+      if (!this.isValidStateValue(value)) {
+        throw new Error(`Invalid state value for key: ${key}`);
+      }
+
+      // Update in-memory state
+      this.state.set(fullKey, value);
+      
+      // Update cache
+      this.updateCache(fullKey, value);
+
+      // Persist to storage if enabled
+      if (this.enablePersistence) {
+        const storage = this.getStorage(storageArea);
+        if (storage) {
+          await storage.set({ [storageKey]: value });
+        }
+      }
+
+      // Notify subscribers
+      this.notifySubscribers(fullKey, value, options);
+
+      return true;
+    } catch (error) {
+      console.error(`StateManager.setState failed for ${key}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get state value with caching
+   * @param {string} key - State key
+   * @param {Object} options - Options for retrieval
+   * @returns {*} State value
+   */
+  async getState(key, options = {}) {
+    const storageArea = options.storage || 'local';
+    const storageKey = options.storageKey || key;
+    const fullKey = `${storageArea}:${storageKey}`;
+    
+    try {
+      // Check cache first
+      if (this.cache.has(fullKey)) {
+        const cached = this.cache.get(fullKey);
+        if (Date.now() - cached.timestamp < this.cacheTimeout) {
+          return cached.value;
+        }
+      }
+
+      // Load from storage if not in cache or cache expired
+      const storage = this.getStorage(storageArea);
+      if (storage) {
+        const result = await storage.get([storageKey]);
+        const value = result[storageKey];
+        
+        if (value !== undefined) {
+          this.state.set(fullKey, value);
+          this.updateCache(fullKey, value);
+          return value;
+        }
+      }
+
+      // Return in-memory state if available
+      if (this.state.has(fullKey)) {
+        return this.state.get(fullKey);
+      }
+
+      return undefined;
+    } catch (error) {
+      console.error(`StateManager.getState failed for ${key}:`, error);
+      return this.state.get(fullKey);
+    }
+  }
+
+  /**
+   * Subscribe to state changes
+   * @param {string} key - State key to subscribe to
+   * @param {Function} callback - Callback function
+   * @param {Object} options - Subscription options
+   * @returns {Function} Unsubscribe function
+   */
+  subscribe(key, callback, options = {}) {
+    const storageArea = options.storage || 'local';
+    const storageKey = options.storageKey || key;
+    const fullKey = `${storageArea}:${storageKey}`;
+    
+    if (!this.subscribers.has(fullKey)) {
+      this.subscribers.set(fullKey, new Set());
+    }
+
+    const subscriber = {
+      callback,
+      options,
+      id: this.generateSubscriberId()
+    };
+
+    this.subscribers.get(fullKey).add(subscriber);
+
+    // Return unsubscribe function
+    return () => {
+      const subscribers = this.subscribers.get(fullKey);
+      if (subscribers) {
+        subscribers.delete(subscriber);
+        if (subscribers.size === 0) {
+          this.subscribers.delete(fullKey);
+        }
+      }
+    };
+  }
+
+  /**
+   * Unsubscribe from state changes
+   * @param {string} key - State key
+   * @param {Function} callback - Callback function to remove
+   */
+  unsubscribe(key, callback) {
+    for (const [fullKey, subscribers] of this.subscribers.entries()) {
+      if (fullKey.includes(key)) {
+        for (const subscriber of subscribers) {
+          if (subscriber.callback === callback) {
+            subscribers.delete(subscriber);
+            break;
+          }
+        }
+        
+        if (subscribers.size === 0) {
+          this.subscribers.delete(fullKey);
+        }
+      }
+    }
+  }
+
+  /**
+   * Setup storage change listener
+   */
+  setupStorageListener() {
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      chrome.storage.onChanged.addListener((changes, areaName) => {
+        for (const [key, change] of Object.entries(changes)) {
+          const fullKey = `${areaName}:${key}`;
+          const newValue = change.newValue;
+          
+          // Update in-memory state
+          this.state.set(fullKey, newValue);
+          
+          // Update cache
+          this.updateCache(fullKey, newValue);
+          
+          // Notify subscribers
+          this.notifySubscribers(fullKey, newValue, { 
+            source: 'storage',
+            oldValue: change.oldValue
+          });
+        }
+      });
+    }
+  }
+
+  /**
+   * Update cache with timeout
+   * @param {string} key - Cache key
+   * @param {*} value - Value to cache
+   */
+  updateCache(key, value) {
+    this.cache.set(key, {
+      value,
+      timestamp: Date.now()
+    });
+  }
+
+  /**
+   * Notify subscribers of state change
+   * @param {string} key - State key
+   * @param {*} value - New value
+   * @param {Object} options - Notification options
+   */
+  notifySubscribers(key, value, options = {}) {
+    const subscribers = this.subscribers.get(key);
+    if (!subscribers) return;
+
+    const notification = {
+      key,
+      value,
+      oldValue: options.oldValue,
+      source: options.source || 'direct',
+      timestamp: Date.now()
+    };
+
+    // Notify all subscribers asynchronously
+    subscribers.forEach(subscriber => {
+      try {
+        if (subscriber.options.immediate) {
+          subscriber.callback(notification);
+        } else {
+          // Use setTimeout to avoid blocking
+          setTimeout(() => subscriber.callback(notification), 0);
+        }
+      } catch (error) {
+        console.error('Subscriber callback error:', error);
+      }
+    });
+  }
+
+  /**
+   * Get storage object for area
+   * @param {string} storageArea - 'local' or 'session'
+   * @returns {Object} Storage object
+   */
+  getStorage(storageArea) {
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      return chrome.storage[storageArea] || null;
+    }
+    return null;
+  }
+
+  /**
+   * Validate state value
+   * @param {*} value - Value to validate
+   * @returns {boolean} Whether value is valid
+   */
+  isValidStateValue(value) {
+    // Check for circular references
+    try {
+      JSON.stringify(value);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Generate unique subscriber ID
+   * @returns {string} Subscriber ID
+   */
+  generateSubscriberId() {
+    return `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * Clear state for specific key or all state
+   * @param {string} key - Key to clear (optional)
+   * @param {Object} options - Clear options
+   */
+  async clearState(key = null, options = {}) {
+    const storageArea = options.storage || 'local';
+    
+    try {
+      if (key) {
+        // Clear specific key
+        const fullKey = `${storageArea}:${key}`;
+        this.state.delete(fullKey);
+        this.cache.delete(fullKey);
+        
+        if (this.enablePersistence) {
+          const storage = this.getStorage(storageArea);
+          if (storage) {
+            await storage.remove(key);
+          }
+        }
+        
+        // Remove subscribers
+        this.subscribers.delete(fullKey);
+      } else {
+        // Clear all state for storage area
+        const keysToRemove = [];
+        for (const stateKey of this.state.keys()) {
+          if (stateKey.startsWith(`${storageArea}:`)) {
+            keysToRemove.push(stateKey);
+            this.cache.delete(stateKey);
+            this.subscribers.delete(stateKey);
+          }
+        }
+        
+        keysToRemove.forEach(k => this.state.delete(k));
+        
+        if (this.enablePersistence) {
+          const storage = this.getStorage(storageArea);
+          if (storage) {
+            const storageKeys = await this.getStorageKeys(storageArea);
+            await storage.remove(storageKeys);
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`StateManager.clearState failed:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get state statistics
+   * @returns {Object} State statistics
+   */
+  getStats() {
+    return {
+      stateSize: this.state.size,
+      cacheSize: this.cache.size,
+      subscriberCount: Array.from(this.subscribers.values())
+        .reduce((total, subscribers) => total + subscribers.size, 0),
+      subscribedKeys: Array.from(this.subscribers.keys())
+    };
+  }
+
+  /**
+   * Export all state for debugging
+   * @returns {Object} Complete state export
+   */
+  exportState() {
+    const exported = {};
+    
+    for (const [key, value] of this.state.entries()) {
+      exported[key] = value;
+    }
+    
+    return {
+      timestamp: new Date().toISOString(),
+      stats: this.getStats(),
+      state: exported
+    };
+  }
+
+  /**
+   * Cleanup resources
+   */
+  cleanup() {
+    this.state.clear();
+    this.cache.clear();
+    this.subscribers.clear();
+  }
+}
+
+// Export singleton instance for easy usage
+export const stateManager = new StateManager();
+
+// Export default
+export default StateManager;
+```
+
+### 3. SidebarManager.js (697 lines)
+File: c:\Users\phila\OneDrive\Desktop\project ojt\client\public\lib\SidebarManager.js
+
+```javascript
+/**
+ * SidebarManager - Robust Sidebar Injection for FocusFlow AI Extension
+ * 
+ * Handles reliable sidebar creation and management:
+ * - DOM readiness verification
+ * - Duplicate injection prevention
+ * - Iframe load validation and error handling
+ * - Shadow DOM isolation with debugging support
+ * - Toggle functionality with smooth animations
+ * - Cleanup support for navigation changes
+ * - Retry mechanism for failed injections
+ * - Extension-safe CSS injection
+ * - Responsive design considerations
+ */
+
+export class SidebarManager {
+  constructor(options = {}) {
+    this.host = null;
+    this.iframe = null;
+    this.shadowRoot = null;
+    this.toggleButton = null;
+    this.isInjected = false;
+    this.isVisible = false;
+    this.retryCount = 0;
+    this.maxRetries = options.maxRetries || 3;
+    this.retryDelay = options.retryDelay || 1000;
+    this.iframeTimeout = options.iframeTimeout || 5000;
+    this.animationDuration = options.animationDuration || 300;
+    
+    // Configuration
+    this.config = {
+      width: options.width || '400px',
+      height: options.height || '100vh',
+      zIndex: options.zIndex || '2147483647',
+      backgroundColor: options.backgroundColor || '#0a0a0b',
+      borderColor: options.borderColor || '#26272b',
+      toggleWidth: options.toggleWidth || '40px',
+      toggleHeight: options.toggleHeight || '60px'
+    };
+
+    // State tracking
+    this.state = {
+      isCollapsed: true,
+      isAnimating: false,
+      lastToggleTime: 0,
+      injectionAttempts: 0,
+      loadTime: null
+    };
+
+    // Event handlers cleanup
+    this.eventHandlers = new Map();
+  }
+
+  /**
+   * Inject sidebar with proper error handling and retry logic
+   * @returns {Promise<boolean>} Success status
+   */
+  async injectSidebar() {
+    try {
+      console.log('SidebarManager: Starting injection', {
+        host: this.host,
+        iframe: this.iframe,
+        shadowRoot: this.shadowRoot,
+        isInjected: this.isInjected,
+        config: this.config
+      });
+      
+      // Wait for DOM readiness
+      await this.waitForDOMReady();
+      
+      // Check for existing sidebar
+      if (this.isSidebarInjected()) {
+        console.log('SidebarManager: Sidebar already injected');
+        return true;
+      }
+
+      // Create sidebar components
+      await this.createSidebar();
+      
+      // Debug DOM structure
+      this.debugDOMStructure();
+      
+      // Verify injection success
+      if (!this.verifyInjection()) {
+        throw new Error('Sidebar injection verification failed');
+      }
+
+      // Setup event listeners
+      this.setupEventListeners();
+      
+      // Initialize state
+      this.isInjected = true;
+      this.state.loadTime = Date.now();
+      this.retryCount = 0;
+      this.state.injectionAttempts++;
+
+      console.log('SidebarManager: Injection successful', this.getState());
+      return true;
+
+    } catch (error) {
+      console.error('SidebarManager: Injection failed:', error);
+      return await this.handleInjectionError(error);
+    }
+  }
+
+  /**
+   * Wait for DOM to be ready with timeout
+   */
+  async waitForDOMReady() {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('DOM ready timeout'));
+      }, 10000);
+
+      const checkReady = () => {
+        if (document.readyState === 'complete' && document.body) {
+          clearTimeout(timeout);
+          resolve();
+        } else {
+          setTimeout(checkReady, 100);
+        }
+      };
+
+      checkReady();
+    });
+  }
+
+  /**
+   * Create sidebar with all components
+   */
+  async createSidebar() {
+    // Create host element
+    this.host = document.createElement('div');
+    this.host.id = 'focusflow-aide-host';
+    this.applyHostStyles();
+    /**
+     * Remove Shadow DOM - use direct DOM for compatibility
+     */
+    this.shadowRoot = this.host; // Direct DOM instead of Shadow DOM
+    
+    console.log('🔍 SidebarManager: Using direct DOM (no Shadow DOM)');
+    
+    // Create and inject styles
+    this.injectStyles();
+    
+    // Create toggle button
+    this.toggleButton = this.createToggleButton();
+    
+    // Create iframe with load handling
+    this.iframe = await this.createIframe();
+    
+    // Assemble sidebar in direct DOM
+    this.shadowRoot.appendChild(this.toggleButton);
+    this.shadowRoot.appendChild(this.iframe);
+    
+    // Inject styles into document head
+    document.head.appendChild(this.shadowRoot.querySelector('style'));
+    
+    // Inject into DOM
+    document.body.appendChild(this.host);
+    
+    // Wait for iframe to fully load
+    await this.waitForIframeLoad();
+  }
+
+  /**
+   * Apply styles to host element
+   */
+  applyHostStyles() {
+    this.host.style.cssText = `
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: ${this.config.width};
+      height: ${this.config.height};
+      z-index: ${this.config.zIndex};
+      transform: translateX(100%);
+      transition: transform ${this.animationDuration}ms cubic-bezier(0.4, 0, 0.2, 1);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    `;
+  }
+
+  /**
+   * Inject CSS styles into direct DOM
+   */
+  injectStyles() {
+    const style = document.createElement('style');
+    style.textContent = `
+      #focusflow-aide-host {
+        all: initial;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      
+      .toggle-button {
+        position: absolute;
+        left: -${this.config.toggleWidth};
+        top: 50%;
+        transform: translateY(-50%);
+        width: ${this.config.toggleWidth};
+        height: ${this.config.toggleHeight};
+        background: #111214;
+        border: 1px solid ${this.config.borderColor};
+        border-right: none;
+        border-radius: 8px 0 0 8px;
+        color: #9ca3af;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: -4px 0 15px rgba(0, 0, 0, 0.5);
+        z-index: 10;
+        transition: all 0.2s ease;
+        font-family: inherit;
+      }
+      
+      .toggle-button:hover {
+        background: #1a1b1e;
+        color: #f3f4f6;
+      }
+      
+      .toggle-button.active {
+        color: #3b82f6;
+        background: #1a1b1e;
+      }
+      
+      .toggle-button svg {
+        width: 18px;
+        height: 18px;
+        transition: transform 0.2s ease;
+      }
+      
+      .toggle-button.active svg {
+        transform: rotate(180deg);
+      }
+      
+      .sidebar-iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        background: ${this.config.backgroundColor};
+        border-left: 1px solid ${this.config.borderColor};
+      }
+      
+      /* Prevent interaction with page when sidebar is open */
+      .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: ${parseInt(this.config.zIndex) - 1};
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+      }
+      
+      .sidebar-overlay.active {
+        opacity: 1;
+        pointer-events: all;
+      }
+    `;
+    this.shadowRoot.appendChild(style);
+  }
+
+  /**
+   * Create toggle button with proper styling
+   */
+  createToggleButton() {
+    const button = document.createElement('button');
+    button.className = 'toggle-button';
+    button.title = 'Toggle FocusFlow AI';
+    button.setAttribute('aria-label', 'Toggle FocusFlow AI');
+    
+    // Create arrow SVG
+    const arrowSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    arrowSvg.setAttribute('viewBox', '0 0 24 24');
+    arrowSvg.setAttribute('fill', 'none');
+    arrowSvg.setAttribute('stroke', 'currentColor');
+    arrowSvg.setAttribute('stroke-width', '2');
+    arrowSvg.setAttribute('stroke-linecap', 'round');
+    arrowSvg.setAttribute('stroke-linejoin', 'round');
+    
+    const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    polyline.setAttribute('points', '15 18 9 12 15 6');
+    
+    arrowSvg.appendChild(polyline);
+    button.appendChild(arrowSvg);
+    
+    return button;
+  }
+
+  /**
+   * Create iframe with load event handling
+   */
+  async createIframe() {
+    return new Promise((resolve, reject) => {
+      const iframe = document.createElement('iframe');
+      iframe.className = 'sidebar-iframe';
+      
+      const iframeSrc = chrome.runtime.getURL('index.html?mode=sidebar');
+      console.log('🔗 SidebarManager: Creating iframe with src:', iframeSrc);
+      
+      iframe.src = iframeSrc;
+      iframe.setAttribute('sandbox', 'allow-scripts');
+      iframe.setAttribute('loading', 'lazy');
+      
+      const cleanup = () => {
+        clearTimeout(timeout);
+        iframe.onload = null;
+        iframe.onerror = null;
+      };
+      
+      iframe.onload = () => {
+        console.log('✅ SidebarManager: Iframe loaded successfully', {
+          src: iframe.src,
+          timestamp: Date.now()
+        });
+        cleanup();
+        resolve(iframe);
+      };
+      
+      iframe.onerror = (error) => {
+        console.error('❌ SidebarManager: Iframe load error', {
+          src: iframe.src,
+          error: error,
+          timestamp: Date.now()
+        });
+        cleanup();
+        reject(new Error('Iframe load failed'));
+      };
+      
+      // Set timeout
+      const timeout = setTimeout(() => {
+        console.error('⏰ SidebarManager: Iframe load timeout', {
+          src: iframe.src,
+          timeout: this.iframeTimeout,
+          timestamp: Date.now()
+        });
+        cleanup();
+        reject(new Error('Iframe load timeout'));
+      }, this.iframeTimeout);
+      
+      // Start loading
+      console.log('🚀 SidebarManager: Appending iframe to shadow root');
+      this.shadowRoot.appendChild(iframe);
+    });
+  }
+
+  /**
+   * Wait for iframe to fully load
+   */
+  async waitForIframeLoad() {
+    return new Promise((resolve, reject) => {
+      if (!this.iframe?.contentWindow) {
+        reject(new Error('Iframe not available'));
+        return;
+      }
+
+      const timeout = setTimeout(() => {
+        reject(new Error('Iframe content load timeout'));
+      }, this.iframeTimeout);
+
+      const checkLoad = () => {
+        try {
+          const doc = this.iframe.contentWindow.document;
+          if (doc.readyState === 'complete' && doc.body) {
+            clearTimeout(timeout);
+            resolve();
+          } else {
+            setTimeout(checkLoad, 100);
+          }
+        } catch (error) {
+          clearTimeout(timeout);
+          reject(new Error('Cannot access iframe content'));
+        }
+      };
+
+      checkLoad();
+    });
+  }
+
+  /**
+   * Setup event listeners
+   */
+  setupEventListeners() {
+    // Toggle button click
+    const toggleHandler = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.toggleSidebar();
+    };
+    
+    this.toggleButton.addEventListener('click', toggleHandler);
+    this.eventHandlers.set('toggle', toggleHandler);
+    
+    // Keyboard shortcuts
+    const keyHandler = (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'F') {
+        e.preventDefault();
+        this.toggleSidebar();
+      }
+    };
+    
+    document.addEventListener('keydown', keyHandler);
+    this.eventHandlers.set('keyboard', keyHandler);
+    
+    // Handle page navigation
+    const navigationHandler = () => {
+      this.cleanup();
+    };
+    
+    window.addEventListener('beforeunload', navigationHandler);
+    this.eventHandlers.set('navigation', navigationHandler);
+  }
+
+  /**
+   * Toggle sidebar visibility with animation
+   */
+  async toggleSidebar() {
+    if (this.state.isAnimating) return;
+    
+    const now = Date.now();
+    if (now - this.state.lastToggleTime < this.animationDuration) return;
+    
+    this.state.isAnimating = true;
+    this.state.lastToggleTime = now;
+    
+    try {
+      this.state.isCollapsed = !this.state.isCollapsed;
+      this.isVisible = !this.state.isCollapsed;
+      
+      // Update UI
+      this.updateSidebarUI();
+      
+      // Update toggle button state
+      this.updateToggleButton();
+      
+      // Create/remove overlay
+      this.updateOverlay();
+      
+      // Notify state manager
+      if (typeof window.stateManager !== 'undefined') {
+        await window.stateManager.setState('aideIsCollapsed', this.state.isCollapsed);
+      }
+      
+      // Send message to background
+      if (typeof window.messageBus !== 'undefined') {
+        await window.messageBus.sendMessage('background', {
+          type: 'SIDEBAR_TOGGLED',
+          isVisible: this.isVisible,
+          collapsed: this.state.isCollapsed
+        });
+      }
+      
+    } catch (error) {
+      console.error('SidebarManager: Toggle failed:', error);
+    } finally {
+      this.state.isAnimating = false;
+    }
+  }
+
+  /**
+   * Update sidebar UI based on state
+   */
+  updateSidebarUI() {
+    if (!this.host) return;
+    
+    const transform = this.state.isCollapsed ? 'translateX(100%)' : 'translateX(0)';
+    this.host.style.transform = transform;
+  }
+
+  /**
+   * Update toggle button appearance
+   */
+  updateToggleButton() {
+    if (!this.toggleButton) return;
+    
+    if (this.state.isCollapsed) {
+      this.toggleButton.classList.remove('active');
+      this.toggleButton.querySelector('svg polyline').setAttribute('points', '15 18 9 12 15 6');
+    } else {
+      this.toggleButton.classList.add('active');
+      this.toggleButton.querySelector('svg polyline').setAttribute('points', '9 18 15 12 9 6');
+    }
+  }
+
+  /**
+   * Update overlay for mobile/desktop
+   */
+  updateOverlay() {
+    // Remove existing overlay
+    const existingOverlay = document.getElementById('focusflow-sidebar-overlay');
+    if (existingOverlay) {
+      existingOverlay.remove();
+    }
+    
+    // Create overlay for mobile or when sidebar is open
+    if (!this.state.isCollapsed && this.isMobile()) {
+      const overlay = document.createElement('div');
+      overlay.id = 'focusflow-sidebar-overlay';
+      overlay.className = 'sidebar-overlay active';
+      overlay.addEventListener('click', () => this.toggleSidebar());
+      document.body.appendChild(overlay);
+    }
+  }
+
+  /**
+   * Check if device is mobile
+   */
+  isMobile() {
+    return window.innerWidth <= 768;
+  }
+
+  /**
+   * Verify sidebar injection was successful
+   */
+  verifyInjection() {
+    return (
+      document.getElementById('focusflow-aide-host') !== null &&
+      this.host !== null &&
+      this.iframe !== null &&
+      this.shadowRoot !== null &&
+      this.toggleButton !== null
+    );
+  }
+
+  /**
+   * Check if sidebar is already injected
+   */
+  isSidebarInjected() {
+    return document.getElementById('focusflow-aide-host') !== null;
+  }
+
+  /**
+   * Handle injection errors with retry logic
+   */
+  async handleInjectionError(error) {
+    console.error(`SidebarManager: Injection attempt ${this.retryCount + 1} failed:`, error);
+    
+    if (this.retryCount < this.maxRetries) {
+      this.retryCount++;
+      
+      // Cleanup before retry
+      await this.cleanup();
+      
+      // Wait before retry with exponential backoff
+      const delay = this.retryDelay * Math.pow(2, this.retryCount - 1);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      
+      console.log(`SidebarManager: Retrying injection (${this.retryCount}/${this.maxRetries})`);
+      return await this.injectSidebar();
+    } else {
+      // Final failure - notify background
+      if (typeof window.messageBus !== 'undefined') {
+        await window.messageBus.sendMessage('background', {
+          type: 'SIDEBAR_INJECTION_FAILED',
+          error: error.message,
+          url: window.location.href,
+          attempts: this.retryCount + 1
+        });
+      }
+      
+      return false;
+    }
+  }
+
+  /**
+   * Remove sidebar and cleanup resources
+   */
+  async cleanup() {
+    console.log('SidebarManager: Starting cleanup');
+    
+    // Remove event listeners
+    for (const [event, handler] of this.eventHandlers.entries()) {
+      if (event === 'keyboard' || event === 'navigation') {
+        document.removeEventListener(event, handler);
+      }
+    }
+    this.eventHandlers.clear();
+    
+    // Remove overlay
+    const overlay = document.getElementById('focusflow-sidebar-overlay');
+    if (overlay) {
+      overlay.remove();
+    }
+    
+    // Remove host element
+    if (this.host) {
+      this.host.remove();
+      this.host = null;
+    }
+    
+    // Reset state
+    this.iframe = null;
+    this.shadowRoot = null;
+    this.toggleButton = null;
+    this.isInjected = false;
+    this.isVisible = false;
+    this.state.isCollapsed = true;
+    this.state.isAnimating = false;
+    
+    console.log('SidebarManager: Cleanup complete');
+  }
+
+  /**
+   * Debug DOM structure for troubleshooting
+   */
+  debugDOMStructure() {
+    console.log('🔍 SidebarManager: DOM Structure Debug', {
+      hostElement: this.host,
+      hostStyles: this.host ? this.host.style.cssText : 'null',
+      hostComputedStyles: this.host ? window.getComputedStyle(this.host) : 'null',
+      shadowRoot: this.shadowRoot,
+      iframe: this.iframe,
+      iframeSrc: this.iframe ? this.iframe.src : 'null',
+      iframeStyles: this.iframe ? this.iframe.style.cssText : 'null',
+      iframeComputedStyles: this.iframe ? window.getComputedStyle(this.iframe) : 'null',
+      toggleButton: this.toggleButton,
+      documentReadyState: document.readyState,
+      bodyExists: !!document.body,
+      windowWidth: window.innerWidth,
+      windowHeight: window.innerHeight,
+      configWidth: this.config.width,
+      configHeight: this.config.height
+    });
+
+    // Debug iframe content if available
+    if (this.iframe && this.iframe.contentWindow) {
+      try {
+        const iframeDoc = this.iframe.contentWindow.document;
+        console.log('📄 SidebarManager: Iframe Content Debug', {
+          iframeReadyState: iframeDoc.readyState,
+          iframeBody: iframeDoc.body,
+          iframeRoot: iframeDoc.getElementById('root'),
+          renderStatus: this.iframe.contentWindow.FOCUSFLOW_RENDER_STATUS,
+          iframeConsole: this.iframe.contentWindow.console ? 'available' : 'blocked'
+        });
+      } catch (error) {
+        console.warn('⚠️ SidebarManager: Cannot access iframe content:', error.message);
+      }
+    }
+  }
+
+  /**
+   * Get sidebar state for debugging
+   */
+  getState() {
+    return {
+      isInjected: this.isInjected,
+      isVisible: this.isVisible,
+      isCollapsed: this.state.isCollapsed,
+      isAnimating: this.state.isAnimating,
+      injectionAttempts: this.state.injectionAttempts,
+      loadTime: this.state.loadTime,
+      retryCount: this.retryCount,
+      hasHost: this.host !== null,
+      hasIframe: this.iframe !== null,
+      hasShadowRoot: this.shadowRoot !== null,
+      hasToggleButton: this.toggleButton !== null
+    };
+  }
+
+  /**
+   * Force sidebar open (for programmatic control)
+   */
+  async forceOpen() {
+    if (!this.isInjected) {
+      await this.injectSidebar();
+    }
+    
+    if (this.state.isCollapsed) {
+      await this.toggleSidebar();
+    }
+  }
+
+  /**
+   * Force sidebar closed (for programmatic control)
+   */
+  async forceClose() {
+    if (!this.state.isCollapsed) {
+      await this.toggleSidebar();
+    }
+  }
+}
+
+// Export singleton instance for easy usage
+export const sidebarManager = new SidebarManager();
+
+// Expose to window for content script access
+if (typeof window !== 'undefined') {
+  window.sidebarManager = sidebarManager;
+}
+
+// Export default
+export default SidebarManager;
+```
+
+### 4. ErrorHandler.js (334 lines)
+File: c:\Users\phila\OneDrive\Desktop\project ojt\client\public\lib\ErrorHandler.js
+
+```javascript
+/**
+ * ErrorHandler - Global Error Handling for FocusFlow AI Extension
+ * 
+ * Provides centralized error handling, logging, and recovery mechanisms:
+ * - Global error capture for unhandled exceptions
+ * - Structured logging with context information
+ * - Extension-safe error reporting
+ * - Async error handling for promises
+ * - Recovery strategies for common errors
+ * - Optional user-facing notifications
+ */
+
+export class ErrorHandler {
+  constructor(options = {}) {
+    this.logLevel = options.logLevel || 'error'; // 'debug', 'info', 'warn', 'error'
+    this.maxLogEntries = options.maxLogEntries || 100;
+    this.enableUserNotifications = options.enableUserNotifications || false;
+    this.errorLog = [];
+    this.setupGlobalHandlers();
+  }
+
+  /**
+   * Setup global error handlers
+   */
+  setupGlobalHandlers() {
+    // Handle unhandled promise rejections
+    if (typeof window !== 'undefined') {
+      window.addEventListener('unhandledrejection', (event) => {
+        this.log(event.reason, 'Unhandled Promise Rejection', {
+          type: 'unhandledRejection',
+          stack: event.reason?.stack
+        });
+      });
+
+      // Handle global errors
+      window.addEventListener('error', (event) => {
+        this.log(event.error || new Error(event.message), 'Global Error', {
+          type: 'globalError',
+          filename: event.filename,
+          lineno: event.lineno,
+          colno: event.colno
+        });
+      });
+    }
+
+    // Handle Chrome runtime errors
+    if (typeof chrome !== 'undefined' && chrome.runtime) {
+      chrome.runtime.onSuspend?.addListener(() => {
+        this.log(null, 'Extension suspending', { type: 'suspend' });
+      });
+    }
+  }
+
+  /**
+   * Log error with context information
+   * @param {Error|string} error - Error object or message
+   * @param {string} context - Context where error occurred
+   * @param {Object} metadata - Additional metadata
+   */
+  log(error, context = 'Unknown', metadata = {}) {
+    const errorEntry = {
+      timestamp: new Date().toISOString(),
+      context,
+      message: error?.message || error || 'Unknown error',
+      stack: error?.stack,
+      metadata,
+      url: typeof window !== 'undefined' ? window.location?.href : 'background',
+      level: this.determineLogLevel(error)
+    };
+
+    // Add to log
+    this.errorLog.push(errorEntry);
+
+    // Trim log if too long
+    if (this.errorLog.length > this.maxLogEntries) {
+      this.errorLog = this.errorLog.slice(-this.maxLogEntries);
+    }
+
+    // Log to console based on level
+    this.logToConsole(errorEntry);
+
+    // Store in extension storage for persistence
+    this.persistError(errorEntry);
+
+    // Show user notification if enabled and error is critical
+    if (this.enableUserNotifications && this.isCriticalError(errorEntry)) {
+      this.showUserNotification(errorEntry);
+    }
+  }
+
+  /**
+   * Determine log level based on error
+   * @param {Error|string} error - Error to evaluate
+   * @returns {string} Log level
+   */
+  determineLogLevel(error) {
+    if (error?.name === 'CriticalError') return 'error';
+    if (error?.name === 'WarningError') return 'warn';
+    if (typeof error === 'string' && error.includes('timeout')) return 'warn';
+    return 'error';
+  }
+
+  /**
+   * Log to console with appropriate level
+   * @param {Object} errorEntry - Error entry to log
+   */
+  logToConsole(errorEntry) {
+    const { level, context, message, stack, metadata } = errorEntry;
+    const logMessage = `[${context}] ${message}`;
+    
+    switch (level) {
+      case 'debug':
+        if (this.logLevel === 'debug') {
+          console.debug(logMessage, { stack, ...metadata });
+        }
+        break;
+      case 'info':
+        if (['debug', 'info'].includes(this.logLevel)) {
+          console.info(logMessage, { stack, ...metadata });
+        }
+        break;
+      case 'warn':
+        if (['debug', 'info', 'warn'].includes(this.logLevel)) {
+          console.warn(logMessage, { stack, ...metadata });
+        }
+        break;
+      case 'error':
+      default:
+        console.error(logMessage, { stack, ...metadata });
+        break;
+    }
+  }
+
+  /**
+   * Persist error to Chrome storage
+   * @param {Object} errorEntry - Error entry to persist
+   */
+  async persistError(errorEntry) {
+    try {
+      const storage = typeof chrome !== 'undefined' && chrome.storage 
+        ? chrome.storage.local 
+        : null;
+
+      if (storage) {
+        const key = 'focusflow_error_log';
+        const result = await storage.get([key]);
+        const existingLog = result[key] || [];
+        
+        // Add new error and trim
+        existingLog.push(errorEntry);
+        const trimmedLog = existingLog.slice(-this.maxLogEntries);
+        
+        await storage.set({ [key]: trimmedLog });
+      }
+    } catch (persistError) {
+      // Avoid infinite recursion if storage fails
+      console.error('Failed to persist error:', persistError);
+    }
+  }
+
+  /**
+   * Check if error is critical and needs user notification
+   * @param {Object} errorEntry - Error entry to evaluate
+   * @returns {boolean} Whether error is critical
+   */
+  isCriticalError(errorEntry) {
+    const criticalContexts = [
+      'SidebarManager',
+      'MessageBus',
+      'StateManager'
+    ];
+
+    const criticalMessages = [
+      'injection failed',
+      'timeout',
+      'connection failed',
+      'storage quota exceeded'
+    ];
+
+    return criticalContexts.includes(errorEntry.context) ||
+           criticalMessages.some(msg => errorEntry.message.toLowerCase().includes(msg));
+  }
+
+  /**
+   * Show user notification for critical errors
+   * @param {Object} errorEntry - Error entry to display
+   */
+  showUserNotification(errorEntry) {
+    if (typeof chrome !== 'undefined' && chrome.notifications) {
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'icon.png',
+        title: 'FocusFlow AI Error',
+        message: `${errorEntry.context}: ${errorEntry.message}`
+      });
+    }
+  }
+
+  /**
+   * Create recoverable error
+   * @param {string} message - Error message
+   * @param {Function} recovery - Recovery function
+   * @param {Object} metadata - Additional metadata
+   * @returns {Error} Recoverable error
+   */
+  createRecoverableError(message, recovery = null, metadata = {}) {
+    const error = new Error(message);
+    error.name = 'RecoverableError';
+    error.recovery = recovery;
+    error.metadata = metadata;
+    return error;
+  }
+
+  /**
+   * Handle recoverable error with automatic recovery
+   * @param {Error} error - Recoverable error
+   * @param {string} context - Error context
+   */
+  async handleRecoverableError(error, context = 'Unknown') {
+    this.log(error, context, { recoverable: true });
+
+    if (error.recovery && typeof error.recovery === 'function') {
+      try {
+        console.log(`Attempting recovery for ${context}`);
+        await error.recovery();
+        console.log(`Recovery successful for ${context}`);
+        return true;
+      } catch (recoveryError) {
+        this.log(recoveryError, `${context} Recovery Failed`, {
+          originalError: error.message
+        });
+        return false;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Get error statistics
+   * @returns {Object} Error statistics
+   */
+  getErrorStats() {
+    const stats = {
+      total: this.errorLog.length,
+      byLevel: {},
+      byContext: {},
+      recent: this.errorLog.slice(-10)
+    };
+
+    this.errorLog.forEach(entry => {
+      // Count by level
+      stats.byLevel[entry.level] = (stats.byLevel[entry.level] || 0) + 1;
+      
+      // Count by context
+      stats.byContext[entry.context] = (stats.byContext[entry.context] || 0) + 1;
+    });
+
+    return stats;
+  }
+
+  /**
+   * Clear error log
+   */
+  clearLog() {
+    this.errorLog = [];
+    
+    // Also clear persisted log
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      chrome.storage.local.remove('focusflow_error_log');
+    }
+  }
+
+  /**
+   * Get recent errors
+   * @param {number} limit - Number of recent errors to return
+   * @returns {Array} Recent errors
+   */
+  getRecentErrors(limit = 10) {
+    return this.errorLog.slice(-limit);
+  }
+
+  /**
+   * Export error log for debugging
+   * @returns {Object} Complete error log
+   */
+  exportLog() {
+    return {
+      timestamp: new Date().toISOString(),
+      stats: this.getErrorStats(),
+      errors: this.errorLog,
+      environment: this.getEnvironmentInfo()
+    };
+  }
+
+  /**
+   * Get environment information for debugging
+   * @returns {Object} Environment info
+   */
+  getEnvironmentInfo() {
+    const info = {
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'background',
+      url: typeof window !== 'undefined' ? window.location?.href : 'background',
+      timestamp: new Date().toISOString()
+    };
+
+    if (typeof chrome !== 'undefined' && chrome.runtime) {
+      info.extensionVersion = chrome.runtime.getManifest?.()?.version;
+      info.extensionId = chrome.runtime.id;
+    }
+
+    return info;
+  }
+
+  /**
+   * Cleanup resources
+   */
+  cleanup() {
+    this.clearLog();
+    
+    // Remove global event listeners
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('unhandledrejection', this.handleUnhandledRejection);
+      window.removeEventListener('error', this.handleGlobalError);
+    }
+  }
+}
+
+// Export singleton instance for easy usage
+export const errorHandler = new ErrorHandler();
+
+// Export default
+export default ErrorHandler;
+```
+
+### 5. MessageBus.js (298 lines)
+File: c:\Users\phila\OneDrive\Desktop\project ojt\client\public\lib\MessageBus.js
+
+```javascript
+/**
+ * MessageBus - Centralized Communication Layer for FocusFlow AI Extension
+ * 
+ * Provides reliable, async-safe messaging between:
+ * - Content scripts
+ * - Background service worker
+ * - React frontend (iframe)
+ * 
+ * Features:
+ * - Promise-based messaging with timeout protection
+ * - Automatic retry logic for failed messages
+ * - Message ID tracking and response validation
+ * - Chrome runtime error handling
+ * - Listener registration and cleanup
+ */
+
+export class MessageBus {
+  constructor(options = {}) {
+    this.messageId = 0;
+    this.pendingMessages = new Map();
+    this.subscribers = new Map();
+    this.defaultTimeout = options.timeout || 5000;
+    this.maxRetries = options.maxRetries || 3;
+    this.retryDelay = options.retryDelay || 1000;
+    
+    this.setupMessageListener();
+  }
+
+  /**
+   * Generate unique message ID
+   * @returns {string} Unique message identifier
+   */
+  generateId() {
+    return `msg_${Date.now()}_${++this.messageId}`;
+  }
+
+  /**
+   * Send message to specified target with retry logic
+   * @param {string|number} target - 'background', tabId, or 'runtime'
+   * @param {Object} message - Message payload
+   * @param {Object} options - Send options
+   * @returns {Promise} Message response
+   */
+  async sendMessage(target, message, options = {}) {
+    const messageId = this.generateId();
+    const timeout = options.timeout || this.defaultTimeout;
+    const maxRetries = options.maxRetries || this.maxRetries;
+    
+    const messagePayload = {
+      ...message,
+      messageId,
+      timestamp: Date.now(),
+      source: this.getSourceContext()
+    };
+
+    return new Promise((resolve, reject) => {
+      const attemptSend = async (attempt = 1) => {
+        try {
+          const response = await this.performSend(target, messagePayload);
+          
+          // Validate response
+          if (!response || typeof response !== 'object') {
+            throw new Error('Invalid response format');
+          }
+
+          // Clean up pending message
+          if (this.pendingMessages.has(messageId)) {
+            this.pendingMessages.delete(messageId);
+          }
+
+          resolve(response);
+          
+        } catch (error) {
+          console.error(`MessageBus send attempt ${attempt} failed:`, error);
+          
+          if (attempt < maxRetries) {
+            // Retry with exponential backoff
+            const delay = this.retryDelay * Math.pow(2, attempt - 1);
+            setTimeout(() => attemptSend(attempt + 1), delay);
+          } else {
+            // Final failure
+            if (this.pendingMessages.has(messageId)) {
+              this.pendingMessages.delete(messageId);
+            }
+            reject(new Error(`Message failed after ${maxRetries} attempts: ${error.message}`));
+          }
+        }
+      };
+
+      // Store pending message for timeout handling
+      this.pendingMessages.set(messageId, { resolve, reject, timeout });
+      
+      // Start sending
+      attemptSend();
+
+      // Set timeout for the entire operation
+      setTimeout(() => {
+        if (this.pendingMessages.has(messageId)) {
+          const { reject } = this.pendingMessages.get(messageId);
+          this.pendingMessages.delete(messageId);
+          reject(new Error(`Message timeout: ${messageId}`));
+        }
+      }, timeout * maxRetries);
+    });
+  }
+
+  /**
+   * Perform the actual message send based on target
+   * @param {string|number} target - Message target
+   * @param {Object} message - Message payload
+   * @returns {Promise} Send response
+   */
+  async performSend(target, message) {
+    return new Promise((resolve, reject) => {
+      const handleResponse = (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          resolve(response);
+        }
+      };
+
+      try {
+        if (target === 'background' || target === 'runtime') {
+          chrome.runtime.sendMessage(message, handleResponse);
+        } else if (typeof target === 'number') {
+          // Send to specific tab
+          chrome.tabs.sendMessage(target, message, handleResponse);
+        } else {
+          reject(new Error(`Invalid target: ${target}`));
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  /**
+   * Register handler for specific message type
+   * @param {string} type - Message type to handle
+   * @param {Function} handler - Handler function
+   * @param {Object} options - Handler options
+   */
+  onMessage(type, handler, options = {}) {
+    if (!this.subscribers.has(type)) {
+      this.subscribers.set(type, []);
+    }
+
+    const handlerWrapper = {
+      handler,
+      options,
+      id: this.generateId()
+    };
+
+    this.subscribers.get(type).push(handlerWrapper);
+
+    // Return unsubscribe function
+    return () => {
+      const handlers = this.subscribers.get(type);
+      if (handlers) {
+        const index = handlers.findIndex(h => h.id === handlerWrapper.id);
+        if (index > -1) {
+          handlers.splice(index, 1);
+        }
+      }
+    };
+  }
+
+  /**
+   * Remove message handler
+   * @param {string} type - Message type
+   * @param {Function} handler - Handler function to remove
+   */
+  offMessage(type, handler) {
+    if (!this.subscribers.has(type)) return;
+
+    const handlers = this.subscribers.get(type);
+    const index = handlers.findIndex(h => h.handler === handler);
+    if (index > -1) {
+      handlers.splice(index, 1);
+    }
+  }
+
+  /**
+   * Setup global message listener
+   */
+  setupMessageListener() {
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        const { type, messageId } = message;
+
+        if (!type || !this.subscribers.has(type)) {
+          return false; // No handlers for this message type
+        }
+
+        const handlers = this.subscribers.get(type);
+        
+        // Execute all handlers for this message type
+        const executeHandlers = async () => {
+          try {
+            const results = await Promise.allSettled(
+              handlers.map(({ handler, options }) => 
+                Promise.resolve(handler(message, sender, options))
+              )
+            );
+
+            // Process results
+            const successfulResults = results
+              .filter(result => result.status === 'fulfilled')
+              .map(result => result.value);
+
+            const errors = results
+              .filter(result => result.status === 'rejected')
+              .map(result => result.reason);
+
+            // Send response
+            sendResponse({
+              success: errors.length === 0,
+              results: successfulResults,
+              errors: errors.length > 0 ? errors : undefined,
+              messageId
+            });
+
+            // Log errors if any
+            if (errors.length > 0) {
+              console.error('Message handler errors:', errors);
+            }
+
+          } catch (error) {
+            console.error('MessageBus handler execution error:', error);
+            sendResponse({
+              success: false,
+              error: error.message,
+              messageId
+            });
+          }
+        };
+
+        // Execute handlers asynchronously
+        executeHandlers();
+        
+        // Return true to indicate async response
+        return true;
+      });
+    }
+  }
+
+  /**
+   * Get source context for messages
+   * @returns {string} Source context
+   */
+  getSourceContext() {
+    if (typeof window !== 'undefined' && window.location) {
+      if (window.location.href.includes('index.html')) {
+        return 'popup';
+      } else if (window.location.href.includes('mode=sidebar')) {
+        return 'sidebar';
+      } else {
+        return 'content';
+      }
+    }
+    return 'background';
+  }
+
+  /**
+   * Clean up all pending messages and subscribers
+   */
+  cleanup() {
+    // Reject all pending messages
+    for (const [messageId, { reject }] of this.pendingMessages) {
+      reject(new Error(`MessageBus cleanup: ${messageId}`));
+    }
+    this.pendingMessages.clear();
+
+    // Clear all subscribers
+    this.subscribers.clear();
+  }
+
+  /**
+   * Get statistics for debugging
+   * @returns {Object} Statistics object
+   */
+  getStats() {
+    return {
+      pendingMessages: this.pendingMessages.size,
+      subscriberTypes: Array.from(this.subscribers.keys()),
+      totalSubscribers: Array.from(this.subscribers.values())
+        .reduce((total, handlers) => total + handlers.length, 0)
+    };
+  }
+}
+
+// Export singleton instance for easy usage
+export const messageBus = new MessageBus();
+
+// Export default
+export default MessageBus;
+```
+
+## SUMMARY
+
+This documentation contains the complete line-by-line code for all 5 library files in the FocusFlow AI Chrome extension:
+
+1. **ContentExtractor.js** (600 lines) - Advanced content extraction with Mozilla Readability integration
+2. **StateManager.js** (432 lines) - Event-driven state management with Chrome storage integration
+3. **SidebarManager.js** (697 lines) - Robust sidebar injection with DOM manipulation and error handling
+4. **ErrorHandler.js** (334 lines) - Global error handling with logging and recovery mechanisms
+5. **MessageBus.js** (298 lines) - Centralized messaging system for extension communication
+
+## TOTAL LINES: 2,261 lines of complete library code
+
+These files provide the core infrastructure for the FocusFlow AI extension, handling content extraction, state management, sidebar injection, error handling, and inter-component communication.

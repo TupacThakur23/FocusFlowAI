@@ -1,0 +1,146 @@
+import { useState, useEffect } from "react";
+import Launcher from "./pages/Launcher";
+import Dashboard from "./pages/Dashboard";
+import ResearchHub from "./pages/ResearchHub";
+import { ExtensionProvider } from "./lib/extension/ExtensionProvider";
+import { GlobalStatusProvider } from "./lib/extension/GlobalStatusProvider";
+import { ToastContainer } from "./components/Toast";
+import ErrorBoundary from "./components/ErrorBoundary";
+import { VIEWS, isValidView, getViewLabel } from "./constants/views";
+import { getAppMode, enforceSidebarMode, validateSidebarRendering } from "./utils/appMode";
+
+function App() {
+  // Get centralized app mode
+  const appMode = getAppMode();
+  
+  console.log('🎯 APP MODE DETECTION:', {
+    ...appMode,
+    timestamp: Date.now()
+  });
+  
+  // Enforce sidebar constraints if in sidebar mode
+  useEffect(() => {
+    if (appMode.isSidebar) {
+      enforceSidebarMode();
+      
+      // Validate sidebar rendering after mount
+      const validation = validateSidebarRendering();
+      console.log('🔍 SIDEBAR VALIDATION RESULT:', validation);
+    }
+  }, [appMode.isSidebar]);
+
+  console.log('🎯 VIEW STATE: App component rendering', {
+    hash: window.location.hash,
+    mode: appMode.mode,
+    timestamp: Date.now()
+  });
+
+  // Check if we should render Research Hub full-page (opened via #research hash)
+  const [view, setView] = useState(() => {
+    const initialView = window.location.hash === "#research" ? VIEWS.RESEARCH_HUB : VIEWS.LAUNCHER;
+    console.log('📍 VIEW STATE: Initial view set to', initialView);
+    console.log('🔍 VIEW VALIDATION: Initial view valid:', isValidView(initialView));
+    return initialView;
+  });
+
+  // Enhanced setView with logging and validation
+  const handleViewChange = (nextView) => {
+    console.log('🚀 VIEW TRANSITION:', {
+      from: view,
+      to: nextView,
+      isValid: isValidView(nextView),
+      timestamp: Date.now()
+    });
+    
+    if (!isValidView(nextView)) {
+      console.error('🚨 VIEW VALIDATION: Invalid view attempted:', nextView);
+      return;
+    }
+    
+    setView(nextView);
+  };
+
+  // Listen for hash changes
+  useEffect(() => {
+    const onHash = () => {
+      const nextView = window.location.hash === "#research" ? VIEWS.RESEARCH_HUB : VIEWS.LAUNCHER;
+      console.log('🚀 VIEW TRANSITION: Hash change detected', {
+        hash: window.location.hash,
+        nextView,
+        currentView: view,
+        isValid: isValidView(nextView)
+      });
+      setView(nextView);
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, [view]);
+
+  // Render pipeline with comprehensive logging
+  const renderContent = () => {
+    console.log('🎯 RENDER PIPELINE: Rendering activeView:', view, {
+      isValid: isValidView(view),
+      label: getViewLabel(view)
+    });
+    
+    switch(view) {
+      case VIEWS.RESEARCH_HUB:
+        console.log('🎯 RENDER PIPELINE: Rendering research hub');
+        return (
+          <ResearchHub onBack={() => {
+            console.log('🚀 VIEW TRANSITION: ResearchHub back to launcher');
+            window.location.hash = "";
+            setView(VIEWS.LAUNCHER);
+          }} />
+        );
+        
+      case VIEWS.AIDE:
+        console.log('🎯 RENDER PIPELINE: Rendering aide dashboard');
+        return (
+          <Dashboard onBack={() => {
+            console.log('🚀 VIEW TRANSITION: Aide dashboard back to launcher');
+            setView(VIEWS.LAUNCHER);
+          }} />
+        );
+        
+      case VIEWS.LAUNCHER:
+        console.log('🎯 RENDER PIPELINE: Rendering launcher');
+        return <Launcher onNavigate={handleViewChange} />;
+        
+      default:
+        console.error('🚨 RENDER PIPELINE: INVALID VIEW:', view);
+        return (
+          <div style={{color: "white", padding: "20px", textAlign: "center"}}>
+            <h2>🚨 INVALID VIEW: {view}</h2>
+            <p>Expected one of: {Object.values(VIEWS).join(', ')}</p>
+            <button onClick={() => setView(VIEWS.LAUNCHER)} style={{padding: "10px", marginTop: "10px"}}>
+              Return to Launcher
+            </button>
+          </div>
+        );
+    }
+  };
+
+  // TEMPORARY: Bypass ErrorBoundary to test ResearchHub
+  console.log('🔧 DEBUG: Bypassing ErrorBoundary for testing');
+  return (
+    <GlobalStatusProvider>
+      <ExtensionProvider>
+        {renderContent()}
+      </ExtensionProvider>
+    </GlobalStatusProvider>
+  );
+
+  // ORIGINAL (restore after testing):
+  // return (
+  //   <ErrorBoundary>
+  //     <GlobalStatusProvider>
+  //       <ExtensionProvider>
+  //         {renderContent()}
+  //       </ExtensionProvider>
+  //     </GlobalStatusProvider>
+  //   </ErrorBoundary>
+  // );
+}
+
+export default App;

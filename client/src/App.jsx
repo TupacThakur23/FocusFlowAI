@@ -1,36 +1,43 @@
 import { useState, useEffect } from "react";
-import Launcher from "./pages/Launcher";
 import Dashboard from "./pages/Dashboard";
 import ResearchHub from "./pages/ResearchHub";
 
-function App() {
-  // Check if we should render Research Hub full-page (opened via #research hash)
-  const [view, setView] = useState(() => {
-    if (window.location.hash === "#research") return "research";
-    return "launcher";
-  });
+console.log('🎯 APP: Loading with mode detection');
 
-  // Listen for hash changes
+function App() {
+  const [view, setView] = useState("launcher");
+  const [mode, setMode] = useState("sidebar");
+
+  // Detect mode from URL
   useEffect(() => {
-    const onHash = () => {
-      if (window.location.hash === "#research") setView("research");
-    };
-    window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
+    const urlParams = new URLSearchParams(window.location.search);
+    const hash = window.location.hash.slice(1);
+    
+    if (urlParams.get('mode') === 'sidebar') {
+      setMode("sidebar");
+      setView("aide");
+    } else if (hash === 'research') {
+      setMode("workspace");
+      setView("research");
+    }
   }, []);
 
-  if (view === "research") {
-    return <ResearchHub onBack={() => {
-      window.location.hash = "";
-      setView("launcher");
-    }} />;
+  // Sidebar mode - only Aide
+  if (mode === "sidebar") {
+    return <Dashboard />;
   }
 
-  if (view === "aide") {
-    return <Dashboard onBack={() => setView("launcher")} />;
+  // Workspace mode - Research Hub
+  if (mode === "workspace") {
+    return <ResearchHub />;
   }
 
-  return <Launcher onNavigate={setView} />;
+  return <div className="w-full h-full bg-[#050816] text-white flex items-center justify-center">
+    <div className="text-center">
+      <h1 className="text-2xl font-bold mb-2">FocusFlow AI</h1>
+      <p className="text-gray-400">Loading...</p>
+    </div>
+  </div>;
 }
 
 export default App;
