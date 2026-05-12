@@ -1,72 +1,72 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ui-bg: #0a0a0b;
-  --color-ui-card: #111214;
-  --color-ui-card-2: #17181c;
-  --color-ui-border: #26272b;
+  --color-ui-bg: #03040b;
+  --color-ui-card: #060712;
+  --color-ui-card-hover: #0a0b18;
+  --color-ui-border: rgba(255, 255, 255, 0.04);
   --color-ui-text: #f3f4f6;
-  --color-ui-muted: #9ca3af;
-  --color-ui-accent: #6366f1;
+  --color-ui-muted: #6b7280;
+  --color-ui-accent: #2563eb;
+  --color-ui-accent-glow: rgba(37, 99, 235, 0.15);
 }
 
-/* Base styles */
-html,
-body {
-  width: 100%;
-  height: 100%;
+html, body {
   margin: 0;
   padding: 0;
-  background: #050816;
-}
-
-body {
-  background-color: var(--color-ui-bg);
-  color: var(--color-ui-text);
-  font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  background: #03040b;
+  color: #f3f4f6;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 #root {
   width: 100%;
   height: 100%;
-  overflow: hidden;
 }
 
-/* Popup mode - when NOT in sidebar */
-html:not(.sidebar-mode) #root,
-body:not(.sidebar-mode) #root {
-  width: 400px;
-  height: 500px;
-  overflow: hidden;
+/* Custom Sapphire Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(37, 99, 235, 0.4);
 }
 
-/* Sidebar mode - when in sidebar */
-html.sidebar-mode #root,
-body.sidebar-mode #root {
-  width: 100%;
-  height: 100%;
+/* Sizing Modes */
+body.popup-mode {
+  width: 320px !important;
+  height: 440px !important;
 }
 
-.sidebar-page {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  background: #050816;
-  color: white;
-  padding: 24px;
+body.sidebar-mode {
+  width: 100vw;
+  height: 100vh;
 }
 
-/* Popup page styles */
-.popup-page {
-  width: 100%;
-  height: 100%;
-  max-width: 400px;
-  max-height: 500px;
-  display: flex;
-  flex-direction: column;
-  background: #050816;
-  color: white;
-  padding: 20px;
+body.workspace-mode {
+  width: 100vw;
+  height: 100vh;
   overflow-y: auto;
+}
+
+/* Elite Animations */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

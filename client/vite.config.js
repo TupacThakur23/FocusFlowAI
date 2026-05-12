@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: './', // Use relative paths for Chrome extension compatibility
   build: {
-    outDir: 'dist',
+    outDir: 'dist_FINAL',
     assetsDir: 'assets',
     sourcemap: true, // Enable source maps for proper debugging
     rollupOptions: {
