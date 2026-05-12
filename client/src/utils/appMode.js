@@ -1,8 +1,4 @@
-/**
- * App Mode Detection - Centralized mode handling for FocusFlow AI
- * 
- * Detects and standardizes app rendering modes across the extension
- */
+
 
 export function getAppMode() {
   const url = window.location.href;
@@ -27,13 +23,13 @@ export function getAppMode() {
 export function enforceSidebarMode() {
   const mode = getAppMode();
   
-  // Force sidebar constraints
+
   if (mode.isSidebar) {
-    // Add sidebar-specific classes to root
+
     document.documentElement.classList.add('focusflow-sidebar-mode');
     document.body.classList.add('focusflow-sidebar-mode');
     
-    // Remove any viewport-based sizing
+
     const style = document.createElement('style');
     style.id = 'focusflow-sidebar-constraints';
     style.textContent = `
@@ -56,7 +52,7 @@ export function enforceSidebarMode() {
         position: relative !important;
       }
       
-      /* Prevent viewport units in sidebar mode */
+      
       .focusflow-sidebar-mode * {
         min-height: unset !important;
         min-width: unset !important;
@@ -65,7 +61,7 @@ export function enforceSidebarMode() {
       }
     `;
     
-    // Remove existing constraints
+
     const existing = document.getElementById('focusflow-sidebar-constraints');
     if (existing) existing.remove();
     
@@ -90,7 +86,7 @@ export function validateSidebarRendering() {
       timestamp: Date.now()
     });
     
-    // Check for problematic viewport units
+
     const allElements = document.querySelectorAll('*');
     const viewportElements = [];
     

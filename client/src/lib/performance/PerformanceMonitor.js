@@ -1,13 +1,4 @@
-/**
- * PerformanceMonitor - Performance Monitoring and Optimization
- * 
- * Provides performance monitoring utilities for:
- * - React render optimization
- * - Memory usage tracking
- * - Request deduplication
- * - Debouncing expensive operations
- * - Performance metrics collection
- */
+
 
 class PerformanceMonitor {
   constructor() {
@@ -26,25 +17,19 @@ class PerformanceMonitor {
     this.initializeMonitoring();
   }
 
-  /**
-   * Initialize performance monitoring
-   */
+  
   initializeMonitoring() {
-    // Monitor memory usage
+
     if (performance.memory) {
       this.startMemoryMonitoring();
     }
 
-    // Monitor render performance
     this.startRenderMonitoring();
 
-    // Setup cleanup interval
     this.startCleanupInterval();
   }
 
-  /**
-   * Start memory usage monitoring
-   */
+  
   startMemoryMonitoring() {
     const measureMemory = () => {
       if (performance.memory) {
@@ -57,12 +42,12 @@ class PerformanceMonitor {
         
         this.metrics.memoryUsage.push(memory);
         
-        // Keep only last 100 measurements
+
         if (this.metrics.memoryUsage.length > 100) {
           this.metrics.memoryUsage = this.metrics.memoryUsage.slice(-100);
         }
         
-        // Check for memory leaks
+
         if (memory.used > memory.limit * 0.9) {
           console.warn('High memory usage detected:', memory);
           this.triggerCleanup();
@@ -70,25 +55,20 @@ class PerformanceMonitor {
       }
     };
 
-    // Measure memory every 5 seconds
     setInterval(measureMemory, 5000);
   }
 
-  /**
-   * Start render performance monitoring
-   */
+  
   startRenderMonitoring() {
     if (typeof window !== 'undefined' && window.performance) {
-      // Monitor React render performance
+
       this.observeReactRenders();
     }
   }
 
-  /**
-   * Observe React renders (if React DevTools available)
-   */
+  
   observeReactRenders() {
-    // Try to detect React renders using performance observer
+
     if (window.PerformanceObserver) {
       const observer = new PerformanceObserver((list) => {
         list.getEntries().forEach(entry => {
@@ -108,22 +88,18 @@ class PerformanceMonitor {
     }
   }
 
-  /**
-   * Start cleanup interval
-   */
+  
   startCleanupInterval() {
     setInterval(() => {
       this.triggerCleanup();
     }, 30000); // Cleanup every 30 seconds
   }
 
-  /**
-   * Trigger cleanup of resources
-   */
+  
   triggerCleanup() {
     const now = Date.now();
     
-    // Clear old debounce timers
+
     for (const [key, timer] of this.debounceTimers.entries()) {
       if (now - timer.lastUsed > 60000) { // 1 minute old
         clearTimeout(timer.timeout);
@@ -131,29 +107,27 @@ class PerformanceMonitor {
       }
     }
     
-    // Clear old request cache
+
     for (const [key, request] of this.requestCache.entries()) {
       if (now - request.timestamp > 300000) { // 5 minutes old
         this.requestCache.delete(key);
       }
     }
     
-    // Limit memory usage array size
+
     if (this.metrics.memoryUsage.length > 50) {
       this.metrics.memoryUsage = this.metrics.memoryUsage.slice(-50);
     }
     
     this.metrics.lastCleanup = now;
     
-    // Force garbage collection if available
+
     if (window.gc) {
       window.gc();
     }
   }
 
-  /**
-   * Debounce function with performance tracking
-   */
+  
   debounce(func, wait, key = 'default') {
     return (...args) => {
       const existing = this.debounceTimers.get(key);
@@ -174,9 +148,7 @@ class PerformanceMonitor {
     };
   }
 
-  /**
-   * Throttle function with performance tracking
-   */
+  
   throttle(func, limit) {
     let inThrottle;
     return function(...args) {
@@ -188,9 +160,7 @@ class PerformanceMonitor {
     };
   }
 
-  /**
-   * Memoize function with cache size limit
-   */
+  
   memoize(func, maxSize = 100) {
     const cache = new Map();
     
@@ -203,7 +173,7 @@ class PerformanceMonitor {
       
       const result = func(...args);
       
-      // Limit cache size
+
       if (cache.size >= maxSize) {
         const firstKey = cache.keys().next().value;
         cache.delete(firstKey);
@@ -214,27 +184,25 @@ class PerformanceMonitor {
     };
   }
 
-  /**
-   * Deduplicate requests with caching
-   */
+  
   async deduplicatedRequest(key, requestFn, options = {}) {
     const { cacheTime = 5000, maxSize = 50 } = options;
     const now = Date.now();
     
-    // Check cache
+
     const cached = this.requestCache.get(key);
     if (cached && (now - cached.timestamp) < cacheTime) {
       this.metrics.requestCounts.set(key, (this.metrics.requestCounts.get(key) || 0) + 1);
       return cached.result;
     }
     
-    // Track request count
+
     this.metrics.requestCounts.set(key, (this.metrics.requestCounts.get(key) || 0) + 1);
     
     try {
       const result = await requestFn();
       
-      // Cache result
+
       if (this.requestCache.size >= maxSize) {
         const firstKey = this.requestCache.keys().next().value;
         this.requestCache.delete(firstKey);
@@ -247,15 +215,13 @@ class PerformanceMonitor {
       
       return result;
     } catch (error) {
-      // Remove from cache on error
+
       this.requestCache.delete(key);
       throw error;
     }
   }
 
-  /**
-   * Measure function execution time
-   */
+  
   measure(func, label) {
     return async (...args) => {
       const start = performance.now();
@@ -279,9 +245,7 @@ class PerformanceMonitor {
     };
   }
 
-  /**
-   * Create optimized React component wrapper
-   */
+  
   optimizeComponent(Component, options = {}) {
     const {
       memoize = true,
@@ -291,12 +255,10 @@ class PerformanceMonitor {
 
     let OptimizedComponent = Component;
 
-    // Add memoization
     if (memoize) {
       OptimizedComponent = React.memo(OptimizedComponent);
     }
 
-    // Add debouncing for props
     if (debounceMs > 0) {
       const debouncedRender = this.debounce((props) => {
         return <OptimizedComponent {...props} />;
@@ -305,7 +267,6 @@ class PerformanceMonitor {
       return debouncedRender;
     }
 
-    // Add throttling for renders
     if (throttleMs > 0) {
       const throttledRender = this.throttle((props) => {
         return <OptimizedComponent {...props} />;
@@ -317,9 +278,7 @@ class PerformanceMonitor {
     return OptimizedComponent;
   }
 
-  /**
-   * Get performance metrics
-   */
+  
   getMetrics() {
     return {
       ...this.metrics,
@@ -330,9 +289,7 @@ class PerformanceMonitor {
     };
   }
 
-  /**
-   * Get memory usage trend
-   */
+  
   getMemoryTrend() {
     if (this.metrics.memoryUsage.length < 2) return 'stable';
     
@@ -345,9 +302,7 @@ class PerformanceMonitor {
     return increasing ? 'increasing' : 'stable';
   }
 
-  /**
-   * Reset metrics
-   */
+  
   resetMetrics() {
     this.metrics = {
       renders: 0,
@@ -361,34 +316,30 @@ class PerformanceMonitor {
     this.debounceTimers.clear();
   }
 
-  /**
-   * Cleanup all resources
-   */
+  
   cleanup() {
-    // Clear observers
+
     for (const [key, observer] of this.observers.entries()) {
       observer.disconnect();
       this.observers.delete(key);
     }
     
-    // Clear timers
+
     for (const [key, timer] of this.debounceTimers.entries()) {
       clearTimeout(timer.timeout);
     }
     this.debounceTimers.clear();
     
-    // Clear cache
+
     this.requestCache.clear();
     
-    // Reset metrics
+
     this.resetMetrics();
   }
 }
 
-// Export singleton instance
 export const performanceMonitor = new PerformanceMonitor();
 
-// Export utilities
 export const debounce = performanceMonitor.debounce.bind(performanceMonitor);
 export const throttle = performanceMonitor.throttle.bind(performanceMonitor);
 export const memoize = performanceMonitor.memoize.bind(performanceMonitor);

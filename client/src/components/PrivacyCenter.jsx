@@ -1,14 +1,4 @@
-/**
- * PrivacyCenter - Privacy Controls and Data Transparency for FocusFlow AI
- * 
- * Provides trust and privacy features:
- * - Privacy controls UI
- * - Data transparency settings
- * - Export/delete user data
- * - AI usage transparency
- * - Local vs cloud processing indicators
- * - Consent flows
- */
+
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
@@ -52,7 +42,7 @@ const PrivacyCenter = ({
   onSettingsChange,
   initialTab = 'overview' 
 }) => {
-  // State management
+
   const [activeTab, setActiveTab] = useState(initialTab);
   const [privacySettings, setPrivacySettings] = useExtensionState('privacySettings', { storage: 'sync' });
   const [dataUsage, setDataUsage] = useExtensionState('dataUsage', { storage: 'local' });
@@ -64,7 +54,6 @@ const PrivacyCenter = ({
   
   const { addToast } = useGlobalStatus();
 
-  // Privacy tabs
   const privacyTabs = [
     { id: 'overview', label: 'Overview', icon: <Shield className="w-4 h-4" /> },
     { id: 'data', label: 'Data Usage', icon: <Database className="w-4 h-4" /> },
@@ -73,7 +62,6 @@ const PrivacyCenter = ({
     { id: 'export', label: 'Data Management', icon: <Download className="w-4 h-4" /> }
   ];
 
-  // Initialize privacy settings
   useEffect(() => {
     if (!privacySettings) {
       setPrivacySettings({
@@ -92,7 +80,6 @@ const PrivacyCenter = ({
     }
   }, [privacySettings, setPrivacySettings]);
 
-  // Event handlers
   const handleSettingChange = useCallback((setting, value) => {
     const newSettings = { ...privacySettings, [setting]: value };
     setPrivacySettings(newSettings);
@@ -122,10 +109,10 @@ const PrivacyCenter = ({
     setIsExporting(true);
     
     try {
-      // Collect user data
+
       const userData = await this.collectUserData();
       
-      // Create downloadable file
+
       const blob = new Blob([JSON.stringify(userData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -158,10 +145,10 @@ const PrivacyCenter = ({
     setIsDeleting(true);
     
     try {
-      // Delete all user data
+
       await this.deleteAllUserData();
       
-      // Reset settings to defaults
+
       setPrivacySettings({
         dataCollection: false,
         localProcessing: true,
@@ -208,7 +195,6 @@ const PrivacyCenter = ({
     });
   }, []);
 
-  // Render overview tab
   const renderOverview = () => (
     <div className="privacy-overview">
       <div className="overview-header">
@@ -297,7 +283,6 @@ const PrivacyCenter = ({
     </div>
   );
 
-  // Render data usage tab
   const renderDataUsage = () => (
     <div className="data-usage">
       <div className="usage-header">
@@ -428,7 +413,6 @@ const PrivacyCenter = ({
     </div>
   );
 
-  // Render privacy controls tab
   const renderPrivacyControls = () => (
     <div className="privacy-controls">
       <div className="controls-header">
@@ -629,7 +613,6 @@ const PrivacyCenter = ({
     </div>
   );
 
-  // Render AI transparency tab
   const renderAITransparency = () => (
     <div className="ai-transparency">
       <div className="transparency-header">
@@ -803,7 +786,6 @@ const PrivacyCenter = ({
     </div>
   );
 
-  // Render data management tab
   const renderDataManagement = () => (
     <div className="data-management">
       <div className="management-header">
@@ -918,7 +900,6 @@ const PrivacyCenter = ({
     </div>
   );
 
-  // Render active tab content
   const renderTabContent = () => {
     switch (activeTab) {
       case 'overview':
@@ -939,7 +920,7 @@ const PrivacyCenter = ({
   return (
     <div className={`privacy-center ${className}`}>
       <div className="privacy-container">
-        {/* Header */}
+        
         <div className="privacy-header">
           <div className="header-content">
             <Shield className="w-8 h-8 text-blue-500" />
@@ -954,7 +935,7 @@ const PrivacyCenter = ({
           </button>
         </div>
 
-        {/* Navigation */}
+        
         <div className="privacy-nav">
           {privacyTabs.map(tab => (
             <button
@@ -968,7 +949,7 @@ const PrivacyCenter = ({
           ))}
         </div>
 
-        {/* Content */}
+        
         <div className="privacy-content">
           {renderTabContent()}
         </div>

@@ -1,15 +1,4 @@
-/**
- * DebugManager - Testing and Debugging Tools for FocusFlow AI
- * 
- * Provides debugging utilities for:
- * - Extension health monitoring
- * - Performance tracking
- * - Error logging and reporting
- * - State inspection
- * - API testing
- * - Component debugging
- * - Network monitoring
- */
+
 
 export class DebugManager {
   constructor() {
@@ -31,35 +20,30 @@ export class DebugManager {
     this.initializeDebugging();
   }
 
-  /**
-   * Initialize debugging tools
-   */
+  
   initializeDebugging() {
     if (!this.debugMode) return;
 
-    // Setup global error handling
     this.setupGlobalErrorHandling();
     
-    // Setup performance monitoring
+
     this.setupPerformanceMonitoring();
     
-    // Setup network monitoring
+
     this.setupNetworkMonitoring();
     
-    // Create debug panel
+
     this.createDebugPanel();
     
-    // Setup keyboard shortcuts for debugging
+
     this.setupDebugShortcuts();
     
     this.log('info', 'Debug manager initialized');
   }
 
-  /**
-   * Setup global error handling
-   */
+  
   setupGlobalErrorHandling() {
-    // Override console methods to capture all logs
+
     const originalConsole = {
       log: console.log,
       error: console.error,
@@ -89,7 +73,6 @@ export class DebugManager {
       originalConsole.info(...args);
     };
 
-    // Setup unhandled error handlers
     window.addEventListener('error', (event) => {
       this.log('error', 'Unhandled error:', event.error);
       this.metrics.errors++;
@@ -101,11 +84,9 @@ export class DebugManager {
     });
   }
 
-  /**
-   * Setup performance monitoring
-   */
+  
   setupPerformanceMonitoring() {
-    // Monitor long tasks
+
     if ('PerformanceObserver' in window) {
       const observer = new PerformanceObserver((list) => {
         list.getEntries().forEach(entry => {
@@ -122,7 +103,6 @@ export class DebugManager {
       }
     }
 
-    // Monitor memory usage
     setInterval(() => {
       if (performance.memory) {
         const memory = {
@@ -134,12 +114,11 @@ export class DebugManager {
 
         this.metrics.memorySnapshots.push(memory);
         
-        // Keep only last 50 snapshots
+
         if (this.metrics.memorySnapshots.length > 50) {
           this.metrics.memorySnapshots = this.metrics.memorySnapshots.slice(-50);
         }
 
-        // Warn about high memory usage
         if (memory.used > memory.limit * 0.9) {
           this.log('warn', 'High memory usage detected:', memory);
         }
@@ -147,11 +126,9 @@ export class DebugManager {
     }, 10000); // Every 10 seconds
   }
 
-  /**
-   * Setup network monitoring
-   */
+  
   setupNetworkMonitoring() {
-    // Override fetch to monitor API calls
+
     const originalFetch = window.fetch;
     
     window.fetch = async (...args) => {
@@ -174,12 +151,10 @@ export class DebugManager {
           success: response.ok
         });
 
-        // Keep only last 100 requests
         if (this.networkRequests.length > 100) {
           this.networkRequests = this.networkRequests.slice(-100);
         }
 
-        // Log slow requests
         if (duration > 2000) {
           this.log('warn', `Slow API call: ${url} took ${duration.toFixed(2)}ms`);
         }
@@ -205,11 +180,9 @@ export class DebugManager {
     };
   }
 
-  /**
-   * Create debug panel UI
-   */
+  
   createDebugPanel() {
-    // Create debug panel container
+
     const debugPanel = document.createElement('div');
     debugPanel.id = 'focusflow-debug-panel';
     debugPanel.style.cssText = `
@@ -230,7 +203,6 @@ export class DebugManager {
       display: none;
     `;
 
-    // Create panel header
     const header = document.createElement('div');
     header.style.cssText = `
       background: #333;
@@ -264,7 +236,6 @@ export class DebugManager {
     header.appendChild(title);
     header.appendChild(closeBtn);
 
-    // Create panel content
     const content = document.createElement('div');
     content.style.cssText = `
       padding: 10px;
@@ -272,7 +243,6 @@ export class DebugManager {
       overflow-y: auto;
     `;
 
-    // Add debug tabs
     const tabs = ['Metrics', 'Logs', 'Network', 'Tests', 'State'];
     const tabContainer = document.createElement('div');
     tabContainer.style.cssText = `
@@ -297,13 +267,13 @@ export class DebugManager {
       `;
       
       tabBtn.onclick = () => {
-        // Update active tab
+
         Array.from(tabContainer.children).forEach(btn => {
           btn.style.background = 'transparent';
         });
         tabBtn.style.background = '#444';
         
-        // Update tab content
+
         this.updateTabContent(tab, tabContent);
       };
 
@@ -317,7 +287,6 @@ export class DebugManager {
     debugPanel.appendChild(content);
     document.body.appendChild(debugPanel);
 
-    // Make debug panel globally accessible
     window.debugPanel = {
       show: () => {
         debugPanel.style.display = 'block';
@@ -332,9 +301,7 @@ export class DebugManager {
     };
   }
 
-  /**
-   * Update tab content in debug panel
-   */
+  
   updateTabContent(tab, contentElement) {
     let content = '';
 
@@ -359,9 +326,7 @@ export class DebugManager {
     contentElement.innerHTML = content;
   }
 
-  /**
-   * Get metrics content for debug panel
-   */
+  
   getMetricsContent() {
     const uptime = Date.now() - this.metrics.startTime;
     const memoryInfo = this.metrics.memorySnapshots[this.metrics.memorySnapshots.length - 1];
@@ -387,9 +352,7 @@ export class DebugManager {
     `;
   }
 
-  /**
-   * Get logs content for debug panel
-   */
+  
   getLogsContent() {
     const recentLogs = this.logs.slice(-50);
     
@@ -406,9 +369,7 @@ export class DebugManager {
     `;
   }
 
-  /**
-   * Get network content for debug panel
-   */
+  
   getNetworkContent() {
     const recentRequests = this.networkRequests.slice(-20);
     
@@ -426,9 +387,7 @@ export class DebugManager {
     `;
   }
 
-  /**
-   * Get tests content for debug panel
-   */
+  
   getTestsContent() {
     return `
       <h4 style="color: #4CAF50; margin-bottom: 10px;">Extension Tests</h4>
@@ -452,9 +411,7 @@ export class DebugManager {
     `;
   }
 
-  /**
-   * Get state content for debug panel
-   */
+  
   getStateContent() {
     return `
       <h4 style="color: #4CAF50; margin-bottom: 10px;">Extension State</h4>
@@ -472,9 +429,7 @@ export class DebugManager {
     `;
   }
 
-  /**
-   * Get log level color
-   */
+  
   getLogLevelColor(level) {
     const colors = {
       error: '#F44336',
@@ -485,12 +440,10 @@ export class DebugManager {
     return colors[level] || '#9E9E9E';
   }
 
-  /**
-   * Setup debug keyboard shortcuts
-   */
+  
   setupDebugShortcuts() {
     document.addEventListener('keydown', (event) => {
-      // Ctrl+Shift+D to toggle debug panel
+
       if (event.ctrlKey && event.shiftKey && event.key === 'D') {
         event.preventDefault();
         if (window.debugPanel) {
@@ -498,13 +451,13 @@ export class DebugManager {
         }
       }
       
-      // Ctrl+Shift+H to run health check
+
       if (event.ctrlKey && event.shiftKey && event.key === 'H') {
         event.preventDefault();
         this.runHealthCheck();
       }
       
-      // Ctrl+Shift+E to export debug data
+
       if (event.ctrlKey && event.shiftKey && event.key === 'E') {
         event.preventDefault();
         this.exportDebugData();
@@ -512,9 +465,7 @@ export class DebugManager {
     });
   }
 
-  /**
-   * Log message with timestamp
-   */
+  
   log(level, ...args) {
     const logEntry = {
       level,
@@ -525,37 +476,33 @@ export class DebugManager {
 
     this.logs.push(logEntry);
     
-    // Keep only last 200 logs
+
     if (this.logs.length > 200) {
       this.logs = this.logs.slice(-200);
     }
 
-    // Update message count
     this.metrics.messageCount++;
   }
 
-  /**
-   * Run comprehensive health check
-   */
+  
   async runHealthCheck() {
     const results = {
       timestamp: Date.now(),
       checks: {}
     };
 
-    // Check Chrome extension APIs
     results.checks.chromeAPIs = this.checkChromeAPIs();
     
-    // Check storage access
+
     results.checks.storage = await this.checkStorageAccess();
     
-    // Check message bus
+
     results.checks.messageBus = this.checkMessageBus();
     
-    // Check performance
+
     results.checks.performance = this.checkPerformance();
     
-    // Check security
+
     results.checks.security = this.checkSecurity();
     
     const overall = Object.values(results.checks).every(check => check.status === 'pass');
@@ -567,9 +514,7 @@ export class DebugManager {
     return results;
   }
 
-  /**
-   * Check Chrome extension APIs
-   */
+  
   checkChromeAPIs() {
     const checks = [
       { name: 'chrome.runtime', available: !!chrome.runtime },
@@ -588,18 +533,15 @@ export class DebugManager {
     };
   }
 
-  /**
-   * Check storage access
-   */
+  
   async checkStorageAccess() {
     try {
-      // Test local storage
+
       const testKey = 'focusflow_debug_test';
       await chrome.storage.local.set({ [testKey]: 'test' });
       const localValue = await chrome.storage.local.get(testKey);
       await chrome.storage.local.remove(testKey);
 
-      // Test session storage
       await chrome.storage.session.set({ [testKey]: 'test' });
       const sessionValue = await chrome.storage.session.get(testKey);
       await chrome.storage.session.remove(testKey);
@@ -621,12 +563,10 @@ export class DebugManager {
     }
   }
 
-  /**
-   * Check message bus functionality
-   */
+  
   checkMessageBus() {
     try {
-      // Check if message bus is available
+
       const messageBusAvailable = typeof window.messageBus !== 'undefined';
       
       return {
@@ -643,9 +583,7 @@ export class DebugManager {
     }
   }
 
-  /**
-   * Check performance metrics
-   */
+  
   checkPerformance() {
     const memoryInfo = performance.memory;
     const navigation = performance.getEntriesByType?.('navigation')?.[0];
@@ -679,13 +617,11 @@ export class DebugManager {
     };
   }
 
-  /**
-   * Check security settings
-   */
+  
   checkSecurity() {
     const checks = [];
     
-    // Check for HTTPS
+
     const isHTTPS = window.location.protocol === 'https:';
     checks.push({
       name: 'HTTPS Connection',
@@ -693,7 +629,6 @@ export class DebugManager {
       value: isHTTPS ? 'Secure' : 'Insecure'
     });
 
-    // Check for CSP
     const hasCSP = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
     checks.push({
       name: 'CSP Header',
@@ -708,9 +643,7 @@ export class DebugManager {
     };
   }
 
-  /**
-   * Test API connectivity
-   */
+  
   async testAPI() {
     const results = {
       timestamp: Date.now(),
@@ -718,7 +651,7 @@ export class DebugManager {
     };
 
     try {
-      // Test API endpoint
+
       const response = await fetch('/api/health', {
         method: 'GET',
         headers: {
@@ -735,7 +668,6 @@ export class DebugManager {
         message: response.ok ? 'API is responding' : 'API not responding'
       };
 
-      // Test API with authentication
       const authResponse = await fetch('/api/auth/test', {
         method: 'GET',
         headers: {
@@ -765,9 +697,7 @@ export class DebugManager {
     return results;
   }
 
-  /**
-   * Test message bus functionality
-   */
+  
   async testMessageBus() {
     const results = {
       timestamp: Date.now(),
@@ -779,7 +709,6 @@ export class DebugManager {
         throw new Error('Message bus not available');
       }
 
-      // Test message sending
       const testMessage = {
         type: 'DEBUG_TEST',
         data: { test: true, timestamp: Date.now() }
@@ -793,13 +722,11 @@ export class DebugManager {
         message: response.success ? 'Message sending works' : 'Message sending failed'
       };
 
-      // Test message subscription
       let messageReceived = false;
       const unsubscribe = window.messageBus.onMessage('DEBUG_RESPONSE', () => {
         messageReceived = true;
       });
 
-      // Trigger test message
       setTimeout(() => {
         unsubscribe();
         
@@ -824,9 +751,7 @@ export class DebugManager {
     return results;
   }
 
-  /**
-   * Display test results in debug panel
-   */
+  
   displayTestResults(testName, results) {
     const resultsElement = document.getElementById('test-results');
     if (resultsElement) {
@@ -846,9 +771,7 @@ export class DebugManager {
     }
   }
 
-  /**
-   * Export current extension state
-   */
+  
   exportState() {
     const state = {
       timestamp: Date.now(),
@@ -862,7 +785,6 @@ export class DebugManager {
       url: window.location.href
     };
 
-    // Download as JSON file
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -874,9 +796,7 @@ export class DebugManager {
     this.log('info', 'Debug state exported');
   }
 
-  /**
-   * Inspect React components
-   */
+  
   inspectComponents() {
     const inspectionElement = document.getElementById('state-inspection');
     if (inspectionElement) {
@@ -889,7 +809,6 @@ export class DebugManager {
         componentInfo += 'React DevTools not detected\n';
       }
 
-      // Check for extension components
       if (window.contentScript) {
         componentInfo += '\nContent Script State:\n';
         componentInfo += JSON.stringify(window.contentScript.getState(), null, 2);
@@ -904,9 +823,7 @@ export class DebugManager {
     }
   }
 
-  /**
-   * Clear all debug data
-   */
+  
   clearDebugData() {
     this.logs = [];
     this.metrics = {
@@ -922,23 +839,19 @@ export class DebugManager {
     
     this.log('info', 'Debug data cleared');
     
-    // Clear test results display
+
     const resultsElement = document.getElementById('test-results');
     if (resultsElement) {
       resultsElement.innerHTML = '<div>All debug data cleared</div>';
     }
   }
 
-  /**
-   * Export all debug data
-   */
+  
   exportDebugData() {
     this.exportState();
   }
 
-  /**
-   * Get comprehensive debug report
-   */
+  
   getDebugReport() {
     return {
       timestamp: Date.now(),
@@ -962,16 +875,14 @@ export class DebugManager {
     };
   }
 
-  /**
-   * Cleanup debug resources
-   */
+  
   cleanup() {
     this.logs = [];
     this.metrics.memorySnapshots = [];
     this.networkRequests = [];
     this.testResults.clear();
     
-    // Remove debug panel if exists
+
     const debugPanel = document.getElementById('focusflow-debug-panel');
     if (debugPanel) {
       debugPanel.remove();
@@ -981,10 +892,8 @@ export class DebugManager {
   }
 }
 
-// Export singleton instance
 export const debugManager = new DebugManager();
 
-// Export utilities
 export const log = debugManager.log.bind(debugManager);
 export const runHealthCheck = debugManager.runHealthCheck.bind(debugManager);
 export const testAPI = debugManager.testAPI.bind(debugManager);

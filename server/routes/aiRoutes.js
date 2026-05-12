@@ -36,7 +36,7 @@ router.post("/summarize", async (req, res) => {
   }
 });
 
-// Clean extraction text (optional cleanup if needed by frontend)
+
 router.post("/extract", async (req, res) => {
   try {
     const { text, url, title } = req.body;
@@ -44,7 +44,7 @@ router.post("/extract", async (req, res) => {
       return res.status(400).json({ error: "Text is required" });
     }
     
-    // Very basic cleaning for MVP: collapse multiple newlines and spaces
+
     const cleanedText = text
       .replace(/\n\s*\n/g, '\n\n')
       .replace(/ +/g, ' ')
@@ -62,7 +62,7 @@ router.post("/extract", async (req, res) => {
   }
 });
 
-// Q&A based on context
+
 router.post("/ask", async (req, res) => {
   try {
     const { context, question } = req.body;
@@ -94,7 +94,7 @@ router.post("/ask", async (req, res) => {
   }
 });
 
-// Workbook Context Chat (Phase 1 & 3)
+
 router.post("/workbook-chat", async (req, res) => {
   try {
     const { workbook, query } = req.body;
@@ -138,7 +138,7 @@ router.post("/workbook-chat", async (req, res) => {
   }
 });
 
-// Workbook Context Insights (Phase 4 & 5)
+
 router.get("/workbook-insights", async (req, res) => {
   try {
     const workbook = req.query.workbook || "Research Workbook";

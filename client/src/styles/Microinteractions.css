@@ -1,22 +1,9 @@
-/**
- * Microinteractions & Visual Consistency for FocusFlow AI
- * 
- * Provides polished user experience:
- * - Smooth transitions
- * - Thoughtful animations
- * - Microinteractions
- * - Loading states
- * - Empty states
- * - Visual consistency
- * - Interaction feedback
- */
 
-/* ===== BASE TRANSITIONS ===== */
+
 * {
   transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 
-/* ===== BUTTON MICROINTERACTIONS ===== */
 .btn-primary,
 .btn-secondary,
 .btn-ghost {
@@ -40,7 +27,6 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Ripple effect */
 .btn-ripple {
   position: relative;
   overflow: hidden;
@@ -64,7 +50,6 @@
   height: 300px;
 }
 
-/* ===== LOADING STATES ===== */
 .loading-spinner {
   display: inline-block;
   width: 20px;
@@ -107,7 +92,6 @@
   }
 }
 
-/* Skeleton loading */
 .skeleton {
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
@@ -119,7 +103,6 @@
   100% { background-position: -200% 0; }
 }
 
-/* ===== FORM MICROINTERACTIONS ===== */
 .form-input,
 .form-textarea,
 .form-select {
@@ -140,7 +123,6 @@
   border-color: #94a3b8;
 }
 
-/* Floating labels */
 .form-group-floating {
   position: relative;
   margin-bottom: 1.5rem;
@@ -166,7 +148,6 @@
   color: #3b82f6;
 }
 
-/* ===== CARD MICROINTERACTIONS ===== */
 .card {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -193,7 +174,6 @@
   left: 100%;
 }
 
-/* ===== NAVIGATION MICROINTERACTIONS ===== */
 .nav-link {
   position: relative;
   transition: all 0.2s ease;
@@ -216,7 +196,6 @@
   width: 100%;
 }
 
-/* Breadcrumb animations */
 .breadcrumb-item {
   animation: slideIn 0.3s ease forwards;
   opacity: 0;
@@ -237,7 +216,6 @@
   }
 }
 
-/* ===== MODAL MICROINTERACTIONS ===== */
 .modal-overlay {
   animation: fadeIn 0.3s ease;
 }
@@ -262,7 +240,6 @@
   }
 }
 
-/* ===== TOOLTIP MICROINTERACTIONS ===== */
 .tooltip {
   position: relative;
   display: inline-block;
@@ -310,7 +287,6 @@
   transform: translateX(-50%);
 }
 
-/* ===== PROGRESS INDICATORS ===== */
 .progress-bar {
   position: relative;
   overflow: hidden;
@@ -337,7 +313,6 @@
   100% { transform: translateX(100%); }
 }
 
-/* ===== TOGGLE SWITCHES ===== */
 .toggle-switch {
   position: relative;
   width: 48px;
@@ -369,7 +344,6 @@
   transform: translateX(24px);
 }
 
-/* ===== CHECKBOXES AND RADIO BUTTONS ===== */
 .checkbox,
 .radio {
   position: relative;
@@ -428,7 +402,6 @@
   border-color: #3b82f6;
 }
 
-/* ===== EMPTY STATES ===== */
 .empty-state {
   text-align: center;
   padding: 3rem 1rem;
@@ -454,7 +427,6 @@
   line-height: 1.6;
 }
 
-/* ===== STATUS INDICATORS ===== */
 .status-indicator {
   display: inline-flex;
   align-items: center;
@@ -486,7 +458,6 @@
   color: #1e40af;
 }
 
-/* Pulsing animation for live status */
 .status-indicator.live::before {
   content: '';
   width: 8px;
@@ -496,7 +467,6 @@
   animation: pulse 2s infinite;
 }
 
-/* ===== NOTIFICATIONS ===== */
 .notification {
   position: fixed;
   top: 20px;
@@ -537,7 +507,6 @@
   }
 }
 
-/* ===== ACCORDION MICROINTERACTIONS ===== */
 .accordion-item {
   border: 1px solid #e2e8f0;
   border-radius: 0.5rem;
@@ -578,7 +547,6 @@
   max-height: 500px;
 }
 
-/* ===== DROPDOWN MICROINTERACTIONS ===== */
 .dropdown {
   position: relative;
   display: inline-block;
@@ -620,7 +588,6 @@
   color: #1f2937;
 }
 
-/* ===== TAB MICROINTERACTIONS ===== */
 .tab-indicator {
   position: absolute;
   bottom: 0;
@@ -630,7 +597,6 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ===== SEARCH MICROINTERACTIONS ===== */
 .search-input {
   position: relative;
 }
@@ -648,7 +614,6 @@
   color: #3b82f6;
 }
 
-/* ===== AVATAR MICROINTERACTIONS ===== */
 .avatar {
   position: relative;
   display: inline-block;
@@ -677,7 +642,6 @@
   border-radius: 50%;
 }
 
-/* ===== BADGE MICROINTERACTIONS ===== */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -693,7 +657,6 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* ===== PAGINATION MICROINTERACTIONS ===== */
 .pagination {
   display: flex;
   gap: 0.5rem;
@@ -726,7 +689,6 @@
   color: white;
 }
 
-/* ===== HOVER EFFECTS ===== */
 .hover-lift {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -744,7 +706,6 @@
   box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
 }
 
-/* ===== LOADING STATES ===== */
 .loading-overlay {
   position: absolute;
   top: 0;
@@ -759,7 +720,6 @@
   backdrop-filter: blur(2px);
 }
 
-/* ===== SUCCESS ANIMATIONS ===== */
 .success-checkmark {
   width: 24px;
   height: 24px;
@@ -777,7 +737,6 @@
   font-weight: bold;
 }
 
-/* ===== ERROR SHAKE ===== */
 .error-shake {
   animation: shake 0.5s ease;
 }
@@ -788,15 +747,12 @@
   20%, 40%, 60%, 80% { transform: translateX(2px); }
 }
 
-/* ===== VISUAL CONSISTENCY ===== */
-/* Consistent spacing */
 .space-xs { margin: 0.25rem; }
 .space-sm { margin: 0.5rem; }
 .space-md { margin: 1rem; }
 .space-lg { margin: 1.5rem; }
 .space-xl { margin: 2rem; }
 
-/* Consistent border radius */
 .radius-xs { border-radius: 0.125rem; }
 .radius-sm { border-radius: 0.25rem; }
 .radius-md { border-radius: 0.375rem; }
@@ -804,14 +760,12 @@
 .radius-xl { border-radius: 0.75rem; }
 .radius-full { border-radius: 9999px; }
 
-/* Consistent shadows */
 .shadow-sm { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); }
 .shadow { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06); }
 .shadow-md { box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06); }
 .shadow-lg { box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05); }
 .shadow-xl { box-shadow: 0 20px 25px rgba(0, 0, 0, 0.1), 0 10px 10px rgba(0, 0, 0, 0.04); }
 
-/* ===== RESPONSIVE MICROINTERACTIONS ===== */
 @media (max-width: 768px) {
   .btn-primary,
   .btn-secondary,
@@ -832,7 +786,6 @@
   }
 }
 
-/* ===== DARK MODE MICROINTERACTIONS ===== */
 @media (prefers-color-scheme: dark) {
   .skeleton {
     background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
@@ -858,7 +811,6 @@
   }
 }
 
-/* ===== REDUCED MOTION ===== */
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
@@ -881,29 +833,27 @@
   }
 }
 
-/* ===== CUSTOM PROPERTIES ===== */
 :root {
-  /* Animation durations */
+  
   --transition-fast: 0.15s;
   --transition-normal: 0.2s;
   --transition-slow: 0.3s;
   
-  /* Easing functions */
+  
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   
-  /* Transform values */
+  
   --lift: translateY(-2px);
   --scale-up: scale(1.05);
   --scale-down: scale(0.95);
   
-  /* Shadow values */
+  
   --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.15);
   --shadow-focus: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-/* ===== UTILITY CLASSES ===== */
 .transition-none { transition: none !important; }
 .transition-fast { transition: all var(--transition-fast) var(--ease-in-out); }
 .transition-normal { transition: all var(--transition-normal) var(--ease-in-out); }
@@ -917,20 +867,16 @@
 .shadow-hover:hover { box-shadow: var(--shadow-hover); }
 .shadow-focus:focus { box-shadow: var(--shadow-focus); }
 
-/* ===== PERFORMANCE OPTIMIZATIONS ===== */
-/* Use transform instead of position changes for better performance */
 .gpu-accelerated {
   transform: translateZ(0);
   will-change: transform;
 }
 
-/* Optimize animations */
 .optimized-animation {
   animation: slideIn 0.3s ease-out;
   animation-fill-mode: both;
 }
 
-/* ===== DEBUG CLASSES ===== */
 .debug-interactions * {
   outline: 1px solid red !important;
 }
@@ -939,8 +885,6 @@
   transition: all 0.5s ease !important;
 }
 
-/* ===== COMPONENT-SPECIFIC MICROINTERACTIONS ===== */
-/* FocusFlow AI specific interactions */
 .ai-assistant {
   position: relative;
   overflow: hidden;

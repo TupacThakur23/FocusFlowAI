@@ -1,36 +1,25 @@
-/**
- * ResearchContinuityEngine - Lightweight Research Memory for FocusFlow AI
- * 
- * Provides research continuity features:
- * - "Continue where I left off" functionality
- * - Related research retrieval
- * - Previous session continuation
- * - Connected source suggestions
- * - Workbook continuity
- * - Research timelines
- * - Related concept linking
- */
+
 
 class ResearchContinuityEngine {
   constructor(options = {}) {
     this.config = {
-      // Memory limits
+
       maxRecentTopics: options.maxRecentTopics || 20,
       maxRecentWorkbooks: options.maxRecentWorkbooks || 10,
       maxRelatedConcepts: options.maxRelatedConcepts || 15,
       maxTimelineEntries: options.maxTimelineEntries || 50,
       
-      // Continuity thresholds
+
       topicSimilarityThreshold: options.topicSimilarityThreshold || 0.6,
       workbookRelevanceThreshold: options.workbookRelevanceThreshold || 0.4,
       sessionTimeout: options.sessionTimeout || 24 * 60 * 60 * 1000, // 24 hours
       conceptLinkThreshold: options.conceptLinkThreshold || 0.3,
       
-      // Persistence
+
       enablePersistence: options.enablePersistence !== false,
       storageKey: options.storageKey || 'focusflow_research_continuity',
       
-      // Quality filters
+
       minInteractionCount: options.minInteractionCount || 2,
       minRelevanceScore: options.minRelevanceScore || 0.3
     };
@@ -43,9 +32,7 @@ class ResearchContinuityEngine {
     this.initializeMemory();
   }
 
-  /**
-   * Initialize research memory from storage
-   */
+  
   async initializeMemory() {
     try {
       if (this.config.enablePersistence) {
@@ -62,24 +49,19 @@ class ResearchContinuityEngine {
     }
   }
 
-  /**
-   * Continue research from previous session
-   * @param {string} userId - User identifier
-   * @param {string} currentTopic - Current research topic
-   * @returns {Object} Continuation context
-   */
+  
   async continueResearch(userId, currentTopic) {
     try {
-      // Find previous research sessions
+
       const previousSessions = this.findPreviousSessions(userId, currentTopic);
       
-      // Get related concepts
+
       const relatedConcepts = this.getRelatedConcepts(currentTopic);
       
-      // Get active workbooks
+
       const activeWorkbooks = this.getActiveWorkbooks(userId);
       
-      // Build continuation context
+
       const continuationContext = {
         currentTopic,
         previousSessions,
@@ -90,7 +72,6 @@ class ResearchContinuityEngine {
         lastActivity: this.getLastActivity(userId)
       };
 
-      // Update current session
       this.updateCurrentSession(userId, currentTopic, continuationContext);
       
       return continuationContext;
@@ -101,12 +82,7 @@ class ResearchContinuityEngine {
     }
   }
 
-  /**
-   * Find previous research sessions
-   * @param {string} userId - User identifier
-   * @param {string} currentTopic - Current topic
-   * @returns {Array} Previous sessions
-   */
+  
   findPreviousSessions(userId, currentTopic) {
     const userSessions = this.sessionHistory.filter(session => 
       session.userId === userId && 
@@ -114,7 +90,6 @@ class ResearchContinuityEngine {
       this.calculateTopicSimilarity(session.topic, currentTopic) > this.config.topicSimilarityThreshold
     );
 
-    // Sort by recency and relevance
     return userSessions
       .sort((a, b) => {
         const aScore = this.calculateSessionScore(a, currentTopic);
@@ -129,20 +104,16 @@ class ResearchContinuityEngine {
       .slice(0, 5); // Top 5 most relevant sessions
   }
 
-  /**
-   * Get related concepts for current topic
-   * @param {string} topic - Current topic
-   * @returns {Array} Related concepts
-   */
+  
   getRelatedConcepts(topic) {
     const concepts = [];
     const topicWords = new Set(topic.toLowerCase().split(/\s+/));
     
-    // Find conceptually related topics
+
     for (const [storedTopic, conceptData] of this.researchMemory.entries()) {
       const storedWords = new Set(storedTopic.toLowerCase().split(/\s+/));
       
-      // Calculate word overlap
+
       const intersection = new Set([...topicWords].filter(word => storedWords.has(word)));
       const overlapRatio = intersection.size / Math.max(topicWords.size, storedWords.size);
       
@@ -158,7 +129,7 @@ class ResearchContinuityEngine {
       }
     }
     
-    // Sort by similarity and interaction count
+
     return concepts
       .sort((a, b) => {
         const aScore = a.similarity * 0.7 + (a.interactionCount / 10) * 0.3;
@@ -168,11 +139,7 @@ class ResearchContinuityEngine {
       .slice(0, this.config.maxRelatedConcepts);
   }
 
-  /**
-   * Get active workbooks for user
-   * @param {string} userId - User identifier
-   * @returns {Array} Active workbooks
-   */
+  
   getActiveWorkbooks(userId) {
     const userWorkbooks = Array.from(this.workbookConnections.entries())
       .filter(([workbookId, data]) => data.userId === userId)
@@ -184,7 +151,6 @@ class ResearchContinuityEngine {
         connectionCount: data.connections || 0
       }));
 
-    // Sort by relevance and recent activity
     return userWorkbooks
       .sort((a, b) => {
         const aScore = a.relevanceScore * 0.6 + (a.lastAccessed ? 1 / (Date.now() - a.lastAccessed) : 0) * 0.4;
@@ -194,37 +160,32 @@ class ResearchContinuityEngine {
       .slice(0, this.config.maxRecentWorkbooks);
   }
 
-  /**
-   * Generate continuation suggestions
-   * @param {string} currentTopic - Current topic
-   * @param {Array} previousSessions - Previous sessions
-   * @returns {Array} Continuation suggestions
-   */
+  
   generateContinuationSuggestions(currentTopic, previousSessions) {
     const suggestions = [];
     
-    // Suggest continuing similar topics
+
     const similarTopics = previousSessions
       .filter(session => session.suggestions)
       .flatMap(session => session.suggestions)
       .filter(suggestion => suggestion.type === 'similar_topic')
       .slice(0, 3);
     
-    // Suggest related workbooks
+
     const relatedWorkbooks = previousSessions
       .filter(session => session.activeWorkbooks)
       .flatMap(session => session.activeWorkbooks)
       .filter(workbook => workbook.relevanceScore > this.config.workbookRelevanceThreshold)
       .slice(0, 2);
     
-    // Suggest concept exploration
+
     const conceptSuggestions = previousSessions
       .filter(session => session.relatedConcepts)
       .flatMap(session => session.relatedConcepts)
       .filter(concept => concept.interactionCount >= this.config.minInteractionCount)
       .slice(0, 3);
     
-    // Combine and prioritize suggestions
+
     const allSuggestions = [
       ...similarTopics.map(topic => ({
         type: 'continue_topic',
@@ -249,7 +210,6 @@ class ResearchContinuityEngine {
       }))
     ];
 
-    // Sort by priority and relevance
     return allSuggestions
       .sort((a, b) => {
         const priorityOrder = { high: 3, medium: 2, low: 1 };
@@ -258,20 +218,15 @@ class ResearchContinuityEngine {
       .slice(0, 8);
   }
 
-  /**
-   * Build research timeline
-   * @param {string} userId - User identifier
-   * @param {string} currentTopic - Current topic
-   * @returns {Array} Research timeline
-   */
+  
   buildResearchTimeline(userId, currentTopic) {
     const timeline = [];
     const now = Date.now();
     
-    // Get user's research history
+
     const userSessions = this.sessionHistory.filter(session => session.userId === userId);
     
-    // Build timeline entries
+
     for (const session of userSessions) {
       timeline.push({
         type: 'research_session',
@@ -285,7 +240,7 @@ class ResearchContinuityEngine {
       });
     }
     
-    // Add concept connections
+
     const concepts = this.getRelatedConcepts(currentTopic);
     for (const concept of concepts) {
       if (concept.conceptData.lastAccessed) {
@@ -299,17 +254,13 @@ class ResearchContinuityEngine {
       }
     }
     
-    // Sort by timestamp (most recent first)
+
     return timeline
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
       .slice(0, this.config.maxTimelineEntries);
   }
 
-  /**
-   * Get last activity for user
-   * @param {string} userId - User identifier
-   * @returns {Object} Last activity
-   */
+  
   getLastActivity(userId) {
     const userSessions = this.sessionHistory.filter(session => session.userId === userId);
     
@@ -333,12 +284,7 @@ class ResearchContinuityEngine {
     };
   }
 
-  /**
-   * Update current research session
-   * @param {string} userId - User identifier
-   * @param {string} topic - Current topic
-   * @param {Object} context - Session context
-   */
+  
   updateCurrentSession(userId, topic, context) {
     const session = {
       id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -356,10 +302,9 @@ class ResearchContinuityEngine {
       lastActivity: context.lastActivity
     };
 
-    // Add to session history
     this.sessionHistory.push(session);
     
-    // Update topic in research memory
+
     this.updateTopicInMemory(topic, {
       lastAccessed: Date.now(),
       interactionCount: (this.researchMemory.get(topic)?.interactionCount || 0) + 1,
@@ -367,18 +312,12 @@ class ResearchContinuityEngine {
       sessions: [session]
     });
 
-    // Persist changes
     this.persistToStorage();
     
     return session;
   }
 
-  /**
-   * Add research interaction
-   * @param {string} topic - Research topic
-   * @param {string} interactionType - Type of interaction
-   * @param {Object} interactionData - Interaction data
-   */
+  
   addInteraction(topic, interactionType, interactionData = {}) {
     const topicData = this.researchMemory.get(topic) || {
       interactionCount: 0,
@@ -387,7 +326,6 @@ class ResearchContinuityEngine {
       sessions: []
     };
 
-    // Update interaction data
     topicData.lastAccessed = Date.now();
     topicData.interactionCount++;
     
@@ -401,12 +339,7 @@ class ResearchContinuityEngine {
     this.persistToStorage();
   }
 
-  /**
-   * Calculate topic similarity
-   * @param {string} topic1 - First topic
-   * @param {string} topic2 - Second topic
-   * @returns {number} Similarity score (0-1)
-   */
+  
   calculateTopicSimilarity(topic1, topic2) {
     const words1 = new Set(topic1.toLowerCase().split(/\s+/));
     const words2 = new Set(topic2.toLowerCase().split(/\s+/));
@@ -417,26 +350,21 @@ class ResearchContinuityEngine {
     return union.size > 0 ? intersection.size / union.size : 0;
   }
 
-  /**
-   * Calculate session relevance score
-   * @param {string} topic - Session topic
-   * @param {Object} context - Session context
-   * @returns {number} Relevance score
-   */
+  
   calculateSessionRelevance(topic, context) {
     let score = 0.5; // Base score
     
-    // Boost for active workbooks
+
     if (context.activeWorkbooks && context.activeWorkbooks.length > 0) {
       score += 0.2;
     }
     
-    // Boost for related concepts
+
     if (context.relatedConcepts && context.relatedConcepts.length > 2) {
       score += 0.2;
     }
     
-    // Boost for recent activity
+
     if (context.lastActivity && context.lastActivity.timestamp) {
       const hoursSinceActivity = (Date.now() - new Date(context.lastActivity.timestamp)) / (1000 * 60 * 60);
       if (hoursSinceActivity < 24) {
@@ -447,22 +375,14 @@ class ResearchContinuityEngine {
     return Math.min(1, score);
   }
 
-  /**
-   * Update topic in research memory
-   * @param {string} topic - Topic to update
-   * @param {Object} data - Topic data
-   */
+  
   updateTopicInMemory(topic, data) {
     const existing = this.researchMemory.get(topic) || {};
     const updated = { ...existing, ...data };
     this.researchMemory.set(topic, updated);
   }
 
-  /**
-   * Update workbook connection
-   * @param {string} topic - Research topic
-   * @param {Object} workbook - Workbook data
-   */
+  
   updateWorkbookConnection(topic, workbook) {
     const connectionKey = `${topic}:${workbook.id}`;
     const existing = this.workbookConnections.get(connectionKey) || {
@@ -485,10 +405,7 @@ class ResearchContinuityEngine {
     this.workbookConnections.set(connectionKey, updated);
   }
 
-  /**
-   * Get research memory statistics
-   * @returns {Object} Memory statistics
-   */
+  
   getMemoryStats() {
     const topics = Array.from(this.researchMemory.entries());
     const concepts = Array.from(this.conceptGraph.entries());
@@ -521,26 +438,24 @@ class ResearchContinuityEngine {
     };
   }
 
-  /**
-   * Clean up old data
-   */
+  
   cleanup() {
     const now = Date.now();
     const cutoff = now - this.config.sessionTimeout;
     
-    // Clean old sessions
+
     this.sessionHistory = this.sessionHistory.filter(session => 
       new Date(session.timestamp) > cutoff
     );
     
-    // Clean old concept data
+
     for (const [concept, data] of this.conceptGraph.entries()) {
       if (data.lastAccessed && data.lastAccessed < cutoff) {
         this.conceptGraph.delete(concept);
       }
     }
     
-    // Clean old workbook connections
+
     for (const [key, data] of this.workbookConnections.entries()) {
       if (data.lastConnected && data.lastConnected < cutoff) {
         this.workbookConnections.delete(key);
@@ -550,9 +465,7 @@ class ResearchContinuityEngine {
     this.persistToStorage();
   }
 
-  /**
-   * Persist data to storage
-   */
+  
   async persistToStorage() {
     if (!this.config.enablePersistence) return;
     
@@ -573,10 +486,7 @@ class ResearchContinuityEngine {
     }
   }
 
-  /**
-   * Load data from storage
-   * @returns {Object|null} Stored data
-   */
+  
   async loadFromStorage() {
     try {
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
@@ -589,9 +499,7 @@ class ResearchContinuityEngine {
     }
   }
 
-  /**
-   * Reset research continuity engine
-   */
+  
   reset() {
     this.researchMemory.clear();
     this.sessionHistory = [];
@@ -603,10 +511,7 @@ class ResearchContinuityEngine {
     }
   }
 
-  /**
-   * Export research data
-   * @returns {Object} Exportable research data
-   */
+  
   exportResearchData() {
     return {
       memory: Array.from(this.researchMemory.entries()),
@@ -618,10 +523,7 @@ class ResearchContinuityEngine {
     };
   }
 
-  /**
-   * Import research data
-   * @param {Object} data - Research data to import
-   */
+  
   importResearchData(data) {
     try {
       if (data.memory) {
@@ -661,10 +563,8 @@ class ResearchContinuityEngine {
   }
 }
 
-// Export singleton instance
 export const researchContinuityEngine = new ResearchContinuityEngine();
 
-// Export utilities
 export const continueResearch = researchContinuityEngine.continueResearch.bind(researchContinuityEngine);
 export const addInteraction = researchContinuityEngine.addInteraction.bind(researchContinuityEngine);
 export const getMemoryStats = researchContinuityEngine.getMemoryStats.bind(researchContinuityEngine);

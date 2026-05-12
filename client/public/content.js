@@ -1,4 +1,4 @@
-// Content script - Entry point for FocusFlow AI
+
 (async function() {
   'use strict';
   
@@ -11,7 +11,6 @@
     const { stateManager }   = await import(chrome.runtime.getURL(`lib/StateManager.js${buster}`));
     const { errorHandler }   = await import(chrome.runtime.getURL(`lib/ErrorHandler.js${buster}`));
 
-    // Attach to window for easy access / debugging
     window.sidebarManager = sidebarManager;
     window.messageBus     = messageBus;
     window.stateManager   = stateManager;
@@ -19,17 +18,15 @@
 
     console.log('✅ FocusFlow: Dependencies loaded');
 
-    // ── Check if popup already asked to open before we loaded ──
     chrome.storage.local.get(['ff_action'], (data) => {
       if (data.ff_action === 'open_panel') {
         console.log('🎯 FocusFlow: Pending open_panel action found, opening panel...');
         sidebarManager.forceOpen();
-        // Clear so it doesn't re-trigger on next page load
+
         chrome.storage.local.remove('ff_action');
       }
     });
 
-    // ── Listen for future storage-based triggers ──
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== 'local') return;
       if (changes.ff_action && changes.ff_action.newValue === 'open_panel') {
@@ -47,7 +44,6 @@
       }
     });
 
-    // ── Also keep the legacy runtime message listener for backward compat ──
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (request.action === 'OPEN_AIDE_SIDEBAR') {
         console.log('🎯 FocusFlow: Runtime message -> open panel');
@@ -60,7 +56,6 @@
       return false;
     });
 
-    // ── Text selection capture ──
     document.addEventListener('mouseup', () => {
       const text = window.getSelection()?.toString().trim();
       if (text && text.length > 0) {
@@ -68,7 +63,6 @@
       }
     });
 
-    // ── Content extraction handler ──
     messageBus.onMessage('EXTRACT_CONTENT', () => {
       const content = {
         title: document.title,
@@ -79,7 +73,6 @@
       return { success: true, content };
     });
 
-    // ── Notify background we are ready ──
     messageBus.sendMessage('background', {
       type: 'CONTENT_SCRIPT_READY',
       url:  window.location.href,

@@ -63,7 +63,7 @@ export default function Workbook({ title = "AI Research", onBack }) {
   return (
     <div className="w-full h-screen flex bg-[#0a0c14] text-white font-sans overflow-hidden">
       
-      {/* ── LEFT PANEL (GLOBAL NAVIGATION) ── */}
+      
       <div 
         className={`${isCollapsed ? 'w-[72px]' : 'w-[260px]'} bg-[#05060b] border-r border-white/[0.05] flex flex-col shrink-0 z-20 transition-all duration-300 ease-in-out`}
       >
@@ -144,7 +144,7 @@ export default function Workbook({ title = "AI Research", onBack }) {
         </div>
       </div>
 
-      {/* ── INTERNAL LEFT PANEL (WORKBOOK NAVIGATION) ── */}
+      
       <div className="w-[280px] bg-[#080911] border-r border-white/[0.05] flex flex-col shrink-0 z-10 hidden md:flex">
          <div className="h-16 flex items-center px-5 border-b border-white/[0.02] shrink-0">
             <h2 className="text-[11px] font-black text-gray-500 uppercase tracking-widest flex items-center justify-between w-full">
@@ -199,9 +199,9 @@ export default function Workbook({ title = "AI Research", onBack }) {
          </div>
       </div>
 
-      {/* ── CENTER PANEL (AI RESEARCH WORKSPACE) ── */}
+      
       <div className="flex-1 flex flex-col min-w-0 bg-[#0a0c14] relative">
-         {/* Top Header */}
+         
          <div className="h-auto py-3 min-h-[64px] flex items-center justify-between px-8 border-b border-white/[0.02] shrink-0 bg-[#05060b]/50 backdrop-blur-xl absolute top-0 left-0 right-0 z-20">
             <div className="flex items-center gap-4">
                <div className="w-9 h-9 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-center shrink-0">
@@ -246,7 +246,7 @@ export default function Workbook({ title = "AI Research", onBack }) {
             </div>
          </div>
 
-         {/* Chat Area */}
+         
          <div className="flex-1 overflow-y-auto px-8 pt-24 pb-32 custom-scrollbar flex flex-col">
             <div className="max-w-3xl mx-auto w-full flex-1 flex flex-col justify-end space-y-8">
                
@@ -332,7 +332,7 @@ export default function Workbook({ title = "AI Research", onBack }) {
             </div>
          </div>
 
-         {/* Bottom Action Area */}
+         
          <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-[#0a0c14] via-[#0a0c14] to-transparent pointer-events-none z-20">
             <div className="max-w-3xl mx-auto pointer-events-auto">
                
@@ -366,7 +366,7 @@ export default function Workbook({ title = "AI Research", onBack }) {
          </div>
       </div>
 
-      {/* ── RIGHT PANEL (CONTEXT ENGINE) ── */}
+      
       <div className="w-[320px] bg-[#05060b] border-l border-white/[0.05] flex flex-col shrink-0 z-10 hidden lg:flex">
          
          <div className="p-6 border-b border-white/[0.02]">
@@ -384,7 +384,7 @@ export default function Workbook({ title = "AI Research", onBack }) {
                <div className="py-10 flex justify-center"><div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>
             ) : (
                <>
-                  {/* KEY INSIGHTS */}
+                  
                   <div>
                      <h3 className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3">Key Insights</h3>
                      <div className="space-y-3">
@@ -399,7 +399,7 @@ export default function Workbook({ title = "AI Research", onBack }) {
                      </div>
                   </div>
 
-                  {/* TOP ENTITIES */}
+                  
                   <div className="mt-8">
                      <h3 className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3">Top Entities</h3>
                      <div className="space-y-1">
@@ -414,7 +414,7 @@ export default function Workbook({ title = "AI Research", onBack }) {
                </>
             )}
 
-            {/* SUGGESTED ACTIONS */}
+            
             <div>
                <h3 className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3">Suggested Actions</h3>
                <div className="space-y-2">
@@ -431,8 +431,6 @@ export default function Workbook({ title = "AI Research", onBack }) {
     </div>
   );
 }
-
-// ── UTILITY COMPONENTS ── //
 
 function NavSection({ title, children, isCollapsed }) {
   if (isCollapsed) return <div className="space-y-2 mb-4">{children}</div>;
@@ -517,7 +515,7 @@ function InsightCard({ title, desc, color, chartColor }) {
     <div className="p-4 rounded-xl border border-white/[0.03] bg-white/[0.01] hover:bg-white/[0.03] transition-colors group cursor-pointer">
        <h4 className={`text-[12px] font-bold mb-1 ${color}`}>{title}</h4>
        <p className="text-[11px] text-gray-400 leading-relaxed mb-3">{desc}</p>
-       {/* Pure CSS simulated sparkline for visual completion without extra libraries */}
+       
        <div className="h-4 flex items-end gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
           <div className={`w-full border-t border-dashed ${chartColor} transform -skew-y-12`} />
        </div>

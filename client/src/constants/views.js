@@ -1,8 +1,4 @@
-/**
- * View Constants - Centralized view names for FocusFlow AI
- * 
- * Ensures consistency across all navigation and rendering logic
- */
+
 
 export const VIEWS = {
   LAUNCHER: "launcher",

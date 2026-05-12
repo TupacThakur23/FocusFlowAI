@@ -1,26 +1,7 @@
-/**
- * useExtensionState - React Hook for Extension State Management
- * 
- * Provides React components with access to extension's StateManager
- * for event-driven state updates without polling.
- * 
- * Features:
- * - Automatic subscription cleanup on component unmount
- * - Event-driven state updates
- * - Multiple storage area support (local/session)
- * - Debounced updates to prevent excessive re-renders
- * - TypeScript-ready interface
- * - Performance optimized with dependency arrays
- */
+
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-/**
- * Hook for using extension state in React components
- * @param {string} key - State key to subscribe to
- * @param {Object} options - Subscription options
- * @returns {Array} [stateValue, setState, { loading, error }]
- */
 export const useExtensionState = (key, options = {}) => {
   const {
     storage = 'session',
@@ -37,25 +18,23 @@ export const useExtensionState = (key, options = {}) => {
   const debounceTimerRef = useRef(null);
   const stateManagerRef = useRef(null);
 
-  // Initialize StateManager connection
   useEffect(() => {
     const initializeStateManager = async () => {
       try {
-        // Check if running in extension context
+
         if (typeof chrome !== 'undefined' && chrome.storage) {
-          // Try to access extension's StateManager
+
           if (window.stateManager) {
             stateManagerRef.current = window.stateManager;
           } else {
-            // Fallback: create simple state interface
+
             stateManagerRef.current = createFallbackStateManager();
           }
         } else {
-          // Development mode - create mock interface
+
           stateManagerRef.current = createMockStateManager();
         }
 
-        // Load initial state
         if (immediate) {
           await loadInitialState();
         }
@@ -71,21 +50,19 @@ export const useExtensionState = (key, options = {}) => {
     initializeStateManager();
 
     return () => {
-      // Cleanup subscription
+
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
       }
       
-      // Clear debounce timer
+
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
     };
   }, [key, immediate]);
 
-  /**
-   * Load initial state from storage
-   */
+  
   const loadInitialState = useCallback(async () => {
     if (!stateManagerRef.current) return;
 
@@ -103,7 +80,6 @@ export const useExtensionState = (key, options = {}) => {
     }
   }, [key, storageKey, defaultValue, storage]);
 
-  // Subscribe to state changes
   useEffect(() => {
     if (!stateManagerRef.current || !immediate) return;
 
@@ -114,7 +90,7 @@ export const useExtensionState = (key, options = {}) => {
       (notification) => {
         const newValue = notification.value;
         
-        // Apply debouncing if specified
+
         if (debounceMs > 0) {
           if (debounceTimerRef.current) {
             clearTimeout(debounceTimerRef.current);
@@ -141,10 +117,7 @@ export const useExtensionState = (key, options = {}) => {
     };
   }, [key, storageKey, storage, immediate, debounceMs]);
 
-  /**
-   * Set state value
-   * @param {*} value - New state value
-   */
+  
   const setExtensionState = useCallback(async (value) => {
     if (!stateManagerRef.current) {
       throw new Error('StateManager not initialized');
@@ -158,7 +131,7 @@ export const useExtensionState = (key, options = {}) => {
         { storage }
       );
       
-      // Update local state immediately for better UX
+
       setState(value);
     } catch (err) {
       console.error('Failed to set state:', err);
@@ -167,9 +140,7 @@ export const useExtensionState = (key, options = {}) => {
     }
   }, [key, storageKey, storage]);
 
-  /**
-   * Clear state value
-   */
+  
   const clearExtensionState = useCallback(async () => {
     if (!stateManagerRef.current) {
       throw new Error('StateManager not initialized');
@@ -202,11 +173,6 @@ export const useExtensionState = (key, options = {}) => {
   ];
 };
 
-/**
- * Hook for managing multiple extension state keys
- * @param {Object} config - Configuration object with key: options pairs
- * @returns {Object} State object with setters and meta
- */
 export const useExtensionStateMap = (config) => {
   const [states, setStates] = useState({});
   const [loading, setLoading] = useState(true);
@@ -228,7 +194,6 @@ export const useExtensionStateMap = (config) => {
         const newErrors = {};
         const unsubscribers = new Map();
 
-        // Initialize all states
         for (const [key, options] of Object.entries(config)) {
           try {
             const value = await stateManager.getState(
@@ -238,7 +203,7 @@ export const useExtensionStateMap = (config) => {
             
             newStates[key] = value !== undefined ? value : options.defaultValue;
             
-            // Subscribe to changes
+
             const fullKey = `${options.storage || 'session'}:${options.storageKey || key}`;
             const unsubscribe = stateManager.subscribe(
               fullKey,
@@ -274,7 +239,7 @@ export const useExtensionStateMap = (config) => {
     initializeStates();
 
     return () => {
-      // Cleanup all subscriptions
+
       for (const unsubscribe of unsubscribersRef.current.values()) {
         if (typeof unsubscribe === 'function') {
           unsubscribe();
@@ -284,9 +249,7 @@ export const useExtensionStateMap = (config) => {
     };
   }, [config]);
 
-  /**
-   * Set multiple state values
-   */
+  
   const setMultipleStates = useCallback(async (updates) => {
     try {
       const newErrors = { ...errors };
@@ -324,9 +287,6 @@ export const useExtensionStateMap = (config) => {
   };
 };
 
-/**
- * Create fallback StateManager interface for development
- */
 function createFallbackStateManager() {
   const state = new Map();
   const listeners = new Map();
@@ -341,7 +301,7 @@ function createFallbackStateManager() {
       const fullKey = `${options.storage || 'session'}:${key}`;
       state.set(fullKey, value);
       
-      // Notify listeners
+
       if (listeners.has(fullKey)) {
         listeners.get(fullKey).forEach(callback => {
           try {
@@ -386,9 +346,6 @@ function createFallbackStateManager() {
   };
 }
 
-/**
- * Create mock StateManager for development/testing
- */
 function createMockStateManager() {
   const state = new Map();
   const listeners = new Map();
@@ -404,10 +361,10 @@ function createMockStateManager() {
       const oldValue = state.get(fullKey);
       state.set(fullKey, value);
       
-      // Simulate async behavior
+
       await new Promise(resolve => setTimeout(resolve, 50));
       
-      // Notify listeners
+
       if (listeners.has(fullKey)) {
         listeners.get(fullKey).forEach(callback => {
           try {

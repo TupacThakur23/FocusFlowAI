@@ -26,7 +26,6 @@ export default function Dashboard() {
   const [hasExtracted, setHasExtracted] = useState(false);
   const [showSaveSheet, setShowSaveSheet] = useState(false);
 
-  // Close Save Sheet on Escape key
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') setShowSaveSheet(false);
@@ -35,7 +34,6 @@ export default function Dashboard() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showSaveSheet]);
 
-  // Auto-complete extraction if content already exists
   useEffect(() => {
     if (extractedContent && !isExtracting) {
       setHasExtracted(true);
@@ -45,7 +43,7 @@ export default function Dashboard() {
   const handleStartExtraction = () => {
     setIsExtracting(true);
     setHasExtracted(false);
-    // Trigger actual extraction in background
+
     actions.extractContent();
   };
 
@@ -60,10 +58,10 @@ export default function Dashboard() {
       style={{ backgroundColor: '#050816', color: 'white' }}
     >
       
-      {/* ── MAIN CONTENT (Scrollable) ── */}
+      
       <main className="flex-1 overflow-y-auto no-scrollbar pb-24">
         
-        {/* Page Metadata Card */}
+        
         <div className="px-5 pt-6 pb-2">
           <div className="bg-white/[0.02] border border-white/[0.05] rounded-[20px] p-5">
             <div className="flex items-start gap-4">
@@ -98,14 +96,14 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Feature Grid */}
+        
         <div className="px-5 py-6">
           <div className="grid grid-cols-3 gap-3">
             {tools.map(t => {
                const Icon = t.icon;
                const isActive = activeTool === t.id;
                
-               // Dynamic colors for cards
+
                const colors = {
                  SUMMARY: { bg: 'bg-blue-500/5', border: 'border-blue-500/20', text: 'text-blue-400', glow: 'shadow-blue-500/10' },
                  EXPLAIN: { bg: 'bg-amber-500/5', border: 'border-amber-500/20', text: 'text-amber-400', glow: 'shadow-amber-500/10' },
@@ -137,15 +135,15 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Content Area */}
+        
         <div className="px-5">
            {isExtracting ? (
-             /* Extraction Terminal View */
+             
              <div className="bg-white/[0.01] border border-white/[0.05] rounded-[24px]">
                <ExtractionProgress onComplete={handleExtractionComplete} />
              </div>
            ) : !hasExtracted ? (
-             /* Empty State Onboarding */
+             
              <div className="flex flex-col items-center justify-center py-12 bg-white/[0.01] border border-dashed border-white/[0.05] rounded-[24px] text-center gap-5 animate-in fade-in slide-in-from-bottom-4 duration-700">
                 <div className="w-16 h-16 bg-blue-500/10 rounded-[20px] flex items-center justify-center relative">
                    <FileText size={32} className="text-blue-500/40" />
@@ -165,12 +163,12 @@ export default function Dashboard() {
                 </button>
              </div>
            ) : (
-             /* Default Reveal / AI Insights */
+             
              <div className="flex flex-col gap-6 animate-in fade-in duration-500">
                 {hasExtracted ? (
-                  /* --- PREMIUM RESULT CARD --- */
+                  
                   <div className="relative group animate-in slide-in-from-bottom-4 duration-1000">
-                    {/* Glow Backdrop */}
+                    
                     <div className="absolute -inset-1 bg-gradient-to-r from-blue-600/20 to-violet-600/20 rounded-[32px] blur-xl opacity-50 group-hover:opacity-100 transition duration-1000"></div>
                     
                     <div className="relative bg-[#0a0c1a]/80 backdrop-blur-3xl border border-white/[0.08] rounded-[28px] p-8 shadow-2xl overflow-hidden">
@@ -198,7 +196,7 @@ export default function Dashboard() {
                         </p>
                       </div>
 
-                      {/* Footer decoration */}
+                      
                       <div className="mt-8 pt-6 border-t border-white/[0.04] flex items-center justify-between text-[10px] font-bold text-gray-600 uppercase tracking-widest">
                          <span>Processed in 1.2s</span>
                          <div className="flex gap-4">
@@ -219,7 +217,7 @@ export default function Dashboard() {
         </div>
       </main>
 
-      {/* ── SAVE SHEET OVERLAY ── */}
+      
       {showSaveSheet && (
         <>
           <div 
@@ -246,7 +244,7 @@ export default function Dashboard() {
              </div>
 
              <div className="flex gap-6">
-                {/* Left Column: Workbooks */}
+                
                 <div className="flex-1 space-y-3">
                    <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Select Workbook</h4>
                    
@@ -289,7 +287,7 @@ export default function Dashboard() {
                    </div>
                 </div>
 
-                {/* Right Column: Save Options */}
+                
                 <div className="flex-1 flex flex-col justify-between">
                    <div>
                      <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">What to Save</h4>
@@ -339,7 +337,7 @@ export default function Dashboard() {
         </>
       )}
 
-      {/* ── INPUT CAPSULE ── */}
+      
       <footer className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#050816] via-[#050816] to-transparent">
         <div className="bg-white/[0.02] border border-white/[0.08] rounded-[24px] p-2 flex items-center gap-2 shadow-2xl shadow-black/50">
            <button 

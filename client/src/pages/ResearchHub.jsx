@@ -40,14 +40,13 @@ export default function ResearchHub() {
         return;
       }
 
-      // Instant local keyword filter for fast UX
       const localResults = researchData.filter(item =>
         (item?.topic || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (item?.summary && item.summary.toLowerCase().includes(searchQuery.toLowerCase()))
       );
       setFilteredData(localResults);
       
-      // Perform semantic search to retrieve conceptual matches
+
       setIsSearching(true);
       try {
         const res = await fetch("http://localhost:5000/api/research/semantic-search", {
@@ -79,7 +78,6 @@ export default function ResearchHub() {
     }
   };
 
-  // Analytics
   const totalWorkbooks = new Set(researchData.map(d => d.workbook || "Uncategorized")).size;
   const totalItems = researchData.length;
 
@@ -89,7 +87,7 @@ export default function ResearchHub() {
 
   return (
     <div className="w-full h-screen flex bg-[#0a0c14] text-white font-sans overflow-hidden">
-      {/* ── LEFT NAVIGATION ── */}
+      
       <div className="w-[260px] bg-[#05060b] border-r border-white/[0.05] flex flex-col shrink-0 z-10">
         <div className="h-16 flex items-center px-6 gap-3 mb-2">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-blue-900/20">
@@ -102,7 +100,7 @@ export default function ResearchHub() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 space-y-8 custom-scrollbar pb-6">
-          {/* Discovery */}
+          
           <div className="space-y-1">
             <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-3 mb-3">Discovery</h3>
             <NavItem icon={Home} label="Home" active={activeTab === "all"} onClick={() => setActiveTab("all")} />
@@ -111,7 +109,7 @@ export default function ResearchHub() {
             <NavItem icon={Bookmark} label="Pinned Insights" />
           </div>
 
-          {/* Workspaces */}
+          
           <div className="space-y-1">
             <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-3 mb-3">Workspaces</h3>
             <NavItem icon={Folder} label="All Workbooks" />
@@ -119,7 +117,7 @@ export default function ResearchHub() {
             <NavItem icon={Users} label="Shared with Me" />
           </div>
 
-          {/* Tools */}
+          
           <div className="space-y-1">
             <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-3 mb-3">Tools</h3>
             <NavItem icon={LayoutGrid} label="Flashcards" />
@@ -127,7 +125,7 @@ export default function ResearchHub() {
             <NavItem icon={BrainCircuit} label="AI Assistant" />
           </div>
 
-          {/* Upgrade Plan */}
+          
           <div className="mt-4 p-4 bg-gradient-to-b from-white/[0.04] to-transparent border border-white/[0.05] rounded-2xl relative overflow-hidden group">
              <div className="absolute top-0 right-0 p-3 opacity-20"><Zap size={40} /></div>
              <h4 className="text-[12px] font-bold text-orange-400 flex items-center gap-1.5 mb-1.5">👑 Pro Plan</h4>
@@ -136,7 +134,7 @@ export default function ResearchHub() {
           </div>
         </div>
 
-        {/* User Profile */}
+        
         <div className="p-4 border-t border-white/[0.05]">
           <div className="flex items-center gap-3 px-2 cursor-pointer hover:bg-white/[0.03] p-2 rounded-xl transition-colors">
             <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-white">
@@ -151,9 +149,9 @@ export default function ResearchHub() {
         </div>
       </div>
 
-      {/* ── MAIN CONTENT AREA ── */}
+      
       <div className="flex-1 flex flex-col min-w-0 z-10 relative bg-[#0a0c14]">
-        {/* Top Header & Search */}
+        
         <div className="h-16 flex items-center justify-between px-10 border-b border-white/[0.02] shrink-0">
           <div className="relative group w-[500px]">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-blue-500 transition-colors" />
@@ -185,11 +183,11 @@ export default function ResearchHub() {
           </div>
         </div>
 
-        {/* Scrollable Workspace */}
+        
         <div className="flex-1 overflow-y-auto px-10 py-8 custom-scrollbar">
           <div className="max-w-[1200px] mx-auto space-y-10">
             
-            {/* HERO HEADER */}
+            
             <header className="animate-in fade-in slide-in-from-left-4 duration-700">
               <h2 className="text-3xl font-black text-white tracking-tight mb-2 flex items-center gap-3">
                 Welcome back, Researcher <span className="text-2xl animate-waving-hand origin-bottom-right inline-block">👋</span>
@@ -199,7 +197,7 @@ export default function ResearchHub() {
               </p>
             </header>
 
-            {/* TOP STATS ROW */}
+            
             <div className="grid grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
                <StatCard icon={Folder} color="text-blue-500" bg="bg-blue-500/10" value={totalWorkbooks} label="Workbooks" sub="Active spaces" />
                <StatCard icon={FileText} color="text-emerald-500" bg="bg-emerald-500/10" value={totalItems} label="Saved Items" sub="Across all workbooks" />
@@ -207,7 +205,7 @@ export default function ResearchHub() {
                <StatCard icon={Star} color="text-orange-500" bg="bg-orange-500/10" value="0" label="Pinned Insights" sub="Quick access" />
             </div>
 
-            {/* WORKBOOKS SECTION */}
+            
             <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
               <div className="flex items-center justify-between mb-4">
                  <h3 className="text-lg font-bold text-white tracking-tight">My Workbooks</h3>
@@ -254,10 +252,10 @@ export default function ResearchHub() {
               </div>
             </div>
 
-            {/* TWO BOTTOM PANELS */}
+            
             <div className="grid grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
                
-               {/* LEFT: Recent Activity Timeline */}
+               
                <div className="bg-[#05060b] border border-white/[0.05] rounded-[24px] p-6 flex flex-col">
                   <div className="flex items-center justify-between mb-6">
                      <h3 className="text-[15px] font-bold text-white tracking-tight">Recent Activity</h3>
@@ -265,7 +263,7 @@ export default function ResearchHub() {
                   </div>
                   
                   <div className="space-y-1 flex-1">
-                     {/* Map first 5 research items as timeline items if available, else show placeholders */}
+                     
                      {isLoading ? (
                         <div className="text-center py-10 text-gray-500 text-xs font-bold uppercase tracking-widest animate-pulse">Loading Activity...</div>
                      ) : filteredData.length > 0 ? (
@@ -289,7 +287,7 @@ export default function ResearchHub() {
                   </div>
                </div>
 
-               {/* RIGHT: AI Research Copilot */}
+               
                <div className="bg-[#05060b] border border-white/[0.05] rounded-[24px] p-6 flex flex-col relative overflow-hidden group">
                   <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-violet-600/5 pointer-events-none" />
                   

@@ -1,14 +1,4 @@
-/**
- * SemanticNotebook - Advanced Research Notebook Component
- * 
- * Provides intelligent note-taking with:
- * - Semantic organization and tagging
- * - Cross-page references and linking
- * - AI-powered note enhancement
- * - Hierarchical structure
- * - Real-time collaboration features
- * - Search and filtering
- */
+
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
@@ -41,7 +31,7 @@ const SemanticNotebook = ({
   readOnly = false,
   className = '' 
 }) => {
-  // State management
+
   const [notes, setNotes] = useState(initialNotes);
   const [selectedNote, setSelectedNote] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -52,11 +42,9 @@ const SemanticNotebook = ({
   const [viewMode, setViewMode] = useState('structured'); // structured, mindmap, timeline
   const [sortBy, setSortBy] = useState('modified'); // created, modified, relevance
 
-  // Extension integration
   const [researchData] = useExtensionState('researchData', { storage: 'session' });
   const { addToast, startOperation, completeOperation } = useGlobalStatus();
 
-  // Available tags
   const availableTags = useMemo(() => {
     const allTags = new Set();
     notes.forEach(note => {
@@ -67,11 +55,9 @@ const SemanticNotebook = ({
     return Array.from(allTags).sort();
   }, [notes]);
 
-  // Filter and sort notes
   const filteredNotes = useMemo(() => {
     let filtered = notes;
 
-    // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(note => 
@@ -81,14 +67,12 @@ const SemanticNotebook = ({
       );
     }
 
-    // Tag filter
     if (selectedTags.length > 0) {
       filtered = filtered.filter(note => 
         note.tags && selectedTags.some(tag => note.tags.includes(tag))
       );
     }
 
-    // Sort notes
     return filtered.sort((a, b) => {
       switch (sortBy) {
         case 'created':
@@ -103,7 +87,6 @@ const SemanticNotebook = ({
     });
   }, [notes, searchQuery, selectedTags, sortBy]);
 
-  // Group notes by sections
   const sections = useMemo(() => {
     const sections = new Map();
     
@@ -122,7 +105,6 @@ const SemanticNotebook = ({
     }));
   }, [filteredNotes]);
 
-  // Handle note creation
   const handleCreateNote = useCallback(async () => {
     startOperation('createNote');
     
@@ -152,7 +134,6 @@ const SemanticNotebook = ({
     }
   }, [startOperation, completeOperation]);
 
-  // Handle note update
   const handleUpdateNote = useCallback(async (updatedNote) => {
     startOperation('updateNote');
     
@@ -179,7 +160,6 @@ const SemanticNotebook = ({
     }
   }, [startOperation, completeOperation, onNoteUpdate]);
 
-  // Handle note deletion
   const handleDeleteNote = useCallback(async (noteId) => {
     startOperation('deleteNote');
     
@@ -200,13 +180,12 @@ const SemanticNotebook = ({
     }
   }, [startOperation, completeOperation]);
 
-  // Handle AI enhancement
   const handleAIEnhance = useCallback(async (note) => {
     startOperation('aiEnhance');
     setIsAIGenerated(true);
 
     try {
-      // Simulate AI enhancement (would call actual AI service)
+
       const enhancedContent = await enhanceNoteWithAI(note.content);
       
       const enhancedNote = {
@@ -231,7 +210,6 @@ const SemanticNotebook = ({
     }
   }, [startOperation, completeOperation]);
 
-  // Handle tag management
   const handleTagToggle = useCallback((tag) => {
     setSelectedTags(prev => 
       prev.includes(tag) 
@@ -240,7 +218,6 @@ const SemanticNotebook = ({
     );
   }, []);
 
-  // Handle reference addition
   const handleAddReference = useCallback((note, reference) => {
     const updatedNote = {
       ...note,
@@ -257,7 +234,6 @@ const SemanticNotebook = ({
     }
   }, [onReferenceAdd]);
 
-  // Toggle section expansion
   const toggleSection = useCallback((sectionName) => {
     setExpandedSections(prev => {
       const newSet = new Set(prev);
@@ -270,12 +246,11 @@ const SemanticNotebook = ({
     });
   }, []);
 
-  // Mock AI enhancement function
   const enhanceNoteWithAI = async (content) => {
-    // This would call your actual AI service
+
     return new Promise((resolve) => {
       setTimeout(() => {
-        // Simulate AI enhancement
+
         const enhanced = `
 # Enhanced Content
 
@@ -300,7 +275,6 @@ AI-generated, enhanced, summary, insights
     });
   };
 
-  // Handle quick note creation
   const handleQuickNote = useCallback(() => {
     const selectedText = window.getSelection().toString().trim();
     if (selectedText) {
@@ -331,7 +305,7 @@ AI-generated, enhanced, summary, insights
 
   return (
     <div className={`semantic-notebook ${className}`}>
-      {/* Header */}
+      
       <div className="notebook-header">
         <div className="notebook-title">
           <BookOpen className="w-5 h-5" />
@@ -382,7 +356,7 @@ AI-generated, enhanced, summary, insights
           </button>
         </div>
 
-        {/* Tag Filter */}
+        
         <div className="tag-filter">
           <Tag className="w-4 h-4" />
           <div className="tag-list">
@@ -399,7 +373,7 @@ AI-generated, enhanced, summary, insights
         </div>
       </div>
 
-      {/* Main Content */}
+      
       <div className="notebook-content">
         {viewMode === 'structured' && (
           <div className="structured-view">
@@ -586,7 +560,7 @@ AI-generated, enhanced, summary, insights
         )}
       </div>
 
-      {/* Selected Note Detail */}
+      
       {selectedNote && (
         <div className="note-detail-panel">
           <div className="note-detail-header">
@@ -640,7 +614,7 @@ AI-generated, enhanced, summary, insights
       )}
     </div>
 
-    {/* Floating Action Button */}
+    
     <div className="floating-actions">
       <button
         onClick={handleQuickNote}

@@ -1,32 +1,21 @@
-/**
- * ResponseGrounding - Source Citation and Grounding System for FocusFlow AI
- * 
- * Provides research-grade response features:
- * - Source citation system
- * - Evidence references
- * - Chunk traceability
- * - Retrieval grounding
- * - Confidence indicators
- * - Answer provenance
- * - Hallucination detection
- */
+
 
 class ResponseGrounding {
   constructor(options = {}) {
     this.config = {
-      // Citation settings
+
       enableCitations: options.enableCitations !== false,
       citationStyle: options.citationStyle || 'numeric', // numeric, author-date, footnote
       maxCitationsPerResponse: options.maxCitationsPerResponse || 10,
       minCitationConfidence: options.minCitationConfidence || 0.3,
       
-      // Grounding settings
+
       enableGrounding: options.enableGrounding !== false,
       groundingThreshold: options.groundingThreshold || 0.5,
       requireSourceEvidence: options.requireSourceEvidence !== false,
       maxGroundingDistance: options.maxGroundingDistance || 2,
       
-      // Confidence scoring
+
       enableConfidenceScoring: options.enableConfidenceScoring !== false,
       confidenceFactors: options.confidenceFactors || {
         sourceRelevance: 0.4,
@@ -35,12 +24,12 @@ class ResponseGrounding {
         recency: 0.1
       },
       
-      // Hallucination detection
+
       enableHallucinationDetection: options.enableHallucinationDetection !== false,
       hallucinationThreshold: options.hallucinationThreshold || 0.3,
       contradictionDetection: options.contradictionDetection !== false,
       
-      // Formatting
+
       enableStructuredFormatting: options.enableStructuredFormatting !== false,
       includeMetadata: options.includeMetadata !== false,
       enableInteractiveCitations: options.enableInteractiveCitations !== false
@@ -52,31 +41,25 @@ class ResponseGrounding {
     this.hallucinationPatterns = new Map();
   }
 
-  /**
-   * Ground AI response with sources and evidence
-   * @param {Object} aiResponse - AI response to ground
-   * @param {Array} retrievedContext - Retrieved context chunks
-   * @param {Object} query - Original query
-   * @returns {Object} Grounded response
-   */
+  
   async groundResponse(aiResponse, retrievedContext, query) {
     try {
-      // Extract claims and statements from response
+
       const claims = this.extractClaims(aiResponse.content);
       
-      // Match claims to evidence
+
       const groundedClaims = await this.matchClaimsToEvidence(claims, retrievedContext);
       
-      // Calculate confidence scores
+
       const scoredClaims = this.calculateClaimConfidence(groundedClaims, query);
       
-      // Detect potential hallucinations
+
       const hallucinationAnalysis = this.detectHallucinations(scoredClaims);
       
-      // Generate citations
+
       const citations = this.generateCitations(scoredClaims, retrievedContext);
       
-      // Build grounded response
+
       const groundedResponse = this.buildGroundedResponse(
         aiResponse,
         scoredClaims,
@@ -84,7 +67,6 @@ class ResponseGrounding {
         hallucinationAnalysis
       );
 
-      // Track grounding for analytics
       this.trackGrounding(groundedResponse, query, retrievedContext);
 
       return groundedResponse;
@@ -95,11 +77,7 @@ class ResponseGrounding {
     }
   }
 
-  /**
-   * Extract claims from AI response
-   * @param {string} content - AI response content
-   * @returns {Array} Extracted claims
-   */
+  
   extractClaims(content) {
     const claims = [];
     const sentences = content.split(/[.!?]+/);
@@ -108,7 +86,7 @@ class ResponseGrounding {
       const sentence = sentences[i].trim();
       if (sentence.length < 10) continue; // Skip very short sentences
       
-      // Identify claim patterns
+
       const claimPatterns = [
         /(?:according to|based on|research shows|studies indicate|evidence suggests)(.+?)/gi,
         /(?:it is|they are|this means|therefore|consequently)(.+?)/gi,
@@ -127,7 +105,6 @@ class ResponseGrounding {
         }
       }
 
-      // Check for factual statements
       if (!isClaim) {
         const factualPatterns = [
           /\d+(?:\.\d+)?%/, // percentages
@@ -156,12 +133,7 @@ class ResponseGrounding {
     return claims;
   }
 
-  /**
-   * Match claims to evidence from retrieved context
-   * @param {Array} claims - Extracted claims
-   * @param {Array} context - Retrieved context chunks
-   * @returns {Array} Claims with evidence
-   */
+  
   async matchClaimsToEvidence(claims, context) {
     const groundedClaims = [];
 
@@ -185,7 +157,6 @@ class ResponseGrounding {
         }
       }
 
-      // Sort evidence by relevance
       evidence.sort((a, b) => b.relevance - a.relevance);
 
       groundedClaims.push({
@@ -199,34 +170,25 @@ class ResponseGrounding {
     return groundedClaims;
   }
 
-  /**
-   * Calculate claim confidence scores
-   * @param {Array} claims - Claims with evidence
-   * @param {Object} query - Original query
-   * @returns {Array} Claims with confidence scores
-   */
+  
   calculateClaimConfidence(claims, query) {
     const factors = this.config.confidenceFactors;
     
     return claims.map(claim => {
       let confidence = 0.5; // Base confidence
 
-      // Source relevance factor
       if (claim.evidence.length > 0) {
         const avgSourceRelevance = claim.evidence.reduce((sum, ev) => sum + ev.relevance, 0) / claim.evidence.length;
         confidence += avgSourceRelevance * factors.sourceRelevance;
       }
 
-      // Evidence strength factor
       confidence += claim.evidenceStrength * factors.evidenceStrength;
 
-      // Retrieval score factor
       if (claim.evidence.length > 0) {
         const avgRetrievalScore = claim.evidence.reduce((sum, ev) => sum + ev.retrievalScore, 0) / claim.evidence.length;
         confidence += (avgRetrievalScore / 10) * factors.retrievalScore; // Normalize retrieval score
       }
 
-      // Recency factor
       if (claim.evidence.length > 0) {
         const avgAge = claim.evidence.reduce((sum, ev) => {
           const age = ev.timestamp ? (Date.now() - new Date(ev.timestamp).getTime()) / (1000 * 60 * 60 * 24) : 365;
@@ -237,11 +199,9 @@ class ResponseGrounding {
         confidence += recencyScore * factors.recency;
       }
 
-      // Query alignment factor
       const queryAlignment = this.calculateQueryAlignment(claim.text, query.text);
       confidence += queryAlignment * 0.1; // Small weight for query alignment
 
-      // Penalty for claims without evidence
       if (claim.evidence.length === 0) {
         confidence *= 0.3; // Significant penalty
       }
@@ -251,11 +211,7 @@ class ResponseGrounding {
     });
   }
 
-  /**
-   * Detect potential hallucinations
-   * @param {Array} claims - Claims with confidence scores
-   * @returns {Object} Hallucination analysis
-   */
+  
   detectHallucinations(claims) {
     const hallucinationAnalysis = {
       totalClaims: claims.length,
@@ -267,7 +223,7 @@ class ResponseGrounding {
     };
 
     for (const claim of claims) {
-      // Check for hallucination patterns
+
       const hallucinationRisk = this.assessHallucinationRisk(claim);
       
       if (hallucinationRisk > this.config.hallucinationThreshold) {
@@ -278,12 +234,10 @@ class ResponseGrounding {
         });
       }
 
-      // Check for low confidence
       if (claim.confidence < this.config.minCitationConfidence) {
         hallucinationAnalysis.lowConfidenceClaims.push(claim);
       }
 
-      // Check for contradictions with other claims
       const contradictions = this.findContradictions(claim, claims);
       if (contradictions.length > 0) {
         hallucinationAnalysis.contradictoryClaims.push({
@@ -293,7 +247,6 @@ class ResponseGrounding {
       }
     }
 
-    // Calculate overall risk score
     const hallucinatedRatio = hallucinationAnalysis.hallucinatedClaims.length / claims.length;
     const lowConfidenceRatio = hallucinationAnalysis.lowConfidenceClaims.length / claims.length;
     const contradictionRatio = hallucinationAnalysis.contradictoryClaims.length / claims.length;
@@ -304,7 +257,6 @@ class ResponseGrounding {
       contradictionRatio * 0.2
     );
 
-    // Determine overall risk level
     if (hallucinationAnalysis.riskScore > 0.7) {
       hallucinationAnalysis.overallRisk = 'high';
     } else if (hallucinationAnalysis.riskScore > 0.4) {
@@ -316,12 +268,7 @@ class ResponseGrounding {
     return hallucinationAnalysis;
   }
 
-  /**
-   * Generate citations for claims
-   * @param {Array} claims - Claims with evidence
-   * @param {Array} context - Retrieved context
-   * @returns {Array} Generated citations
-   */
+  
   generateCitations(claims, context) {
     const citations = [];
     const citationMap = new Map();
@@ -345,18 +292,16 @@ class ResponseGrounding {
 
           citationMap.set(evidence.chunkId, citation);
         } else {
-          // Add claim to existing citation
+
           citationMap.get(evidence.chunkId).claims.push(claim.id);
         }
       }
     }
 
-    // Convert to array and sort by relevance
     const allCitations = Array.from(citationMap.values())
       .sort((a, b) => b.relevance - a.relevance)
       .slice(0, this.config.maxCitationsPerResponse);
 
-    // Format citations based on style
     return allCitations.map((citation, index) => ({
       ...citation,
       formatted: this.formatCitation(citation, index + 1),
@@ -364,23 +309,15 @@ class ResponseGrounding {
     }));
   }
 
-  /**
-   * Build grounded response with citations and metadata
-   * @param {Object} originalResponse - Original AI response
-   * @param {Array} groundedClaims - Claims with evidence
-   * @param {Array} citations - Generated citations
-   * @param {Object} hallucinationAnalysis - Hallucination analysis
-   * @returns {Object} Grounded response
-   */
+  
   buildGroundedResponse(originalResponse, groundedClaims, citations, hallucinationAnalysis) {
-    // Insert citations into response content
+
     let groundedContent = originalResponse.content;
     
     if (this.config.enableCitations) {
       groundedContent = this.insertCitationsIntoContent(groundedContent, groundedClaims, citations);
     }
 
-    // Build response object
     const groundedResponse = {
       ...originalResponse,
       content: groundedContent,
@@ -398,7 +335,6 @@ class ResponseGrounding {
       }
     };
 
-    // Add structured formatting if enabled
     if (this.config.enableStructuredFormatting) {
       groundedResponse.formatted = this.formatGroundedResponse(groundedResponse);
     }
@@ -406,17 +342,11 @@ class ResponseGrounding {
     return groundedResponse;
   }
 
-  /**
-   * Insert citations into response content
-   * @param {string} content - Response content
-   * @param {Array} claims - Grounded claims
-   * @param {Array} citations - Citations
-   * @returns {string} Content with citations
-   */
+  
   insertCitationsIntoContent(content, claims, citations) {
     let annotatedContent = content;
     
-    // Create citation index map
+
     const citationIndexMap = new Map();
     citations.forEach((citation, index) => {
       citation.claims.forEach(claimId => {
@@ -427,7 +357,6 @@ class ResponseGrounding {
       });
     });
 
-    // Insert citations for each claim
     for (const claim of claims) {
       const citationIndices = citationIndexMap.get(claim.id) || [];
       
@@ -441,12 +370,7 @@ class ResponseGrounding {
     return annotatedContent;
   }
 
-  /**
-   * Format citation based on style
-   * @param {Object} citation - Citation object
-   * @param {number} index - Citation index
-   * @returns {string} Formatted citation
-   */
+  
   formatCitation(citation, index) {
     switch (this.config.citationStyle) {
       case 'numeric':
@@ -460,11 +384,7 @@ class ResponseGrounding {
     }
   }
 
-  /**
-   * Format inline citation
-   * @param {Array} indices - Citation indices
-   * @returns {string} Inline citation
-   */
+  
   formatInlineCitation(indices) {
     if (indices.length === 1) {
       return this.formatCitation({}, indices[0]);
@@ -473,11 +393,7 @@ class ResponseGrounding {
     }
   }
 
-  /**
-   * Format grounded response with structured elements
-   * @param {Object} groundedResponse - Grounded response
-   * @returns {Object} Formatted response
-   */
+  
   formatGroundedResponse(groundedResponse) {
     return {
       ...groundedResponse,
@@ -493,34 +409,25 @@ class ResponseGrounding {
     };
   }
 
-  /**
-   * Calculate claim relevance to evidence
-   * @param {Object} claim - Claim object
-   * @param {Object} chunk - Evidence chunk
-   * @returns {number} Relevance score
-   */
+  
   calculateClaimRelevance(claim, chunk) {
     const claimWords = new Set(claim.text.toLowerCase().split(/\s+/));
     const evidenceWords = new Set((chunk.content || '').toLowerCase().split(/\s+/));
     
-    // Calculate word overlap
+
     const intersection = new Set([...claimWords].filter(word => evidenceWords.has(word)));
     const overlapRatio = intersection.size / Math.max(claimWords.size, evidenceWords.size);
     
-    // Boost for semantic tag matches
+
     const semanticBoost = this.calculateSemanticBoost(claim, chunk);
     
-    // Calculate distance-based relevance
+
     const distanceBoost = this.calculateDistanceBoost(claim, chunk);
     
     return Math.min(1, overlapRatio + semanticBoost + distanceBoost);
   }
 
-  /**
-   * Calculate evidence strength
-   * @param {Array} evidence - Evidence array
-   * @returns {number} Evidence strength score
-   */
+  
   calculateEvidenceStrength(evidence) {
     if (evidence.length === 0) return 0;
     
@@ -531,12 +438,7 @@ class ResponseGrounding {
     return Math.min(1, avgRelevance + diversityBonus);
   }
 
-  /**
-   * Calculate query alignment
-   * @param {string} claimText - Claim text
-   * @param {string} queryText - Query text
-   * @returns {number} Alignment score
-   */
+  
   calculateQueryAlignment(claimText, queryText) {
     const claimWords = new Set(claimText.toLowerCase().split(/\s+/));
     const queryWords = new Set(queryText.toLowerCase().split(/\s+/));
@@ -545,15 +447,11 @@ class ResponseGrounding {
     return queryWords.size > 0 ? intersection.size / queryWords.size : 0;
   }
 
-  /**
-   * Assess hallucination risk for claim
-   * @param {Object} claim - Claim object
-   * @returns {number} Risk score
-   */
+  
   assessHallucinationRisk(claim) {
     let risk = 0;
     
-    // High risk indicators
+
     const highRiskPatterns = [
       /\b(?:always|never|all|none|every|only)\b/gi, // Absolute terms
       /\b(?:definitely|certainly|obviously|clearly)\b/gi, // Certainty terms
@@ -568,12 +466,10 @@ class ResponseGrounding {
       }
     }
 
-    // Evidence-based risk reduction
     if (claim.evidence.length > 0) {
       risk *= 0.3; // Significant risk reduction with evidence
     }
 
-    // Confidence-based risk
     if (claim.confidence < 0.3) {
       risk += 0.3;
     }
@@ -581,11 +477,7 @@ class ResponseGrounding {
     return Math.min(1, risk);
   }
 
-  /**
-   * Get hallucination factors for claim
-   * @param {Object} claim - Claim object
-   * @returns {Array} Risk factors
-   */
+  
   getHallucinationFactors(claim) {
     const factors = [];
     
@@ -609,12 +501,7 @@ class ResponseGrounding {
     return factors;
   }
 
-  /**
-   * Find contradictions between claims
-   * @param {Object} claim - Claim to check
-   * @param {Array} allClaims - All claims
-   * @returns {Array} Contradictions
-   */
+  
   findContradictions(claim, allClaims) {
     const contradictions = [];
     
@@ -634,12 +521,7 @@ class ResponseGrounding {
     return contradictions;
   }
 
-  /**
-   * Calculate contradiction score between two claims
-   * @param {Object} claim1 - First claim
-   * @param {Object} claim2 - Second claim
-   * @returns {number} Contradiction score
-   */
+  
   calculateContradictionScore(claim1, claim2) {
     const contradictoryPatterns = [
       { positive: /\b(?:is|are|was|were)\b/gi, negative: /\b(?:is not|are not|was not|were not)\b/gi },
@@ -661,16 +543,12 @@ class ResponseGrounding {
     return 0; // No contradiction detected
   }
 
-  /**
-   * Extract citation content
-   * @param {string} content - Full content
-   * @returns {string} Citation excerpt
-   */
+  
   extractCitationContent(content) {
-    // Extract most relevant sentence or phrase
+
     const sentences = content.split(/[.!?]+/);
     
-    // Find longest sentence (likely most informative)
+
     let bestSentence = '';
     for (const sentence of sentences) {
       const trimmed = sentence.trim();
@@ -682,11 +560,7 @@ class ResponseGrounding {
     return bestSentence || content.substring(0, 150);
   }
 
-  /**
-   * Determine citation type
-   * @param {Object} evidence - Evidence object
-   * @returns {string} Citation type
-   */
+  
   determineCitationType(evidence) {
     if (evidence.semanticTags && evidence.semanticTags.includes('results')) {
       return 'research_finding';
@@ -699,11 +573,7 @@ class ResponseGrounding {
     }
   }
 
-  /**
-   * Calculate overall response confidence
-   * @param {Array} claims - Grounded claims
-   * @returns {number} Overall confidence
-   */
+  
   calculateOverallConfidence(claims) {
     if (claims.length === 0) return 0.5;
     
@@ -713,11 +583,7 @@ class ResponseGrounding {
     return (avgConfidence * 0.7) + (evidenceRatio * 0.3);
   }
 
-  /**
-   * Calculate grounding score
-   * @param {Array} claims - Grounded claims
-   * @returns {number} Grounding score
-   */
+  
   calculateGroundingScore(claims) {
     if (claims.length === 0) return 0;
     
@@ -727,12 +593,7 @@ class ResponseGrounding {
     return (claimsWithEvidence.length / claims.length) * avgEvidenceStrength;
   }
 
-  /**
-   * Track grounding for analytics
-   * @param {Object} groundedResponse - Grounded response
-   * @param {Object} query - Original query
-   * @param {Array} context - Retrieved context
-   */
+  
   trackGrounding(groundedResponse, query, context) {
     const trackingData = {
       timestamp: new Date().toISOString(),
@@ -749,17 +610,13 @@ class ResponseGrounding {
 
     this.confidenceHistory.push(trackingData);
     
-    // Keep only recent history
+
     if (this.confidenceHistory.length > 1000) {
       this.confidenceHistory = this.confidenceHistory.slice(-500);
     }
   }
 
-  /**
-   * Format citations section
-   * @param {Array} citations - Citations array
-   * @returns {string} Formatted citations section
-   */
+  
   formatCitationsSection(citations) {
     if (citations.length === 0) return '';
     
@@ -780,11 +637,7 @@ ${citations.map(citation => `
     `.trim();
   }
 
-  /**
-   * Format evidence section
-   * @param {Array} claims - Claims array
-   * @returns {string} Formatted evidence section
-   */
+  
   formatEvidenceSection(claims) {
     const claimsWithEvidence = claims.filter(claim => claim.evidence.length > 0);
     
@@ -807,11 +660,7 @@ ${claim.evidence.map(ev => `- ${ev.source} (${(ev.relevance * 100).toFixed(1)}% 
     `.trim();
   }
 
-  /**
-   * Format confidence section
-   * @param {number} confidence - Overall confidence
-   * @returns {string} Formatted confidence section
-   */
+  
   formatConfidenceSection(confidence) {
     return `
 ## Response Confidence
@@ -824,11 +673,7 @@ ${claim.evidence.map(ev => `- ${ev.source} (${(ev.relevance * 100).toFixed(1)}% 
     `.trim();
   }
 
-  /**
-   * Format warnings section
-   * @param {Object} analysis - Hallucination analysis
-   * @returns {string} Formatted warnings section
-   */
+  
   formatWarningsSection(analysis) {
     if (analysis.overallRisk === 'low') return '';
     
@@ -846,11 +691,7 @@ ${claim.evidence.map(ev => `- ${ev.source} (${(ev.relevance * 100).toFixed(1)}% 
     `.trim();
   }
 
-  /**
-   * Get confidence level description
-   * @param {number} confidence - Confidence score
-   * @returns {string} Confidence level
-   */
+  
   getConfidenceLevel(confidence) {
     if (confidence >= 0.8) return 'HIGH';
     if (confidence >= 0.6) return 'MEDIUM';
@@ -858,11 +699,7 @@ ${claim.evidence.map(ev => `- ${ev.source} (${(ev.relevance * 100).toFixed(1)}% 
     return 'VERY LOW';
   }
 
-  /**
-   * Get confidence interpretation
-   * @param {number} confidence - Confidence score
-   * @returns {string} Interpretation
-   */
+  
   getConfidenceInterpretation(confidence) {
     if (confidence >= 0.8) {
       return 'Response is well-supported by retrieved evidence and sources.';
@@ -875,11 +712,7 @@ ${claim.evidence.map(ev => `- ${ev.source} (${(ev.relevance * 100).toFixed(1)}% 
     }
   }
 
-  /**
-   * Get risk recommendation
-   * @param {string} riskLevel - Risk level
-   * @returns {string} Recommendation
-   */
+  
   getRiskRecommendation(riskLevel) {
     switch (riskLevel) {
       case 'high':
@@ -893,38 +726,24 @@ ${claim.evidence.map(ev => `- ${ev.source} (${(ev.relevance * 100).toFixed(1)}% 
     }
   }
 
-  /**
-   * Calculate semantic boost
-   * @param {Object} claim - Claim object
-   * @param {Object} chunk - Evidence chunk
-   * @returns {number} Semantic boost score
-   */
+  
   calculateSemanticBoost(claim, chunk) {
     const claimTags = new Set(); // Would be extracted from claim
     const chunkTags = new Set(chunk.semanticTags || []);
     
-    // Simple semantic overlap calculation
+
     const overlap = [...claimTags].filter(tag => chunkTags.has(tag)).length;
     return chunkTags.size > 0 ? overlap / chunkTags.size * 0.1 : 0;
   }
 
-  /**
-   * Calculate distance boost
-   * @param {Object} claim - Claim object
-   * @param {Object} chunk - Evidence chunk
-   * @returns {number} Distance boost score
-   */
+  
   calculateDistanceBoost(claim, chunk) {
-    // Simplified distance calculation based on position
+
     const distance = Math.abs((claim.position || 0) - (chunk.position || 0));
     return Math.max(0, 1 - distance / this.config.maxGroundingDistance) * 0.1;
   }
 
-  /**
-   * Generate interactive elements for citations
-   * @param {Object} groundedResponse - Grounded response
-   * @returns {Object} Interactive elements
-   */
+  
   generateInteractiveElements(groundedResponse) {
     return {
       citationTooltips: groundedResponse.citations.map(citation => ({
@@ -945,10 +764,7 @@ ${claim.evidence.map(ev => `- ${ev.source} (${(ev.relevance * 100).toFixed(1)}% 
     };
   }
 
-  /**
-   * Get grounding statistics
-   * @returns {Object} Statistics
-   */
+  
   getStats() {
     return {
       config: this.config,
@@ -970,17 +786,12 @@ ${claim.evidence.map(ev => `- ${ev.source} (${(ev.relevance * 100).toFixed(1)}% 
     };
   }
 
-  /**
-   * Update configuration
-   * @param {Object} newConfig - New configuration
-   */
+  
   updateConfig(newConfig) {
     this.config = { ...this.config, ...newConfig };
   }
 
-  /**
-   * Reset grounding system
-   */
+  
   reset() {
     this.citationTracker.clear();
     this.evidenceMap.clear();
@@ -989,10 +800,8 @@ ${claim.evidence.map(ev => `- ${ev.source} (${(ev.relevance * 100).toFixed(1)}% 
   }
 }
 
-// Export singleton instance
 export const responseGrounding = new ResponseGrounding();
 
-// Export utilities
 export const groundResponse = responseGrounding.groundResponse.bind(responseGrounding);
 export const getStats = responseGrounding.getStats.bind(responseGrounding);
 export const updateConfig = responseGrounding.updateConfig.bind(responseGrounding);

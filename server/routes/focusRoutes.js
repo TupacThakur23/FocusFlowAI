@@ -8,7 +8,7 @@ dotenv.config();
 const router = express.Router();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// ------------------ UTIL FUNCTIONS ------------------
+
 
 const chunkText = (text, wordLimit = 200) => {
   const words = text.split(/\s+/);
@@ -36,7 +36,7 @@ const getEmbedding = async (text) => {
   return result.embedding.values;
 };
 
-// ------------------ INGEST ------------------
+
 
 router.post("/ingest", async (req, res) => {
   try {
@@ -70,13 +70,13 @@ router.post("/ingest", async (req, res) => {
       return res.status(400).json({ error: "No content provided" });
     }
 
-    // Chunk the text
+
     const chunks = chunkText(text, 250);
 
-    // Clear old chunks for this source
+
     await VectorChunk.deleteMany({ sourceUrl });
 
-    // Generate embeddings and store in MongoDB
+
     const chunkDocs = [];
     for (let i = 0; i < chunks.length; i++) {
       try {
@@ -89,7 +89,7 @@ router.post("/ingest", async (req, res) => {
         });
       } catch (embErr) {
         console.error(`Embedding failed for chunk ${i}:`, embErr.message);
-        // Still store the chunk without embedding for fallback keyword search
+
         chunkDocs.push({
           sourceUrl,
           text: chunks[i],
@@ -114,7 +114,7 @@ router.post("/ingest", async (req, res) => {
   }
 });
 
-// ------------------ QUERY ------------------
+
 
 router.post("/query", async (req, res) => {
   try {
@@ -124,12 +124,12 @@ router.post("/query", async (req, res) => {
       return res.status(400).json({ error: "Question required" });
     }
 
-    // Find chunks — either for a specific source or the most recent ones
+
     let chunks;
     if (sourceUrl) {
       chunks = await VectorChunk.find({ sourceUrl });
     } else {
-      // Get the most recently ingested source
+
       const latest = await VectorChunk.findOne().sort({ createdAt: -1 });
       if (!latest) {
         return res.status(400).json({ error: "Ingest content first" });
@@ -143,11 +143,11 @@ router.post("/query", async (req, res) => {
 
     let topChunks;
 
-    // Check if we have real embeddings
+
     const hasEmbeddings = chunks.some((c) => c.embedding && c.embedding.length > 0);
 
     if (hasEmbeddings) {
-      // Vector similarity search using Gemini embeddings
+
       const questionEmbedding = await getEmbedding(question);
 
       const scored = chunks
@@ -159,7 +159,7 @@ router.post("/query", async (req, res) => {
 
       topChunks = scored.sort((a, b) => b.score - a.score).slice(0, 3);
     } else {
-      // Fallback: keyword matching
+
       const words = question.toLowerCase().split(/\s+/);
 
       const scored = chunks.map((chunk) => {
@@ -199,7 +199,7 @@ ${question}
   }
 });
 
-// ------------------ STATS ------------------
+
 
 router.get("/stats", async (req, res) => {
   try {

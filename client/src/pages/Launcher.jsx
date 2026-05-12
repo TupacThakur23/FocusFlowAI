@@ -13,20 +13,17 @@ export default function Launcher({ onNavigate }) {
         if (!tabs || !tabs[0]) return;
         const tabId = tabs[0].id;
 
-        // Directly inject the panel into the active tab
         chrome.scripting.executeScript({
           target: { tabId },
           func: (iframeUrl) => {
             const PANEL_ID = 'ff-floating-panel';
             const FAB_ID   = 'ff-floating-fab';
 
-            // Clean up ANY existing instance to ensure fresh load
             const existing = document.getElementById(PANEL_ID);
             if (existing) existing.remove();
             const existingFab = document.getElementById(FAB_ID);
             if (existingFab) existingFab.remove();
 
-            // --- Build the Adaptive Floating Panel ---
             const PANEL_W = 480;
             const PANEL_H = '100vh';
             
@@ -51,7 +48,6 @@ export default function Launcher({ onNavigate }) {
               'overflow:hidden',
             ].join(';');
 
-            // --- Premium Header (Drag Region) ---
             const header = document.createElement('div');
             header.style.cssText = [
               'height:56px',
@@ -127,7 +123,6 @@ export default function Launcher({ onNavigate }) {
             controls.append(minBtn, closeBtn);
             header.append(logoContainer, controls);
 
-            // --- Drag Logic ---
             let isDragging = false;
             let currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
 
@@ -155,13 +150,11 @@ export default function Launcher({ onNavigate }) {
               header.style.cursor = 'grab';
             });
 
-            // --- iframe Area ---
             const iframe = document.createElement('iframe');
             iframe.src = iframeUrl;
             iframe.style.cssText = 'flex:1;width:100%;border:none;background:transparent;display:block';
             iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups');
 
-            // --- Resize Edge (Left side) ---
             const resizeHandle = document.createElement('div');
             resizeHandle.style.cssText = 'position:absolute;left:0;top:0;width:6px;height:100%;cursor:ew-resize;z-index:2147483648';
             let isResizing = false;
@@ -188,7 +181,6 @@ export default function Launcher({ onNavigate }) {
             panel.append(header, iframe, resizeHandle);
             document.body.appendChild(panel);
 
-            // --- THE ORB (Minimized State) ---
             const fab = document.createElement('button');
             fab.id = FAB_ID;
             fab.style.cssText = [
@@ -211,7 +203,6 @@ export default function Launcher({ onNavigate }) {
             
             fab.innerHTML = `<img src="${chrome.runtime.getURL('icon.png')}" style="width:56px;height:56px;object-fit:contain;display:block;border-radius:14px;" alt="FocusFlow" />`;
 
-            // Pulse Animation
             const styleSheet = document.createElement("style");
             styleSheet.textContent = `
               @keyframes orbPulse {
@@ -239,7 +230,6 @@ export default function Launcher({ onNavigate }) {
           args: [panelUrl],
         }).catch(err => console.error('FocusFlow: executeScript failed', err));
 
-        // Close popup
         setTimeout(() => window.close(), 100);
       });
     } else if (onNavigate) {
@@ -259,11 +249,11 @@ export default function Launcher({ onNavigate }) {
 
   return (
     <div className="w-[320px] h-[440px] flex flex-col bg-[#03040b] text-white font-sans overflow-hidden">
-      {/* Background Decor */}
+      
       <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/15 blur-[60px] -z-10" />
       <div className="absolute bottom-0 left-0 w-32 h-32 bg-violet-600/10 blur-[60px] -z-10" />
 
-      {/* Header Section */}
+      
       <div className="pt-10 pb-6 px-7">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3.5">
@@ -283,7 +273,7 @@ export default function Launcher({ onNavigate }) {
         </div>
       </div>
 
-      {/* Action Buttons */}
+      
       <div className="flex-1 px-6 py-2 space-y-5">
         <button
           onClick={handleOpenAide}
@@ -314,7 +304,7 @@ export default function Launcher({ onNavigate }) {
         </button>
       </div>
 
-      {/* Footer Branding */}
+      
       <div className="py-8 flex flex-col items-center">
         <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.02] border border-white/[0.04]">
           <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />

@@ -1,27 +1,8 @@
-/**
- * LoadingSpinner - Global Loading Component
- * 
- * Provides consistent loading indicators for:
- * - Different loading states
- * - Progress indicators
- * - Skeleton screens
- * - Inline loading
- * - Full-screen loading
- */
+
 
 import React from 'react';
 import { Loader2 } from 'lucide-react';
 
-/**
- * LoadingSpinner component
- * @param {Object} props - Component props
- * @param {string} props.size - Size variant (sm, md, lg, xl)
- * @param {string} props.variant - Style variant (default, dots, pulse, skeleton)
- * @param {string} props.message - Optional loading message
- * @param {number} props.progress - Progress percentage (0-100)
- * @param {boolean} props.fullscreen - Full screen overlay
- * @param {string} props.className - Additional CSS classes
- */
 export const LoadingSpinner = ({
   size = 'md',
   variant = 'default',
@@ -105,12 +86,6 @@ export const LoadingSpinner = ({
   ) : content;
 };
 
-/**
- * InlineLoading component for button/text contexts
- * @param {Object} props - Component props
- * @param {string} props.size - Size variant (sm, md, lg)
- * @param {string} props.text - Loading text
- */
 export const InlineLoading = ({ size = 'sm', text = 'Loading...' }) => {
   const sizeClasses = {
     sm: 'h-3 w-3',
@@ -126,12 +101,6 @@ export const InlineLoading = ({ size = 'sm', text = 'Loading...' }) => {
   );
 };
 
-/**
- * SkeletonLoader component for content placeholders
- * @param {Object} props - Component props
- * @param {number} props.lines - Number of skeleton lines
- * @param {string} props.variant - Skeleton variant (text, card, list)
- */
 export const SkeletonLoader = ({ lines = 3, variant = 'text' }) => {
   const renderTextSkeleton = () => (
     <div className="space-y-3">
@@ -183,13 +152,6 @@ export const SkeletonLoader = ({ lines = 3, variant = 'text' }) => {
   return variants[variant] || renderTextSkeleton();
 };
 
-/**
- * ProgressLoader component for tracked operations
- * @param {Object} props - Component props
- * @param {number} props.progress - Progress percentage (0-100)
- * @param {string} props.message - Progress message
- * @param {boolean} props.indeterminate - Indeterminate progress
- */
 export const ProgressLoader = ({ progress = 0, message, indeterminate = false }) => {
   return (
     <div className="w-full max-w-md mx-auto">

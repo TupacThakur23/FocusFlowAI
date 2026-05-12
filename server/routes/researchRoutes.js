@@ -3,7 +3,7 @@ import Research from "../models/Research.js";
 
 const router = express.Router();
 
-// Get all, optionally filtered by workbook
+
 router.get("/", async (req, res) => {
   try {
     const filter = req.query.workbook ? { workbook: req.query.workbook } : {};
@@ -14,7 +14,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Save research entry
+
 router.post("/", async (req, res) => {
   try {
     if (!req.body.topic) {
@@ -37,7 +37,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Delete research entry
+
 router.delete("/:id", async (req, res) => {
   try {
     await Research.findByIdAndDelete(req.params.id);
@@ -47,7 +47,7 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// Get distinct workbook names
+
 router.get("/workbooks", async (req, res) => {
   try {
     const workbooks = await Research.distinct("workbook");
@@ -60,7 +60,7 @@ router.get("/workbooks", async (req, res) => {
 import { GoogleGenerativeAI } from "@google/generative-ai";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// Semantic Search
+
 router.post("/semantic-search", async (req, res) => {
   try {
     const { query } = req.body;
@@ -68,9 +68,9 @@ router.post("/semantic-search", async (req, res) => {
 
     const allResearch = await Research.find({}).sort({ date: -1 });
     
-    // Instead of computing embeddings on the fly for thousands of docs, we use the LLM
-    // to filter and return the IDs of semantically relevant documents.
-    // For large scale, we would use pgvector/pinecone.
+
+
+
     let contextString = "Documents:\n";
     allResearch.forEach(item => {
       contextString += `ID: ${item._id}\nTopic: ${item.topic}\nSummary: ${item.summary}\nNotes: ${item.notes}\n\n`;

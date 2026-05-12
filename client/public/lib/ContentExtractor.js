@@ -1,15 +1,4 @@
-/**
- * ContentExtractor - Advanced Content Extraction for FocusFlow AI
- * 
- * Integrates Mozilla Readability for clean content extraction:
- * - Removes ads, navigation, and clutter
- * - Preserves headings and semantic structure
- * - Extracts images and media information
- * - Preserves code blocks and technical content
- * - Handles different content types (articles, blogs, documentation)
- * - Fallback extraction methods
- * - Metadata extraction
- */
+
 
 export class ContentExtractor {
   constructor(options = {}) {
@@ -27,16 +16,14 @@ export class ContentExtractor {
     this.initializeReadability();
   }
 
-  /**
-   * Initialize Mozilla Readability
-   */
+  
   initializeReadability() {
     try {
-      // Check if Readability is available
+
       if (typeof window !== 'undefined' && window.readability) {
         this.readability = window.readability;
       } else if (typeof document !== 'undefined') {
-        // Try to load Readability script
+
         this.loadReadabilityScript();
       }
     } catch (error) {
@@ -44,9 +31,7 @@ export class ContentExtractor {
     }
   }
 
-  /**
-   * Load Readability script dynamically
-   */
+  
   async loadReadabilityScript() {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
@@ -64,25 +49,19 @@ export class ContentExtractor {
     });
   }
 
-  /**
-   * Extract content from current page
-   * @returns {Object} Extracted content data
-   */
+  
   async extractContent() {
     try {
       let result = null;
 
-      // Try Readability first
       if (this.readability) {
         result = await this.extractWithReadability();
       }
 
-      // Fallback to other methods if Readability fails
       if (!result || !result.content || result.content.length < this.options.minContentLength) {
         result = await this.extractWithFallback();
       }
 
-      // Post-process and validate
       if (result) {
         result = this.postProcessContent(result);
         result = this.validateAndCleanContent(result);
@@ -95,17 +74,13 @@ export class ContentExtractor {
     }
   }
 
-  /**
-   * Extract content using Mozilla Readability
-   * @returns {Object} Readability extraction result
-   */
+  
   async extractWithReadability() {
     try {
       if (!this.readability) {
         throw new Error('Readability not available');
       }
 
-      // Create a clone of the document for parsing
       const documentClone = document.cloneNode(true);
       const reader = new this.readability.constructor(documentClone);
 
@@ -137,10 +112,7 @@ export class ContentExtractor {
     }
   }
 
-  /**
-   * Extract content using fallback methods
-   * @returns {Object} Fallback extraction result
-   */
+  
   async extractWithFallback() {
     const methods = [
       () => this.extractMainContent(),
@@ -164,9 +136,7 @@ export class ContentExtractor {
     return null;
   }
 
-  /**
-   * Extract main content using common selectors
-   */
+  
   extractMainContent() {
     const selectors = [
       'main',
@@ -197,9 +167,7 @@ export class ContentExtractor {
     throw new Error('Main content extraction failed');
   }
 
-  /**
-   * Extract article content
-   */
+  
   extractArticleContent() {
     const articles = document.querySelectorAll('article');
     
@@ -217,9 +185,7 @@ export class ContentExtractor {
     throw new Error('Article content extraction failed');
   }
 
-  /**
-   * Extract structured content
-   */
+  
   extractStructuredContent() {
     const structure = this.analyzeDocumentStructure();
     
@@ -236,11 +202,9 @@ export class ContentExtractor {
     throw new Error('Structured content extraction failed');
   }
 
-  /**
-   * Extract basic content (last resort)
-   */
+  
   extractBasicContent() {
-    // Remove unwanted elements
+
     const unwantedSelectors = [
       'nav', 'header', 'footer', 'aside', '.sidebar', '.navigation',
       '.menu', '.ads', '.advertisement', '.social', '.comments',
@@ -267,34 +231,26 @@ export class ContentExtractor {
     throw new Error('Basic content extraction failed');
   }
 
-  /**
-   * Clean element content
-   * @param {Element} element - Element to clean
-   * @returns {string} Cleaned content
-   */
+  
   cleanElement(element) {
     if (!element) return '';
 
-    // Clone the element to avoid modifying the original
     const clone = element.cloneNode(true);
     
-    // Remove unwanted attributes
+
     const unwantedAttrs = ['onclick', 'onload', 'onerror', 'style'];
     unwantedAttrs.forEach(attr => {
       clone.removeAttribute(attr);
     });
 
-    // Process images if enabled
     if (this.options.preserveImages) {
       this.processImages(clone);
     }
 
-    // Process code blocks if enabled
     if (this.options.preserveCode) {
       this.processCodeBlocks(clone);
     }
 
-    // Get text content while preserving some structure
     let content = '';
     
     if (clone.tagName === 'PRE' || clone.tagName === 'CODE') {
@@ -303,7 +259,6 @@ export class ContentExtractor {
       content = clone.innerHTML || '';
     }
 
-    // Clean up content
     content = content
       .replace(/<script[^>]*>.*?<\/script>/gi, '')
       .replace(/<style[^>]*>.*?<\/style>/gi, '')
@@ -314,15 +269,12 @@ export class ContentExtractor {
     return content;
   }
 
-  /**
-   * Process images in content
-   * @param {Element} element - Element to process
-   */
+  
   processImages(element) {
     const images = element.querySelectorAll('img');
     
     images.forEach(img => {
-      // Preserve important attributes
+
       if (img.src) {
         img.setAttribute('data-src', img.src);
       }
@@ -335,15 +287,12 @@ export class ContentExtractor {
     });
   }
 
-  /**
-   * Process code blocks in content
-   * @param {Element} element - Element to process
-   */
+  
   processCodeBlocks(element) {
     const codeBlocks = element.querySelectorAll('pre, code, .highlight, .syntaxhighlighter');
     
     codeBlocks.forEach(block => {
-      // Preserve code content
+
       if (block.textContent || block.innerText) {
         block.setAttribute('data-code', block.textContent || block.innerText);
         block.setAttribute('data-language', this.detectCodeLanguage(block));
@@ -351,13 +300,9 @@ export class ContentExtractor {
     });
   }
 
-  /**
-   * Detect code language
-   * @param {Element} codeBlock - Code block element
-   * @returns {string} Detected language
-   */
+  
   detectCodeLanguage(codeBlock) {
-    // Check for language classes
+
     const classes = codeBlock.className || '';
     const langMatch = classes.match(/language-(\w+)|\b(\w+)\b/);
     
@@ -365,13 +310,11 @@ export class ContentExtractor {
       return langMatch[1] || langMatch[2];
     }
 
-    // Check for data attributes
     const dataLang = codeBlock.getAttribute('data-language');
     if (dataLang) {
       return dataLang;
     }
 
-    // Simple detection based on content
     const content = codeBlock.textContent || '';
     if (content.includes('function') || content.includes('const') || content.includes('let')) {
       return 'javascript';
@@ -384,16 +327,12 @@ export class ContentExtractor {
     return 'unknown';
   }
 
-  /**
-   * Analyze document structure
-   * @returns {Object} Document structure analysis
-   */
+  
   analyzeDocumentStructure() {
     const headings = [];
     const mainContent = [];
     let currentSection = '';
 
-    // Extract headings and structure
     const headingElements = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
     
     headingElements.forEach((heading, index) => {
@@ -408,7 +347,6 @@ export class ContentExtractor {
       });
     });
 
-    // Extract main content areas
     const contentElements = document.querySelectorAll('p, div, section, article');
     
     contentElements.forEach(element => {
@@ -426,29 +364,21 @@ export class ContentExtractor {
     };
   }
 
-  /**
-   * Post-process extracted content
-   * @param {Object} result - Extraction result
-   * @returns {Object} Post-processed result
-   */
+  
   postProcessContent(result) {
     if (!result) return result;
 
-    // Add metadata if enabled
     if (this.options.extractMetadata) {
       result.metadata = this.extractMetadata();
     }
 
-    // Add word count
     if (result.content) {
       result.wordCount = result.content.split(/\s+/).filter(word => word.length > 0).length;
       result.charCount = result.content.length;
     }
 
-    // Add extraction timestamp
     result.extractedAt = new Date().toISOString();
 
-    // Add page information
     result.pageInfo = {
       url: window.location.href,
       domain: window.location.hostname,
@@ -459,14 +389,10 @@ export class ContentExtractor {
     return result;
   }
 
-  /**
-   * Extract page metadata
-   * @returns {Object} Page metadata
-   */
+  
   extractMetadata() {
     const metadata = {};
 
-    // Basic meta tags
     const getMetaContent = (name) => {
       const meta = document.querySelector(`meta[name="${name}"], meta[property="${name}"]`);
       return meta ? meta.getAttribute('content') : null;
@@ -478,7 +404,6 @@ export class ContentExtractor {
     metadata.published = getMetaContent('article:published_time') || getMetaContent('published_time');
     metadata.modified = getMetaContent('article:modified_time') || getMetaContent('modified_time');
 
-    // Open Graph tags
     const getOGContent = (property) => {
       const meta = document.querySelector(`meta[property="${property}"], meta[property="og:${property}"]`);
       return meta ? meta.getAttribute('content') : null;
@@ -492,7 +417,6 @@ export class ContentExtractor {
       site_name: getOGContent('site_name')
     };
 
-    // Twitter Card tags
     const getTwitterContent = (name) => {
       const meta = document.querySelector(`meta[name="twitter:${name}"]`);
       return meta ? meta.getAttribute('content') : null;
@@ -505,41 +429,32 @@ export class ContentExtractor {
       image: getTwitterContent('image')
     };
 
-    // Language and encoding
     metadata.language = document.documentElement.lang || document.querySelector('meta[http-equiv="content-language"]')?.getAttribute('content');
     metadata.charset = document.characterSet || document.querySelector('meta[charset]')?.getAttribute('charset');
 
     return metadata;
   }
 
-  /**
-   * Validate and clean content
-   * @param {Object} result - Extraction result
-   * @returns {Object} Validated and cleaned result
-   */
+  
   validateAndCleanContent(result) {
     if (!result || !result.content) {
       return this.createEmptyResult(new Error('No content found'));
     }
 
-    // Content length validation
     if (result.content.length < this.options.minContentLength) {
       return this.createEmptyResult(new Error('Content too short'));
     }
 
-    // Truncate if too long
     if (result.content.length > this.options.maxContentLength) {
       result.content = result.content.substring(0, this.options.maxContentLength);
       result.truncated = true;
     }
 
-    // Clean up content
     result.content = result.content
       .replace(/\r\n/g, '\n')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
 
-    // Ensure we have a title
     if (!result.title || result.title.trim() === '') {
       result.title = document.title || 'Untitled';
     }
@@ -547,11 +462,7 @@ export class ContentExtractor {
     return result;
   }
 
-  /**
-   * Create empty result object
-   * @param {Error} error - Optional error
-   * @returns {Object} Empty result
-   */
+  
   createEmptyResult(error = null) {
     return {
       content: '',
@@ -567,10 +478,7 @@ export class ContentExtractor {
     };
   }
 
-  /**
-   * Get extraction statistics
-   * @returns {Object} Extraction stats
-   */
+  
   getStats() {
     return {
       hasReadability: !!this.readability,
@@ -583,17 +491,13 @@ export class ContentExtractor {
     };
   }
 
-  /**
-   * Reset extractor state
-   */
+  
   reset() {
     this.readability = null;
     this.initializeReadability();
   }
 }
 
-// Export singleton instance
 export const contentExtractor = new ContentExtractor();
 
-// Export default
 export default ContentExtractor;

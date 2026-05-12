@@ -1,14 +1,4 @@
-/**
- * CitationViewer - Expandable Citations and Source Transparency for FocusFlow AI
- * 
- * Provides trust and explainability features:
- * - Expandable source citations
- * - Source preview cards
- * - Evidence highlighting
- * - Confidence indicators
- * - "Why this answer" transparency
- * - Chunk provenance display
- */
+
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { 
@@ -39,13 +29,12 @@ const CitationViewer = ({
   showTransparency = true,
   compact = false 
 }) => {
-  // State management
+
   const [expandedCitations, setExpandedCitations] = useState(new Set());
   const [showEvidence, setShowEvidence] = useState(false);
   const [copiedCitation, setCopiedCitation] = useState(null);
   const { addToast } = useGlobalStatus();
 
-  // Computed values
   const confidenceLevel = useMemo(() => {
     if (confidence >= 0.8) return 'high';
     if (confidence >= 0.6) return 'medium';
@@ -73,7 +62,6 @@ const CitationViewer = ({
     }
   }, [confidenceLevel]);
 
-  // Event handlers
   const toggleCitation = useCallback((citationId) => {
     setExpandedCitations(prev => {
       const newSet = new Set(prev);
@@ -115,7 +103,6 @@ const CitationViewer = ({
     }
   }, []);
 
-  // Render citation confidence indicator
   const renderConfidenceIndicator = () => {
     if (!showTransparency) return null;
 
@@ -148,7 +135,6 @@ const CitationViewer = ({
     );
   };
 
-  // Render transparency explanation
   const renderTransparencyExplanation = () => {
     if (!showTransparency || citations.length === 0) return null;
 
@@ -192,7 +178,6 @@ const CitationViewer = ({
     );
   };
 
-  // Render individual citation
   const renderCitation = (citation) => {
     const isExpanded = expandedCitations.has(citation.id);
     const isCopied = copiedCitation === citation.id;
@@ -313,7 +298,6 @@ const CitationViewer = ({
     );
   };
 
-  // Render evidence section
   const renderEvidenceSection = () => {
     if (evidence.length === 0) return null;
 
@@ -351,7 +335,6 @@ const CitationViewer = ({
     );
   };
 
-  // Render compact view
   if (compact) {
     return (
       <div className={`citation-viewer compact ${className}`}>
@@ -382,13 +365,13 @@ const CitationViewer = ({
 
   return (
     <div className={`citation-viewer ${className}`}>
-      {/* Confidence indicator */}
+      
       {renderConfidenceIndicator()}
       
-      {/* Transparency explanation */}
+      
       {renderTransparencyExplanation()}
       
-      {/* Citations */}
+      
       {citations.length > 0 && (
         <div className="citations-section">
           <div className="section-header">
@@ -404,10 +387,10 @@ const CitationViewer = ({
         </div>
       )}
       
-      {/* Evidence section */}
+      
       {renderEvidenceSection()}
       
-      {/* No sources warning */}
+      
       {citations.length === 0 && showTransparency && (
         <div className="no-sources-warning">
           <AlertCircle className="w-5 h-5" />
@@ -421,7 +404,6 @@ const CitationViewer = ({
   );
 };
 
-// Helper function to format date
 const formatDate = (timestamp) => {
   const date = new Date(timestamp);
   const now = new Date();

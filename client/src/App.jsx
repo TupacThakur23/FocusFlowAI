@@ -10,7 +10,6 @@ function AppContent() {
   const [view, setView] = useState("launcher");
   const [mode, setMode] = useState("popup");
 
-  // Detect mode from URL
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const hash = window.location.hash.slice(1);
@@ -30,17 +29,14 @@ function AppContent() {
     }
   }, []);
 
-  // Sidebar mode - only Aide
   if (mode === "sidebar") {
     return <Dashboard />;
   }
 
-  // Workspace mode - Research Hub
   if (mode === "workspace") {
     return <ResearchHub />;
   }
 
-  // Popup mode - Launcher
   if (mode === "popup") {
     return <Launcher />;
   }

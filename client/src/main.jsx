@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
-// Add global render status tracking
+
 window.FOCUSFLOW_RENDER_STATUS = 'loading';
 
 console.log('🚀 FocusFlow AI: Starting React mount', {

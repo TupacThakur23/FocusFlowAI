@@ -1,25 +1,10 @@
-/**
- * Accessibility & Inclusivity Styles for FocusFlow AI
- * 
- * Provides comprehensive accessibility features:
- * - Keyboard navigation
- * - Screen reader compatibility
- * - Reduced motion support
- * - High contrast modes
- * - Font scaling
- * - Focus management
- * - ARIA labels
- * - Cognitive accessibility
- */
 
-/* ===== KEYBOARD NAVIGATION ===== */
-/* Focus styles */
+
 .focus-visible {
   outline: 2px solid #3b82f6 !important;
   outline-offset: 2px !important;
 }
 
-/* Skip links */
 .skip-link {
   position: absolute;
   top: -40px;
@@ -37,7 +22,6 @@
   top: 6px;
 }
 
-/* Keyboard navigation indicators */
 .keyboard-nav .btn-primary:focus,
 .keyboard-nav .btn-secondary:focus,
 .keyboard-nav .btn-ghost:focus {
@@ -46,7 +30,6 @@
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
 }
 
-/* Tab navigation */
 .tab-list {
   list-style: none;
   margin: 0;
@@ -87,8 +70,6 @@
   border-bottom-color: #3b82f6;
 }
 
-/* ===== SCREEN READER SUPPORT ===== */
-/* Visually hidden content for screen readers */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -101,7 +82,6 @@
   border: 0;
 }
 
-/* Screen reader announcements */
 .sr-announcements {
   position: absolute;
   width: 1px;
@@ -114,7 +94,6 @@
   border: 0;
 }
 
-/* ARIA labels and descriptions */
 [aria-label] {
   cursor: pointer;
 }
@@ -123,22 +102,20 @@
   cursor: help;
 }
 
-/* Status indicators */
 [aria-live="polite"] {
-  /* For non-critical updates */
+  
 }
 
 [aria-live="assertive"] {
-  /* For critical updates that require immediate attention */
+  
 }
 
 [aria-live="off"] {
-  /* For static content */
+  
 }
 
-/* ===== REDUCED MOTION SUPPORT ===== */
 @media (prefers-reduced-motion: reduce) {
-  /* Disable animations */
+  
   *,
   *::before,
   *::after {
@@ -148,33 +125,32 @@
     scroll-behavior: auto !important;
   }
 
-  /* Disable parallax effects */
+  
   .floating-elements,
   .hero-background,
   .parallax-element {
     transform: none !important;
   }
 
-  /* Disable hover effects that might cause motion sickness */
+  
   .hover-lift:hover {
     transform: none !important;
   }
 
-  /* Disable loading spinners */
+  
   .spinner,
   .loading-dots {
     animation: none !important;
   }
 
-  /* Simple transitions for essential functionality */
+  
   .essential-transition {
     transition: opacity 0.1s ease;
   }
 }
 
-/* Motion-safe alternatives */
 .motion-safe {
-  /* Use opacity changes instead of transforms */
+  
   transition: opacity 0.2s ease;
 }
 
@@ -182,8 +158,6 @@
   opacity: 0.8;
 }
 
-/* ===== HIGH CONTRAST MODES ===== */
-/* High contrast mode */
 @media (prefers-contrast: high) {
   :root {
     --text-primary: #000000;
@@ -197,14 +171,14 @@
     --error: #ff0000;
   }
 
-  /* Increase border widths */
+  
   .btn-primary,
   .btn-secondary,
   .btn-ghost {
     border-width: 2px;
   }
 
-  /* Ensure text has sufficient contrast */
+  
   .text-primary {
     color: #000000;
   }
@@ -213,14 +187,13 @@
     color: #333333;
   }
 
-  /* Make focus indicators more prominent */
+  
   .focus-visible {
     outline: 3px solid #0000ff;
     outline-offset: 2px;
   }
 }
 
-/* Windows high contrast mode */
 @media (-ms-high-contrast: active) {
   .btn-primary {
     background: windowText;
@@ -240,8 +213,6 @@
   }
 }
 
-/* ===== FONT SCALING ===== */
-/* Responsive font sizes */
 .responsive-text {
   font-size: clamp(14px, 2.5vw, 18px);
   line-height: 1.5;
@@ -257,22 +228,18 @@
   line-height: 1.3;
 }
 
-/* Large text mode */
 @media (min-resolution: 120dpi) {
   .text-large {
     font-size: 1.1em;
   }
 }
 
-/* User preference for larger text */
 @media (min-resolution: 144dpi) {
   body {
     font-size: 18px;
   }
 }
 
-/* ===== FOCUS MANAGEMENT ===== */
-/* Focus traps */
 .focus-trap {
   position: relative;
 }
@@ -287,7 +254,6 @@
   z-index: 1000;
 }
 
-/* Focus indicators for different elements */
 .btn:focus,
 .input:focus,
 .textarea:focus,
@@ -296,7 +262,6 @@
   outline-offset: 2px;
 }
 
-/* Custom focus styles for better visibility */
 .focus-ring {
   box-shadow: 0 0 0 2px #3b82f6, 0 0 0 4px rgba(59, 130, 246, 0.2);
 }
@@ -305,8 +270,6 @@
   box-shadow: inset 0 0 0 2px #3b82f6;
 }
 
-/* ===== COGNITIVE ACCESSIBILITY ===== */
-/* Clear visual hierarchy */
 .visual-hierarchy {
   display: flex;
   flex-direction: column;
@@ -331,7 +294,6 @@
   color: #94a3b8;
 }
 
-/* Consistent spacing */
 .spacing-consistent {
   margin: 1rem 0;
   padding: 1rem;
@@ -347,7 +309,6 @@
   padding: 2rem;
 }
 
-/* Clear error messages */
 .error-message {
   background: #fef2f2;
   border: 1px solid #fecaca;
@@ -389,8 +350,6 @@
   margin: 1rem 0;
 }
 
-/* ===== FORM ACCESSIBILITY ===== */
-/* Accessible form labels */
 .form-label {
   display: block;
   font-weight: 500;
@@ -415,7 +374,6 @@
   margin-top: 0.25rem;
 }
 
-/* Accessible form inputs */
 .form-input,
 .form-textarea,
 .form-select {
@@ -450,7 +408,6 @@
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 }
 
-/* Form field groups */
 .form-field {
   margin-bottom: 1.5rem;
 }
@@ -468,8 +425,6 @@
   color: #374151;
 }
 
-/* ===== NAVIGATION ACCESSIBILITY ===== */
-/* Accessible navigation menus */
 .nav-menu {
   list-style: none;
   margin: 0;
@@ -500,7 +455,6 @@
   color: white;
 }
 
-/* Breadcrumb navigation */
 .breadcrumb {
   list-style: none;
   margin: 0;
@@ -530,8 +484,6 @@
   color: #6b7280;
 }
 
-/* ===== MODAL ACCESSIBILITY ===== */
-/* Accessible modals */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -585,8 +537,6 @@
   color: #1f2937;
 }
 
-/* ===== TABLE ACCESSIBILITY ===== */
-/* Accessible data tables */
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -617,8 +567,6 @@
   background: #f9fafb;
 }
 
-/* ===== PROGRESS INDICATORS ===== */
-/* Accessible progress bars */
 .progress-bar {
   width: 100%;
   height: 1rem;
@@ -639,7 +587,6 @@
   margin-top: 0.5rem;
 }
 
-/* Loading indicators */
 .loading-spinner {
   display: inline-block;
   width: 1.5rem;
@@ -655,8 +602,6 @@
   100% { transform: rotate(360deg); }
 }
 
-/* ===== COLOR ACCESSIBILITY ===== */
-/* Ensure sufficient contrast ratios */
 .text-contrast-high {
   color: #000000;
 }
@@ -669,7 +614,6 @@
   color: #666666;
 }
 
-/* Link colors with sufficient contrast */
 .link-primary {
   color: #3b82f6;
   text-decoration: none;
@@ -692,11 +636,9 @@
   text-decoration: underline;
 }
 
-/* ===== RESPONSIVE ACCESSIBILITY ===== */
-/* Mobile accessibility */
 @media (max-width: 768px) {
   .responsive-text {
-    font-size: 16px; /* Minimum readable size */
+    font-size: 16px; 
   }
   
   .modal {
@@ -718,7 +660,6 @@
   }
 }
 
-/* Touch-friendly targets */
 @media (pointer: coarse) {
   .btn-primary,
   .btn-secondary,
@@ -738,13 +679,12 @@
   .form-textarea,
   .form-select {
     min-height: 44px;
-    font-size: 16px; /* Prevent zoom on iOS */
+    font-size: 16px; 
   }
 }
 
-/* ===== PRINT ACCESSIBILITY ===== */
 @media print {
-  /* Hide non-essential elements */
+  
   .no-print,
   .btn-primary,
   .btn-secondary,
@@ -754,7 +694,7 @@
     display: none !important;
   }
   
-  /* Ensure text is readable */
+  
   body {
     font-size: 12pt;
     line-height: 1.4;
@@ -762,13 +702,13 @@
     background: #fff;
   }
   
-  /* Remove backgrounds and shadows */
+  
   * {
     background: transparent !important;
     box-shadow: none !important;
   }
   
-  /* Ensure links are visible */
+  
   a {
     color: #000;
     text-decoration: underline;
@@ -781,49 +721,46 @@
   }
 }
 
-/* ===== CUSTOM PROPERTIES FOR ACCESSIBILITY ===== */
 :root {
-  /* Focus colors */
+  
   --focus-color: #3b82f6;
   --focus-width: 2px;
   --focus-offset: 2px;
   
-  /* Text colors */
+  
   --text-primary: #1e293b;
   --text-secondary: #64748b;
   --text-tertiary: #94a3b8;
   
-  /* Background colors */
+  
   --bg-primary: #ffffff;
   --bg-secondary: #f8fafc;
   --bg-tertiary: #f1f5f9;
   
-  /* Border colors */
+  
   --border-primary: #e2e8f0;
   --border-secondary: #cbd5e1;
   
-  /* Semantic colors */
+  
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-error: #ef4444;
   --color-info: #3b82f6;
   
-  /* Spacing */
+  
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
   --spacing-md: 1rem;
   --spacing-lg: 1.5rem;
   --spacing-xl: 2rem;
   
-  /* Border radius */
+  
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;
 }
 
-/* ===== UTILITY CLASSES ===== */
-/* Focus management */
 .focus-outline {
   outline: var(--focus-width) solid var(--focus-color);
   outline-offset: var(--focus-offset);
@@ -834,7 +771,6 @@
               0 0 0 calc(var(--focus-width) * 2) rgba(59, 130, 246, 0.2);
 }
 
-/* Text utilities */
 .text-readable {
   font-size: clamp(16px, 2.5vw, 18px);
   line-height: 1.5;
@@ -846,7 +782,6 @@
   background: var(--bg-primary);
 }
 
-/* Spacing utilities */
 .section-spacing {
   margin: var(--spacing-xl) 0;
   padding: var(--spacing-lg);
@@ -857,8 +792,6 @@
   padding: var(--spacing-md);
 }
 
-/* ===== ACCESSIBILITY TESTING ===== */
-/* These classes help with accessibility testing */
 .a11y-test-focus {
   border: 2px dashed #ef4444;
 }
@@ -877,7 +810,6 @@
   border: 2px dashed #3b82f6;
 }
 
-/* ===== DARK MODE ACCESSIBILITY ===== */
 @media (prefers-color-scheme: dark) {
   :root {
     --text-primary: #f8fafc;
@@ -894,12 +826,12 @@
     --focus-color: #60a5fa;
   }
   
-  /* Adjust focus colors for dark mode */
+  
   .focus-visible {
     outline-color: var(--focus-color);
   }
   
-  /* Ensure sufficient contrast in dark mode */
+  
   .text-primary {
     color: var(--text-primary);
   }

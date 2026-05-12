@@ -1,21 +1,11 @@
-/**
- * useStreamingResponse - React Hook for Streaming AI Responses
- * 
- * Provides smooth streaming experience:
- * - Token-by-token rendering
- * - Typing indicators
- * - Progressive display
- * - Interruption handling
- * - Graceful cancellation
- * - Error recovery
- */
+
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { streamingResponseManager } from '../../public/lib/StreamingResponseManager';
 import { useGlobalStatus } from '../lib/extension/GlobalStatusProvider';
 
 export const useStreamingResponse = (options = {}) => {
-  // State management
+
   const [isStreaming, setIsStreaming] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [streamContent, setStreamContent] = useState('');
@@ -24,22 +14,17 @@ export const useStreamingResponse = (options = {}) => {
   const [isComplete, setIsComplete] = useState(false);
   const [streamStats, setStreamStats] = useState(null);
   
-  // Refs for stream control
+
   const streamControllerRef = useRef(null);
   const containerRef = useRef(null);
   const abortControllerRef = useRef(null);
   
-  // Global status for notifications
+
   const { addToast } = useGlobalStatus();
 
-  /**
-   * Start streaming response
-   * @param {string} query - User query
-   * @param {Object} streamOptions - Streaming options
-   * @returns {Object} Stream controller
-   */
+  
   const startStreaming = useCallback((query, streamOptions = {}) => {
-    // Reset state
+
     setIsStreaming(true);
     setIsPaused(false);
     setStreamContent('');
@@ -48,13 +33,10 @@ export const useStreamingResponse = (options = {}) => {
     setIsComplete(false);
     setStreamStats(null);
 
-    // Create abort controller
     abortControllerRef.current = new AbortController();
 
-    // Setup response container
     const responseContainer = containerRef.current || createResponseContainer();
 
-    // Start stream
     const streamController = streamingResponseManager.startStream(
       query,
       {
@@ -62,40 +44,35 @@ export const useStreamingResponse = (options = {}) => {
         responseContainer,
         abortSignal: abortControllerRef.current.signal
       },
-      // Token callback
+
       async (tokenData, controller) => {
         await handleToken(tokenData, controller);
       },
-      // Completion callback
+
       (result) => {
         handleCompletion(result);
       },
-      // Error callback
+
       (result) => {
         handleError(result);
       }
     );
 
-    // Store controller reference
     streamControllerRef.current = streamController;
 
     return streamController;
   }, []);
 
-  /**
-   * Handle individual token
-   * @param {Object} tokenData - Token data
-   * @param {Object} controller - Stream controller
-   */
+  
   const handleToken = useCallback(async (tokenData, controller) => {
-    // Update tokens array
+
     setTokens(prev => [...prev, tokenData]);
     
-    // Update content
+
     const newContent = tokenData.content || tokenData.text || '';
     setStreamContent(prev => prev + newContent);
     
-    // Update stream stats
+
     if (controller) {
       setStreamStats({
         duration: Date.now() - controller.startTime,
@@ -105,10 +82,7 @@ export const useStreamingResponse = (options = {}) => {
     }
   }, []);
 
-  /**
-   * Handle stream completion
-   * @param {Object} result - Completion result
-   */
+  
   const handleCompletion = useCallback((result) => {
     setIsStreaming(false);
     setIsComplete(true);
@@ -120,7 +94,6 @@ export const useStreamingResponse = (options = {}) => {
       isComplete: true
     });
 
-    // Show success notification
     addToast({
       type: 'success',
       title: 'Response Complete',
@@ -129,10 +102,7 @@ export const useStreamingResponse = (options = {}) => {
     });
   }, [streamStats, addToast]);
 
-  /**
-   * Handle stream error
-   * @param {Object} result - Error result
-   */
+  
   const handleError = useCallback((result) => {
     setIsStreaming(false);
     setError(result.error);
@@ -142,7 +112,6 @@ export const useStreamingResponse = (options = {}) => {
       hasError: true
     });
 
-    // Show error notification
     addToast({
       type: 'error',
       title: 'Response Failed',
@@ -151,9 +120,7 @@ export const useStreamingResponse = (options = {}) => {
     });
   }, [streamStats, addToast]);
 
-  /**
-   * Interrupt streaming
-   */
+  
   const interruptStreaming = useCallback(() => {
     if (streamControllerRef.current) {
       streamControllerRef.current.interrupt();
@@ -168,9 +135,7 @@ export const useStreamingResponse = (options = {}) => {
     }
   }, [addToast]);
 
-  /**
-   * Resume streaming
-   */
+  
   const resumeStreaming = useCallback(() => {
     if (streamControllerRef.current) {
       streamControllerRef.current.resume();
@@ -185,9 +150,7 @@ export const useStreamingResponse = (options = {}) => {
     }
   }, [addToast]);
 
-  /**
-   * Cancel streaming
-   */
+  
   const cancelStreaming = useCallback(() => {
     if (streamControllerRef.current) {
       streamControllerRef.current.cancel();
@@ -203,9 +166,7 @@ export const useStreamingResponse = (options = {}) => {
     }
   }, [addToast]);
 
-  /**
-   * Retry streaming
-   */
+  
   const retryStreaming = useCallback(() => {
     if (streamControllerRef.current && streamControllerRef.current.query) {
       setError(null);
@@ -218,20 +179,17 @@ export const useStreamingResponse = (options = {}) => {
         duration: 2000
       });
       
-      // Start new stream with same query
+
       startStreaming(streamControllerRef.current.query, streamControllerRef.current.options);
     }
   }, [startStreaming, addToast]);
 
-  /**
-   * Create response container
-   * @returns {HTMLElement} Response container
-   */
+  
   const createResponseContainer = useCallback(() => {
     const container = document.createElement('div');
     container.className = 'streaming-response-container';
     
-    // Add container styles
+
     const style = document.createElement('style');
     style.textContent = `
       .streaming-response-container {
@@ -290,26 +248,22 @@ export const useStreamingResponse = (options = {}) => {
     
     document.head.appendChild(style);
     
-    // Store container reference
+
     containerRef.current = container;
     
     return container;
   }, []);
 
-  /**
-   * Update content with smooth animation
-   * @param {string} content - New content
-   * @param {Object} tokenData - Token data
-   */
+  
   const updateContentWithAnimation = useCallback((content, tokenData) => {
     if (!containerRef.current) return;
 
     const container = containerRef.current;
     const currentContent = container.textContent || '';
     
-    // Only update if content has actually changed
+
     if (content !== currentContent) {
-      // Add fade effect for new content
+
       container.style.opacity = '0.8';
       
       setTimeout(() => {
@@ -319,10 +273,7 @@ export const useStreamingResponse = (options = {}) => {
     }
   }, []);
 
-  /**
-   * Get streaming progress
-   * @returns {Object} Progress information
-   */
+  
   const getProgress = useCallback(() => {
     if (!streamStats) return null;
     
@@ -338,26 +289,22 @@ export const useStreamingResponse = (options = {}) => {
     };
   }, [streamStats, error]);
 
-  /**
-   * Cleanup on unmount
-   */
+  
   useEffect(() => {
     return () => {
-      // Cancel any active stream
+
       if (streamControllerRef.current) {
         streamControllerRef.current.cancel();
       }
       
-      // Clean up abort controller
+
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
     };
   }, []);
 
-  /**
-   * Handle page visibility changes
-   */
+  
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden && isStreaming && !isPaused) {
@@ -374,9 +321,8 @@ export const useStreamingResponse = (options = {}) => {
     };
   }, [isStreaming, isPaused, interruptStreaming, resumeStreaming]);
 
-  // Return hook API
   return {
-    // State
+
     isStreaming,
     isPaused,
     streamContent,
@@ -386,22 +332,22 @@ export const useStreamingResponse = (options = {}) => {
     streamStats,
     progress: getProgress(),
     
-    // Refs
+
     containerRef,
     streamController: streamControllerRef.current,
     
-    // Actions
+
     startStreaming,
     interruptStreaming,
     resumeStreaming,
     cancelStreaming,
     retryStreaming,
     
-    // Utilities
+
     updateContent: updateContentWithAnimation,
     getProgress,
     
-    // Status helpers
+
     canInterrupt: isStreaming && !isPaused,
     canResume: isStreaming && isPaused,
     canCancel: isStreaming,

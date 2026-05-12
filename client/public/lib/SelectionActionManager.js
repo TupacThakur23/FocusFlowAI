@@ -1,13 +1,4 @@
-/**
- * SelectionActionManager - Contextual Action System for FocusFlow AI
- * 
- * Provides contextual webpage actions:
- * - Right-click context menu actions
- * - Floating mini-toolbar on text selection
- * - Smooth UX animations
- * - Non-intrusive behavior
- * - Keyboard shortcuts
- */
+
 
 export class SelectionActionManager {
   constructor() {
@@ -31,9 +22,7 @@ export class SelectionActionManager {
     this.setupActionHandlers();
   }
 
-  /**
-   * Initialize the selection action system
-   */
+  
   initialize() {
     if (this.isInitialized) return;
 
@@ -46,9 +35,7 @@ export class SelectionActionManager {
     console.log('SelectionActionManager initialized');
   }
 
-  /**
-   * Setup text selection monitoring
-   */
+  
   setupTextSelection() {
     let selectionTimeout;
 
@@ -76,7 +63,6 @@ export class SelectionActionManager {
       }
     });
 
-    // Hide toolbar when clicking outside
     document.addEventListener('click', (event) => {
       if (!this.toolbar || this.toolbar.contains(event.target)) {
         this.hideToolbar();
@@ -84,9 +70,7 @@ export class SelectionActionManager {
     });
   }
 
-  /**
-   * Setup custom context menu
-   */
+  
   setupContextMenu() {
     if (!this.config.enableContextMenu) return;
 
@@ -99,15 +83,12 @@ export class SelectionActionManager {
       }
     });
 
-    // Hide context menu when clicking elsewhere
     document.addEventListener('click', () => {
       this.hideContextMenu();
     });
   }
 
-  /**
-   * Setup keyboard shortcuts
-   */
+  
   setupKeyboardShortcuts() {
     this.keyboardShortcuts.set('explain', {
       keys: ['ctrl', 'shift', 'e'],
@@ -148,9 +129,7 @@ export class SelectionActionManager {
     });
   }
 
-  /**
-   * Setup message listener for communication with extension
-   */
+  
   setupMessageListener() {
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -162,9 +141,7 @@ export class SelectionActionManager {
     }
   }
 
-  /**
-   * Setup action handlers
-   */
+  
   setupActionHandlers() {
     this.actionHandlers.set('explain', (selection) => {
       this.sendActionToExtension('explainSelection', { selection });
@@ -195,11 +172,7 @@ export class SelectionActionManager {
     });
   }
 
-  /**
-   * Check if selection is valid for actions
-   * @param {string} selection - Text selection
-   * @returns {boolean} Validity
-   */
+  
   isValidSelection(selection) {
     if (!selection || typeof selection !== 'string') return false;
     
@@ -209,10 +182,7 @@ export class SelectionActionManager {
            !selection.match(/^\s+$/); // Not just whitespace
   }
 
-  /**
-   * Show floating toolbar
-   * @param {Event} event - Mouse event
-   */
+  
   showToolbar(event) {
     if (!this.config.enableToolbar) return;
 
@@ -221,25 +191,19 @@ export class SelectionActionManager {
     this.toolbar = this.createToolbar();
     document.body.appendChild(this.toolbar);
 
-    // Position toolbar
     this.positionToolbar(event);
 
-    // Animate in
     setTimeout(() => {
       this.toolbar.classList.add('focusflow-toolbar-visible');
     }, 50);
   }
 
-  /**
-   * Create toolbar element
-   * @returns {HTMLElement} Toolbar element
-   */
+  
   createToolbar() {
     const toolbar = document.createElement('div');
     toolbar.id = 'focusflow-selection-toolbar';
     toolbar.className = 'focusflow-toolbar';
 
-    // Create toolbar HTML
     toolbar.innerHTML = `
       <div class="focusflow-toolbar-content">
         <div class="focusflow-toolbar-actions">
@@ -285,7 +249,6 @@ export class SelectionActionManager {
       </div>
     `;
 
-    // Add event listeners
     toolbar.addEventListener('click', (event) => {
       const action = event.target.closest('[data-action]')?.dataset.action;
       if (action) {
@@ -295,7 +258,6 @@ export class SelectionActionManager {
       }
     });
 
-    // More actions dropdown
     const moreBtn = toolbar.querySelector('.focusflow-action-more');
     if (moreBtn) {
       moreBtn.addEventListener('click', (event) => {
@@ -307,10 +269,7 @@ export class SelectionActionManager {
     return toolbar;
   }
 
-  /**
-   * Position toolbar near selection
-   * @param {Event} event - Mouse event
-   */
+  
   positionToolbar(event) {
     if (!this.toolbar) return;
 
@@ -320,7 +279,6 @@ export class SelectionActionManager {
     const range = selection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
 
-    // Calculate position based on config
     let left, top;
     
     switch (this.config.toolbarPosition) {
@@ -342,7 +300,6 @@ export class SelectionActionManager {
         break;
     }
 
-    // Ensure toolbar stays within viewport
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     
@@ -360,12 +317,9 @@ export class SelectionActionManager {
     this.toolbar.style.top = `${top}px`;
   }
 
-  /**
-   * Show more actions dropdown
-   * @param {HTMLElement} button - More button element
-   */
+  
   showMoreActions(button) {
-    // Remove existing dropdown
+
     this.hideMoreActions();
 
     const dropdown = document.createElement('div');
@@ -393,14 +347,12 @@ export class SelectionActionManager {
       </div>
     `;
 
-    // Position dropdown
     const buttonRect = button.getBoundingClientRect();
     dropdown.style.left = `${buttonRect.left}px`;
     dropdown.style.top = `${buttonRect.bottom + 5}px`;
 
     document.body.appendChild(dropdown);
 
-    // Add event listeners
     dropdown.addEventListener('click', (event) => {
       const action = event.target.closest('[data-action]')?.dataset.action;
       if (action) {
@@ -411,34 +363,25 @@ export class SelectionActionManager {
       }
     });
 
-    // Auto-hide after 3 seconds
     setTimeout(() => {
       this.hideMoreActions();
     }, 3000);
 
-    // Hide when clicking elsewhere
     setTimeout(() => {
       document.addEventListener('click', this.hideMoreActions, { once: true });
     }, 100);
   }
 
-  /**
-   * Show context menu
-   * @param {number} x - X coordinate
-   * @param {number} y - Y coordinate
-   * @param {string} selection - Selected text
-   */
+  
   showContextMenu(x, y, selection) {
     this.hideContextMenu(); // Hide existing menu first
 
     this.contextMenu = this.createContextMenu(selection);
     document.body.appendChild(this.contextMenu);
 
-    // Position menu
     this.contextMenu.style.left = `${x}px`;
     this.contextMenu.style.top = `${y}px`;
 
-    // Ensure menu stays within viewport
     const rect = this.contextMenu.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
@@ -451,17 +394,12 @@ export class SelectionActionManager {
       this.contextMenu.style.top = `${viewportHeight - rect.height - 10}px`;
     }
 
-    // Animate in
     setTimeout(() => {
       this.contextMenu.classList.add('focusflow-context-menu-visible');
     }, 50);
   }
 
-  /**
-   * Create context menu element
-   * @param {string} selection - Selected text
-   * @returns {HTMLElement} Context menu element
-   */
+  
   createContextMenu(selection) {
     const menu = document.createElement('div');
     menu.id = 'focusflow-context-menu';
@@ -514,7 +452,6 @@ export class SelectionActionManager {
       </div>
     `;
 
-    // Add event listeners
     menu.addEventListener('click', (event) => {
       const action = event.target.closest('[data-action]')?.dataset.action;
       if (action) {
@@ -527,18 +464,14 @@ export class SelectionActionManager {
     return menu;
   }
 
-  /**
-   * Execute action handler
-   * @param {string} action - Action to execute
-   * @param {string} selection - Text selection
-   */
+  
   executeAction(action, selection) {
     const handler = this.actionHandlers.get(action);
     if (handler) {
       try {
         handler(selection);
         
-        // Send analytics event
+
         this.sendAnalyticsEvent('action_executed', {
           action,
           selectionLength: selection.length,
@@ -547,7 +480,7 @@ export class SelectionActionManager {
       } catch (error) {
         console.error(`Error executing action ${action}:`, error);
         
-        // Send error analytics
+
         this.sendAnalyticsEvent('action_error', {
           action,
           error: error.message
@@ -556,9 +489,7 @@ export class SelectionActionManager {
     }
   }
 
-  /**
-   * Hide toolbar
-   */
+  
   hideToolbar() {
     if (this.toolbar) {
       this.toolbar.classList.remove('focusflow-toolbar-visible');
@@ -571,9 +502,7 @@ export class SelectionActionManager {
     }
   }
 
-  /**
-   * Hide context menu
-   */
+  
   hideContextMenu() {
     if (this.contextMenu) {
       this.contextMenu.classList.remove('focusflow-context-menu-visible');
@@ -586,9 +515,7 @@ export class SelectionActionManager {
     }
   }
 
-  /**
-   * Hide more actions dropdown
-   */
+  
   hideMoreActions() {
     const dropdown = document.querySelector('.focusflow-more-dropdown');
     if (dropdown && dropdown.parentNode) {
@@ -596,12 +523,7 @@ export class SelectionActionManager {
     }
   }
 
-  /**
-   * Check if keyboard shortcut matches
-   * @param {Event} event - Keyboard event
-   * @param {Array} keys - Required keys
-   * @returns {boolean} Match result
-   */
+  
   matchesShortcut(event, keys) {
     return keys.every(key => {
       switch (key) {
@@ -614,11 +536,7 @@ export class SelectionActionManager {
     });
   }
 
-  /**
-   * Send action to extension
-   * @param {string} type - Action type
-   * @param {Object} data - Action data
-   */
+  
   sendActionToExtension(type, data) {
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       chrome.runtime.sendMessage({
@@ -631,11 +549,7 @@ export class SelectionActionManager {
     }
   }
 
-  /**
-   * Send analytics event
-   * @param {string} event - Event name
-   * @param {Object} data - Event data
-   */
+  
   sendAnalyticsEvent(event, data) {
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       chrome.runtime.sendMessage({
@@ -647,10 +561,7 @@ export class SelectionActionManager {
     }
   }
 
-  /**
-   * Notify selection change
-   * @param {string} selection - New selection
-   */
+  
   notifySelectionChange(selection) {
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       chrome.runtime.sendMessage({
@@ -663,50 +574,35 @@ export class SelectionActionManager {
     }
   }
 
-  /**
-   * Escape HTML for safe display
-   * @param {string} text - Text to escape
-   * @returns {string} Escaped text
-   */
+  
   escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
   }
 
-  /**
-   * Update configuration
-   * @param {Object} newConfig - New configuration
-   */
+  
   updateConfig(newConfig) {
     this.config = { ...this.config, ...newConfig };
     
-    // Re-initialize if needed
+
     if (newConfig.enableToolbar !== undefined || newConfig.enableContextMenu !== undefined) {
       this.cleanup();
       this.initialize();
     }
   }
 
-  /**
-   * Get current configuration
-   * @returns {Object} Current configuration
-   */
+  
   getConfig() {
     return { ...this.config };
   }
 
-  /**
-   * Get current selection
-   * @returns {string} Current selection
-   */
+  
   getCurrentSelection() {
     return this.currentSelection;
   }
 
-  /**
-   * Cleanup resources
-   */
+  
   cleanup() {
     this.hideToolbar();
     this.hideContextMenu();
@@ -717,10 +613,8 @@ export class SelectionActionManager {
   }
 }
 
-// Export singleton instance
 export const selectionActionManager = new SelectionActionManager();
 
-// Export utilities
 export const initialize = selectionActionManager.initialize.bind(selectionActionManager);
 export const cleanup = selectionActionManager.cleanup.bind(selectionActionManager);
 export const updateConfig = selectionActionManager.updateConfig.bind(selectionActionManager);

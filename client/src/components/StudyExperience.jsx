@@ -1,15 +1,4 @@
-/**
- * StudyExperience - Reading and Study Experience for FocusFlow AI
- * 
- * Provides educational workflow features:
- * - Focus reading mode
- * - Section highlighting
- * - AI-generated key insights
- * - Concept breakdowns
- * - Quick revision cards
- * - Study checkpoints
- * - Simplified explanations
- */
+
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
@@ -44,7 +33,7 @@ const StudyExperience = ({
   enableInsights = true,
   enableCheckpoints = true 
 }) => {
-  // State management
+
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [highlightedSections, setHighlightedSections] = useState(new Set());
   const [insights, setInsights] = useState([]);
@@ -55,12 +44,11 @@ const StudyExperience = ({
   const [isStudying, setIsStudying] = useState(false);
   const [expandedInsights, setExpandedInsights] = useState(new Set());
   
-  // Extension integration
+
   const [studySession] = useExtensionState('studySession', { storage: 'session' });
   const [studyStats] = useExtensionState('studyStats', { storage: 'persistent' });
   const { addToast } = useGlobalStatus();
 
-  // Computed values
   const sections = useMemo(() => {
     return parseContentIntoSections(content);
   }, [content]);
@@ -73,7 +61,6 @@ const StudyExperience = ({
     return calculateStudyMetrics(sections, highlightedSections, readingTime);
   }, [sections, highlightedSections, readingTime]);
 
-  // Effects
   useEffect(() => {
     if (enableInsights && content) {
       generateInsights();
@@ -96,7 +83,6 @@ const StudyExperience = ({
     return () => clearInterval(interval);
   }, [isStudying]);
 
-  // Event handlers
   const toggleFocusMode = useCallback(() => {
     setIsFocusMode(!isFocusMode);
     addToast({
@@ -170,7 +156,7 @@ const StudyExperience = ({
 
   const generateInsights = useCallback(async () => {
     try {
-      // Mock AI-generated insights - in production, call AI service
+
       const mockInsights = [
         {
           id: 'insight_1',
@@ -220,7 +206,6 @@ const StudyExperience = ({
     setCheckpoints(mockCheckpoints);
   }, [sections]);
 
-  // Render functions
   const renderFocusModeToggle = () => {
     if (!enableFocusMode) return null;
 
@@ -544,7 +529,7 @@ const StudyExperience = ({
 
   return (
     <div className={`study-experience ${isFocusMode ? 'focus-mode' : ''} ${className}`}>
-      {/* Header */}
+      
       <div className="study-header">
         <div className="header-content">
           <h1 className="study-title">{title}</h1>
@@ -559,13 +544,13 @@ const StudyExperience = ({
         </div>
       </div>
 
-      {/* Main content */}
+      
       <div className="study-content">
         <div className="content-main">
           {renderContentSections()}
         </div>
         
-        {/* Side panels */}
+        
         <div className="content-sidebar">
           {renderInsightsPanel()}
           {renderCheckpointsPanel()}
@@ -577,11 +562,10 @@ const StudyExperience = ({
   );
 };
 
-// Helper functions
 const parseContentIntoSections = (content) => {
   if (!content) return [];
   
-  // Simple section parsing - split by headings
+
   const sections = [];
   const headingRegex = /^(#{1,6})\s+(.+)$/gm;
   let match;
@@ -604,7 +588,7 @@ const parseContentIntoSections = (content) => {
     lastIndex = headingRegex.lastIndex;
   }
   
-  // Add last section
+
   if (lastIndex < content.length) {
     const lastContent = content.substring(lastIndex).trim();
     if (lastContent) {
@@ -623,7 +607,7 @@ const parseContentIntoSections = (content) => {
 const extractKeyConcepts = (content) => {
   if (!content) return [];
   
-  // Simple concept extraction
+
   const conceptPatterns = [
     /\b(?:research|study|analysis|investigation)\b/gi,
     /\b(?:technology|science|medicine|education)\b/gi,

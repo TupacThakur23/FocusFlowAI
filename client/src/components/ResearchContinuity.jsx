@@ -1,14 +1,4 @@
-/**
- * ResearchContinuity - UX Component for Connected Research Suggestions
- * 
- * Provides intelligent research continuity features:
- * - Related research suggestions
- * - Connected notes panel
- * - "Continue research" section
- * - Semantic breadcrumbs
- * - Linked topic suggestions
- * - Source relationship indicators
- */
+
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
@@ -40,7 +30,7 @@ const ResearchContinuity = ({
   maxRelatedTopics = 5,
   enableAutoRefresh = true 
 }) => {
-  // State management
+
   const [activeTab, setActiveTab] = useState('suggestions');
   const [expandedSections, setExpandedSections] = useState(new Set());
   const [selectedSuggestion, setSelectedSuggestion] = useState(null);
@@ -48,52 +38,44 @@ const ResearchContinuity = ({
   const [filterType, setFilterType] = useState('all');
   const [sortBy, setSortBy] = useState('relevance');
 
-  // Extension integration
   const [recentTopics] = useExtensionState('recentTopics', { storage: 'session' });
   const [activeWorkbooks] = useExtensionState('activeWorkbooks', { storage: 'session' });
   const [researchThreads] = useExtensionState('researchThreads', { storage: 'session' });
   const { addToast } = useGlobalStatus();
 
-  // Computed data
   const suggestions = useMemo(() => {
     const allSuggestions = [];
 
-    // Add continue research suggestions
     const continueSuggestions = generateContinueSuggestions(recentTopics, researchThreads);
     allSuggestions.push(...continueSuggestions);
 
-    // Add related topic suggestions
     const relatedSuggestions = generateRelatedSuggestions(recentTopics, activeWorkbooks);
     allSuggestions.push(...relatedSuggestions);
 
-    // Add workbook suggestions
     const workbookSuggestions = generateWorkbookSuggestions(activeWorkbooks);
     allSuggestions.push(...workbookSuggestions);
 
-    // Add connection suggestions
     const connectionSuggestions = generateConnectionSuggestions(recentTopics, researchThreads);
     allSuggestions.push(...connectionSuggestions);
 
-    // Filter and sort suggestions
     return filterAndSortSuggestions(allSuggestions, searchQuery, filterType, sortBy);
   }, [recentTopics, activeWorkbooks, researchThreads, searchQuery, filterType, sortBy]);
 
-  // Generate continue research suggestions with intelligent continuity
   const generateContinueSuggestions = useCallback((topics, threads) => {
     const suggestions = [];
     
-    // Smart continuation based on session context
+
     const sessionContext = getSessionContext();
     const currentTime = Date.now();
     
-    // Get most recent topic with intelligent weighting
+
     const recentTopic = topics?.[0];
     if (recentTopic) {
       const timeSinceAccess = currentTime - recentTopic.lastAccessed;
       const isVeryRecent = timeSinceAccess < 5 * 60 * 1000; // 5 minutes
       const isRecentlyActive = timeSinceAccess < 30 * 60 * 1000; // 30 minutes
       
-      // Only show if contextually relevant
+
       if (isVeryRecent || (isRecentlyActive && recentTopic.frequency > 1)) {
         suggestions.push({
           id: 'continue_recent',
@@ -117,7 +99,6 @@ const ResearchContinuity = ({
       }
     }
 
-    // Intelligent thread continuation based on activity patterns
     const activeThreads = threads?.filter(thread => thread.status === 'active');
     const prioritizedThreads = activeThreads
       ?.map(thread => ({
@@ -156,11 +137,10 @@ const ResearchContinuity = ({
     return suggestions;
   }, [topics, threads]);
 
-  // Generate related suggestions
   const generateRelatedSuggestions = useCallback((topics, workbooks) => {
     const suggestions = [];
     
-    // Related topics from recent research
+
     if (topics && topics.length > 1) {
       const relatedTopics = findRelatedTopics(topics[0], topics.slice(1));
       relatedTopics.slice(0, 3).forEach((topic, index) => {
@@ -182,7 +162,6 @@ const ResearchContinuity = ({
       });
     }
 
-    // Related workbooks
     if (workbooks && workbooks.length > 0) {
       workbooks.slice(0, 2).forEach((workbook, index) => {
         suggestions.push({
@@ -206,11 +185,10 @@ const ResearchContinuity = ({
     return suggestions;
   }, [topics, workbooks]);
 
-  // Generate workbook suggestions
   const generateWorkbookSuggestions = useCallback((workbooks) => {
     const suggestions = [];
     
-    // Most accessed workbooks
+
     const mostAccessed = workbooks
       ?.sort((a, b) => b.accessCount - a.accessCount)
       ?.slice(0, 2);
@@ -236,11 +214,10 @@ const ResearchContinuity = ({
     return suggestions;
   }, [workbooks]);
 
-  // Generate connection suggestions
   const generateConnectionSuggestions = useCallback((topics, threads) => {
     const suggestions = [];
     
-    // Find concept connections
+
     const conceptConnections = findConceptConnections(topics, threads);
     conceptConnections.slice(0, 2).forEach((connection, index) => {
       suggestions.push({
@@ -263,7 +240,6 @@ const ResearchContinuity = ({
     return suggestions;
   }, [topics, threads]);
 
-  // Find related topics
   const findRelatedTopics = useCallback((primaryTopic, otherTopics) => {
     const primaryWords = new Set(primaryTopic.topic.toLowerCase().split(/\s+/));
     
@@ -278,17 +254,16 @@ const ResearchContinuity = ({
       .sort((a, b) => b.similarity - a.similarity);
   }, []);
 
-  // Find concept connections
   const findConceptConnections = useCallback((topics, threads) => {
     const connections = [];
     const allTopics = [...(topics || []), ...(threads?.map(t => ({ topic: t.topic, semanticTags: t.semanticTags })) || [])];
     
-    // Find concept clusters
+
     const conceptClusters = groupByConcept(allTopics);
     
     for (const [concept, cluster] of conceptClusters.entries()) {
       if (cluster.length > 1) {
-        // Find strongest connection
+
         const strongestConnection = cluster.reduce((strongest, current) => {
           const currentStrength = calculateConnectionStrength(current, cluster);
           const strongestStrength = calculateConnectionStrength(strongest, cluster);
@@ -307,7 +282,6 @@ const ResearchContinuity = ({
     return connections;
   }, [topics, threads]);
 
-  // Calculate topic similarity
   const calculateTopicSimilarity = useCallback((topic1, topic2) => {
     const words1 = new Set(topic1.toLowerCase().split(/\s+/));
     const words2 = new Set(topic2.toLowerCase().split(/\s+/));
@@ -318,7 +292,6 @@ const ResearchContinuity = ({
     return union.size > 0 ? intersection.size / union.size : 0;
   }, []);
 
-  // Find shared tags
   const findSharedTags = useCallback((tags1, tags2) => {
     const set1 = new Set(tags1 || []);
     const set2 = new Set(tags2 || []);
@@ -326,7 +299,6 @@ const ResearchContinuity = ({
     return Array.from(intersection);
   }, []);
 
-  // Determine connection type
   const determineConnectionType = useCallback((topic1, topic2) => {
     const tags1 = topic1.semanticTags || [];
     const tags2 = topic2.semanticTags || [];
@@ -340,7 +312,6 @@ const ResearchContinuity = ({
     }
   }, []);
 
-  // Group by concept
   const groupByConcept = useCallback((topics) => {
     const groups = new Map();
     
@@ -358,7 +329,6 @@ const ResearchContinuity = ({
     return groups;
   }, []);
 
-  // Calculate connection strength
   const calculateConnectionStrength = useCallback((topic, cluster) => {
     const sharedTags = cluster.reduce((count, other) => {
       const tags1 = topic.semanticTags || [];
@@ -370,11 +340,10 @@ const ResearchContinuity = ({
     return sharedTags / (cluster.length - 1);
   }, []);
 
-  // Filter and sort suggestions
   const filterAndSortSuggestions = useCallback((suggestions, query, filter, sort) => {
     let filtered = suggestions;
     
-    // Apply search filter
+
     if (query) {
       const searchLower = query.toLowerCase();
       filtered = filtered.filter(suggestion => 
@@ -383,12 +352,12 @@ const ResearchContinuity = ({
       );
     }
     
-    // Apply type filter
+
     if (filter !== 'all') {
       filtered = filtered.filter(suggestion => suggestion.type === filter);
     }
     
-    // Apply sorting
+
     filtered.sort((a, b) => {
       switch (sort) {
         case 'priority':
@@ -406,14 +375,13 @@ const ResearchContinuity = ({
     return filtered.slice(0, maxSuggestions);
   }, [maxSuggestions]);
 
-  // Handle suggestion click
   const handleSuggestionClick = useCallback((suggestion) => {
     setSelectedSuggestion(suggestion);
     
     switch (suggestion.action) {
       case 'continue':
       case 'continue_thread':
-        // Send message to continue research
+
         chrome.runtime.sendMessage({
           type: 'CONTINUE_RESEARCH',
           data: suggestion.data
@@ -427,7 +395,7 @@ const ResearchContinuity = ({
         
       case 'explore':
       case 'explore_concept':
-        // Send message to explore topic
+
         chrome.runtime.sendMessage({
           type: 'EXPLORE_TOPIC',
           data: suggestion.data
@@ -441,7 +409,7 @@ const ResearchContinuity = ({
         
       case 'open_workbook':
       case 'workbook_access':
-        // Send message to open workbook
+
         chrome.runtime.sendMessage({
           type: 'OPEN_WORKBOOK',
           data: suggestion.data
@@ -455,7 +423,6 @@ const ResearchContinuity = ({
     }
   }, [addToast]);
 
-  // Toggle section expansion
   const toggleSection = useCallback((sectionId) => {
     setExpandedSections(prev => {
       const newSet = new Set(prev);
@@ -468,7 +435,6 @@ const ResearchContinuity = ({
     });
   }, []);
 
-  // Refresh suggestions
   const refreshSuggestions = useCallback(() => {
     chrome.runtime.sendMessage({
       type: 'REFRESH_SUGGESTIONS'
@@ -481,7 +447,6 @@ const ResearchContinuity = ({
     });
   }, [addToast]);
 
-  // Auto-refresh effect
   useEffect(() => {
     if (!enableAutoRefresh) return;
     
@@ -494,7 +459,7 @@ const ResearchContinuity = ({
 
   return (
     <div className={`research-continuity ${className}`}>
-      {/* Header */}
+      
       <div className="continuity-header">
         <div className="continuity-title">
           <BookOpen className="w-5 h-5" />
@@ -512,7 +477,7 @@ const ResearchContinuity = ({
         </div>
       </div>
 
-      {/* Search and Filters */}
+      
       <div className="continuity-controls">
         <div className="search-container">
           <Search className="w-4 h-4" />
@@ -550,7 +515,7 @@ const ResearchContinuity = ({
         </div>
       </div>
 
-      {/* Suggestions Tabs */}
+      
       <div className="continuity-tabs">
         <button
           onClick={() => setActiveTab('suggestions')}
@@ -577,11 +542,11 @@ const ResearchContinuity = ({
         </button>
       </div>
 
-      {/* Content Area */}
+      
       <div className="continuity-content">
         {activeTab === 'suggestions' && (
           <div className="suggestions-panel">
-            {/* Subtle contextual reminder */}
+            
             {suggestions.some(s => s.priority === 'critical') && (
               <div className="contextual-reminder">
                 <Lightbulb className="w-4 h-4" />
@@ -609,7 +574,7 @@ const ResearchContinuity = ({
                         )}
                       </h3>
                       
-                      {/* Subtle priority indicator */}
+                      
                       {suggestion.priority === 'critical' && (
                         <span className="critical-indicator">Active</span>
                       )}
@@ -617,7 +582,7 @@ const ResearchContinuity = ({
                     
                     <p className="suggestion-description">{suggestion.description}</p>
                     
-                    {/* Intelligent metadata display */}
+                    
                     {suggestion.metadata && (
                       <div className="suggestion-metadata">
                         {suggestion.metadata.isVeryRecent && (
@@ -747,7 +712,7 @@ const ResearchContinuity = ({
         )}
       </div>
 
-      {/* Selected Suggestion Detail */}
+      
       {selectedSuggestion && (
         <div className="suggestion-detail">
           <div className="detail-header">
@@ -794,11 +759,10 @@ const ResearchContinuity = ({
   );
 };
 
-// Helper functions for intelligent continuity
 const calculateThreadPriority = (thread, currentTime) => {
   let priority = 0.5; // Base priority
   
-  // Recent activity boost
+
   const timeSinceActivity = currentTime - thread.lastActivity;
   if (timeSinceActivity < 5 * 60 * 1000) { // 5 minutes
     priority += 0.3;
@@ -806,13 +770,13 @@ const calculateThreadPriority = (thread, currentTime) => {
     priority += 0.2;
   }
   
-  // Message activity boost
+
   const messageCount = thread.messages?.length || 0;
   if (messageCount > 5) {
     priority += 0.1;
   }
   
-  // Thread duration boost (longer threads are more important)
+
   const duration = currentTime - thread.startTime;
   if (duration > 30 * 60 * 1000) { // 30 minutes
     priority += 0.1;
@@ -822,13 +786,13 @@ const calculateThreadPriority = (thread, currentTime) => {
 };
 
 const getSessionContext = () => {
-  // Get session context from extension state or local storage
+
   try {
     if (typeof chrome !== 'undefined' && chrome.storage) {
       return chrome.storage.session.get(['focusflow_session_context']) || {};
     }
   } catch (error) {
-    // Fallback to empty context
+
     return {};
   }
   return {};

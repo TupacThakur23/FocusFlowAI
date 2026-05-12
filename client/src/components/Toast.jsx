@@ -1,13 +1,4 @@
-/**
- * Toast - Global Toast Notification Component
- * 
- * Provides user-friendly notifications for:
- * - Success messages
- * - Error messages
- * - Warning messages
- * - Info messages
- * - Progress updates
- */
+
 
 import React, { useEffect, useRef } from 'react';
 import { X, CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-react';
@@ -26,12 +17,6 @@ const toastStyles = {
   info: 'bg-blue-50 border-blue-200 text-blue-800'
 };
 
-/**
- * Toast component
- * @param {Object} props - Component props
- * @param {Object} props.toast - Toast data
- * @param {Function} props.onClose - Close callback
- */
 export const Toast = ({ toast, onClose }) => {
   const timeoutRef = useRef(null);
   const Icon = toastIcons[toast.type] || Info;
@@ -119,12 +104,6 @@ export const Toast = ({ toast, onClose }) => {
   );
 };
 
-/**
- * ToastContainer component
- * @param {Object} props - Component props
- * @param {Array} props.toasts - Toast array
- * @param {Function} props.onRemove - Remove callback
- */
 export const ToastContainer = ({ toasts, onRemove }) => {
   const containerRef = useRef(null);
 

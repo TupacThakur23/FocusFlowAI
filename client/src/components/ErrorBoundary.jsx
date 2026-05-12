@@ -1,9 +1,4 @@
-/**
- * ErrorBoundary - Catches React rendering errors and prevents UI collapse
- * 
- * Prevents sidebar from becoming tiny black box when React crashes
- * Provides fallback UI and error logging
- */
+
 
 import React from 'react';
 
@@ -32,7 +27,6 @@ class ErrorBoundary extends React.Component {
       errorInfo: errorInfo
     });
 
-    // Log detailed error information with safe access
     console.error('🚨 FocusFlow AI: Component Error Details', {
       errorName: error.name,
       errorMessage: error.message,
@@ -44,7 +38,6 @@ class ErrorBoundary extends React.Component {
       url: window.location.href
     });
 
-    // Try to notify background script with safe access
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       chrome.runtime.sendMessage({
         type: 'REACT_ERROR',
@@ -60,7 +53,7 @@ class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
-      // Fallback UI when React crashes
+
       return (
         <div style={{
           width: '100%',

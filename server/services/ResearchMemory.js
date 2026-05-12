@@ -1,42 +1,31 @@
-/**
- * ResearchMemory - Lightweight Research Memory System for FocusFlow AI
- * 
- * Provides efficient memory features:
- * - Recent topics tracking
- * - Active workbook context
- * - Current research thread
- * - Recent retrieval history
- * - Session continuity
- * - Lightweight persistence
- */
+
 
 class ResearchMemory {
   constructor(options = {}) {
     this.config = {
-      // Memory limits
+
       maxRecentTopics: options.maxRecentTopics || 20,
       maxActiveWorkbooks: options.maxActiveWorkbooks || 5,
       maxResearchThreads: options.maxResearchThreads || 10,
       maxRetrievalHistory: options.maxRetrievalHistory || 50,
       maxSessionContext: options.maxSessionContext || 100,
       
-      // Persistence settings
+
       enablePersistence: options.enablePersistence !== false,
       storageKey: options.storageKey || 'focusflow_research_memory',
       persistenceInterval: options.persistenceInterval || 30000, // 30 seconds
       
-      // Session management
+
       sessionTimeout: options.sessionTimeout || 24 * 60 * 60 * 1000, // 24 hours
       enableSessionTracking: options.enableSessionTracking !== false,
       
-      // Performance settings
+
       enableCompression: options.enableCompression !== false,
       compressionRatio: options.compressionRatio || 0.7,
       enableCaching: options.enableCaching !== false,
       cacheTimeout: options.cacheTimeout || 300000 // 5 minutes
     };
 
-    // Memory stores
     this.recentTopics = new Map();
     this.activeWorkbooks = new Map();
     this.researchThreads = new Map();
@@ -44,11 +33,11 @@ class ResearchMemory {
     this.sessionContext = new Map();
     this.userPreferences = new Map();
     
-    // Performance
+
     this.cache = new Map();
     this.compressionCache = new Map();
     
-    // Session tracking
+
     this.currentSession = {
       id: this.generateSessionId(),
       startTime: Date.now(),
@@ -60,9 +49,7 @@ class ResearchMemory {
     this.setupPersistence();
   }
 
-  /**
-   * Initialize research memory from storage
-   */
+  
   async initializeMemory() {
     try {
       if (this.config.enablePersistence) {
@@ -75,7 +62,7 @@ class ResearchMemory {
           this.sessionContext = new Map(stored.sessionContext || []);
           this.userPreferences = new Map(stored.userPreferences || []);
           
-          // Restore current session if available
+
           if (stored.currentSession) {
             this.currentSession = stored.currentSession;
           }
@@ -86,18 +73,14 @@ class ResearchMemory {
     }
   }
 
-  /**
-   * Setup automatic persistence
-   */
+  
   setupPersistence() {
     if (!this.config.enablePersistence) return;
 
-    // Periodic persistence
     setInterval(() => {
       this.persistToStorage();
     }, this.config.persistenceInterval);
 
-    // Persist on page unload
     if (typeof window !== 'undefined') {
       window.addEventListener('beforeunload', () => {
         this.persistToStorage();
@@ -105,11 +88,7 @@ class ResearchMemory {
     }
   }
 
-  /**
-   * Add recent topic to memory
-   * @param {string} topic - Research topic
-   * @param {Object} metadata - Topic metadata
-   */
+  
   addRecentTopic(topic, metadata = {}) {
     const topicData = {
       topic,
@@ -128,29 +107,22 @@ class ResearchMemory {
 
     this.recentTopics.set(topic, topicData);
     
-    // Maintain size limit
+
     if (this.recentTopics.size > this.config.maxRecentTopics) {
       this.maintainTopicLimit();
     }
 
-    // Update session activity
     this.updateSessionActivity('topic_added', { topic, metadata });
     
     return topicData;
   }
 
-  /**
-   * Get recent topics
-   * @param {number} limit - Maximum topics to return
-   * @param {string} userId - User identifier
-   * @returns {Array} Recent topics
-   */
+  
   getRecentTopics(limit = 10, userId = null) {
     const topics = Array.from(this.recentTopics.entries())
       .map(([topic, data]) => ({ topic, ...data }))
       .sort((a, b) => b.lastAccessed - a.lastAccessed);
 
-    // Filter by user if specified
     const filtered = userId 
       ? topics.filter(topic => topic.metadata.userId === userId)
       : topics;
@@ -158,11 +130,7 @@ class ResearchMemory {
     return filtered.slice(0, limit);
   }
 
-  /**
-   * Add active workbook
-   * @param {string} workbookId - Workbook identifier
-   * @param {Object} workbookData - Workbook information
-   */
+  
   addActiveWorkbook(workbookId, workbookData) {
     const activeWorkbook = {
       id: workbookId,
@@ -182,28 +150,22 @@ class ResearchMemory {
 
     this.activeWorkbooks.set(workbookId, activeWorkbook);
     
-    // Maintain size limit
+
     if (this.activeWorkbooks.size > this.config.maxActiveWorkbooks) {
       this.maintainWorkbookLimit();
     }
 
-    // Update session activity
     this.updateSessionActivity('workbook_activated', { workbookId, workbookData });
     
     return activeWorkbook;
   }
 
-  /**
-   * Get active workbooks
-   * @param {string} userId - User identifier
-   * @returns {Array} Active workbooks
-   */
+  
   getActiveWorkbooks(userId = null) {
     const workbooks = Array.from(this.activeWorkbooks.entries())
       .map(([id, data]) => ({ id, ...data }))
       .sort((a, b) => b.lastAccessed - a.lastAccessed);
 
-    // Filter by user if specified
     const filtered = userId 
       ? workbooks.filter(workbook => workbook.metadata.userId === userId)
       : workbooks;
@@ -211,12 +173,7 @@ class ResearchMemory {
     return filtered;
   }
 
-  /**
-   * Start research thread
-   * @param {string} threadId - Thread identifier
-   * @param {string} topic - Research topic
-   * @param {Object} context - Initial context
-   */
+  
   startResearchThread(threadId, topic, context = {}) {
     const thread = {
       id: threadId,
@@ -241,17 +198,13 @@ class ResearchMemory {
 
     this.researchThreads.set(threadId, thread);
     
-    // Update session activity
+
     this.updateSessionActivity('thread_started', { threadId, topic });
     
     return thread;
   }
 
-  /**
-   * Add message to research thread
-   * @param {string} threadId - Thread identifier
-   * @param {Object} message - Message object
-   */
+  
   addThreadMessage(threadId, message) {
     const thread = this.researchThreads.get(threadId);
     if (!thread) return null;
@@ -272,24 +225,18 @@ class ResearchMemory {
     thread.messages.push(messageData);
     thread.lastActivity = Date.now();
     
-    // Update session activity
+
     this.updateSessionActivity('message_added', { threadId, message: messageData });
     
     return messageData;
   }
 
-  /**
-   * Get research threads
-   * @param {string} userId - User identifier
-   * @param {string} status - Thread status filter
-   * @returns {Array} Research threads
-   */
+  
   getResearchThreads(userId = null, status = null) {
     const threads = Array.from(this.researchThreads.entries())
       .map(([id, data]) => ({ id, ...data }))
       .sort((a, b) => b.lastActivity - a.lastActivity);
 
-    // Apply filters
     let filtered = threads;
     
     if (userId) {
@@ -303,10 +250,7 @@ class ResearchMemory {
     return filtered;
   }
 
-  /**
-   * Add retrieval to history
-   * @param {Object} retrieval - Retrieval data
-   */
+  
   addRetrieval(retrieval) {
     const retrievalData = {
       id: `retrieval_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -328,27 +272,21 @@ class ResearchMemory {
 
     this.retrievalHistory.unshift(retrievalData);
     
-    // Maintain size limit
+
     if (this.retrievalHistory.length > this.config.maxRetrievalHistory) {
       this.retrievalHistory = this.retrievalHistory.slice(0, this.config.maxRetrievalHistory);
     }
 
-    // Update session activity
     this.updateSessionActivity('retrieval_completed', { retrieval: retrievalData });
     
     return retrievalData;
   }
 
-  /**
-   * Get retrieval history
-   * @param {string} userId - User identifier
-   * @param {number} limit - Maximum retrievals to return
-   * @returns {Array} Retrieval history
-   */
+  
   getRetrievalHistory(userId = null, limit = 20) {
     let history = [...this.retrievalHistory];
     
-    // Filter by user if specified
+
     if (userId) {
       history = history.filter(retrieval => retrieval.metadata.userId === userId);
     }
@@ -356,11 +294,7 @@ class ResearchMemory {
     return history.slice(0, limit);
   }
 
-  /**
-   * Update session context
-   * @param {string} key - Context key
-   * @param {any} value - Context value
-   */
+  
   updateSessionContext(key, value) {
     const contextData = {
       value,
@@ -371,23 +305,19 @@ class ResearchMemory {
 
     this.sessionContext.set(key, contextData);
     
-    // Maintain size limit
+
     if (this.sessionContext.size > this.config.maxSessionContext) {
       this.maintainSessionContextLimit();
     }
   }
 
-  /**
-   * Get session context
-   * @param {string} key - Context key (optional)
-   * @returns {any} Context value or full context
-   */
+  
   getSessionContext(key = null) {
     if (key) {
       return this.sessionContext.get(key)?.value;
     }
     
-    // Return full context if no key specified
+
     const context = {};
     for (const [contextKey, data] of this.sessionContext.entries()) {
       context[contextKey] = data.value;
@@ -396,10 +326,7 @@ class ResearchMemory {
     return context;
   }
 
-  /**
-   * Get current session information
-   * @returns {Object} Current session
-   */
+  
   getCurrentSession() {
     return {
       ...this.currentSession,
@@ -412,10 +339,7 @@ class ResearchMemory {
     };
   }
 
-  /**
-   * Check if session is active
-   * @returns {boolean} Session active status
-   */
+  
   isSessionActive() {
     if (!this.config.enableSessionTracking) return true;
     
@@ -427,11 +351,7 @@ class ResearchMemory {
     return (now - lastActivity) < this.config.sessionTimeout;
   }
 
-  /**
-   * Update session activity
-   * @param {string} type - Activity type
-   * @param {Object} data - Activity data
-   */
+  
   updateSessionActivity(type, data) {
     const activity = {
       type,
@@ -442,79 +362,63 @@ class ResearchMemory {
 
     this.currentSession.activity.push(activity);
     
-    // Maintain reasonable activity history size
+
     if (this.currentSession.activity.length > 100) {
       this.currentSession.activity = this.currentSession.activity.slice(-50);
     }
   }
 
-  /**
-   * Maintain topic limit by removing least relevant
-   */
+  
   maintainTopicLimit() {
     const topics = Array.from(this.recentTopics.entries())
       .map(([topic, data]) => ({ topic, ...data }))
       .sort((a, b) => {
-        // Sort by combined relevance score
+
         const scoreA = (a.frequency * 0.4) + (a.lastAccessed * 0.3) + (a.metadata.relevance * 0.3);
         const scoreB = (b.frequency * 0.4) + (b.lastAccessed * 0.3) + (b.metadata.relevance * 0.3);
         return scoreB - scoreA;
       });
 
-    // Remove least relevant topics
     const toRemove = topics.slice(this.config.maxRecentTopics);
     toRemove.forEach(topic => {
       this.recentTopics.delete(topic.topic);
     });
   }
 
-  /**
-   * Maintain workbook limit by removing least accessed
-   */
+  
   maintainWorkbookLimit() {
     const workbooks = Array.from(this.activeWorkbooks.entries())
       .map(([id, data]) => ({ id, ...data }))
       .sort((a, b) => {
-        // Sort by combined access score
+
         const scoreA = (a.accessCount * 0.6) + (a.lastAccessed * 0.4);
         const scoreB = (b.accessCount * 0.6) + (b.lastAccessed * 0.4);
         return scoreB - scoreA;
       });
 
-    // Remove least accessed workbooks
     const toRemove = workbooks.slice(this.config.maxActiveWorkbooks);
     toRemove.forEach(workbook => {
       this.activeWorkbooks.delete(workbook.id);
     });
   }
 
-  /**
-   * Maintain session context limit
-   */
+  
   maintainSessionContextLimit() {
     const context = Array.from(this.sessionContext.entries())
       .sort((a, b) => a[1].timestamp - b[1].timestamp);
 
-    // Remove oldest context entries
     const toRemove = context.slice(this.config.maxSessionContext);
     toRemove.forEach(([key]) => {
       this.sessionContext.delete(key);
     });
   }
 
-  /**
-   * Generate session ID
-   * @returns {string} Session ID
-   */
+  
   generateSessionId() {
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  /**
-   * Compress data for storage
-   * @param {Object} data - Data to compress
-   * @returns {Object} Compressed data
-   */
+  
   compressData(data) {
     if (!this.config.enableCompression) return data;
 
@@ -527,11 +431,7 @@ class ResearchMemory {
     return compressed;
   }
 
-  /**
-   * Decompress data from storage
-   * @param {Object} compressed - Compressed data
-   * @returns {Object} Decompressed data
-   */
+  
   decompressData(compressed) {
     if (!compressed.compressed) return compressed;
 
@@ -543,33 +443,23 @@ class ResearchMemory {
     }
   }
 
-  /**
-   * Simple compression algorithm
-   * @param {string} str - String to compress
-   * @returns {string} Compressed string
-   */
+  
   simpleCompression(str) {
-    // Simple run-length encoding for demonstration
+
     return str.replace(/(.)\1+/g, (match, char) => {
       return char + match.length;
     });
   }
 
-  /**
-   * Simple decompression algorithm
-   * @param {string} str - Compressed string
-   * @returns {string} Decompressed string
-   */
+  
   simpleDecompression(str) {
-    // Reverse of simple compression
+
     return str.replace(/(.)\d+/g, (match, char, count) => {
       return char.repeat(parseInt(count));
     });
   }
 
-  /**
-   * Persist data to storage
-   */
+  
   async persistToStorage() {
     if (!this.config.enablePersistence) return;
 
@@ -585,7 +475,6 @@ class ResearchMemory {
         lastSaved: new Date().toISOString()
       };
 
-      // Compress data if enabled
       const finalData = this.config.enableCompression 
         ? this.compressData(data)
         : data;
@@ -599,10 +488,7 @@ class ResearchMemory {
     }
   }
 
-  /**
-   * Load data from storage
-   * @returns {Object|null} Stored data
-   */
+  
   async loadFromStorage() {
     try {
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
@@ -610,7 +496,7 @@ class ResearchMemory {
         const stored = result[this.config.storageKey];
         
         if (stored) {
-          // Decompress data if compressed
+
           return this.config.enableCompression 
             ? this.decompressData(stored)
             : stored;
@@ -622,10 +508,7 @@ class ResearchMemory {
     }
   }
 
-  /**
-   * Get memory statistics
-   * @returns {Object} Memory statistics
-   */
+  
   getMemoryStats() {
     const now = Date.now();
     const sessionDuration = now - this.currentSession.startTime;
@@ -685,10 +568,7 @@ class ResearchMemory {
     };
   }
 
-  /**
-   * Clear memory
-   * @param {Object} options - Clear options
-   */
+  
   clearMemory(options = {}) {
     const {
       clearTopics = true,
@@ -729,14 +609,10 @@ class ResearchMemory {
       this.compressionCache.clear();
     }
 
-    // Persist cleared state
     this.persistToStorage();
   }
 
-  /**
-   * Export memory data
-   * @returns {Object} Exportable memory data
-   */
+  
   exportMemoryData() {
     return {
       recentTopics: Array.from(this.recentTopics.entries()),
@@ -750,11 +626,7 @@ class ResearchMemory {
     };
   }
 
-  /**
-   * Import memory data
-   * @param {Object} data - Memory data to import
-   * @returns {Object} Import result
-   */
+  
   importMemoryData(data) {
     try {
       if (data.recentTopics) {
@@ -801,17 +673,12 @@ class ResearchMemory {
     }
   }
 
-  /**
-   * Update configuration
-   * @param {Object} newConfig - New configuration
-   */
+  
   updateConfig(newConfig) {
     this.config = { ...this.config, ...newConfig };
   }
 
-  /**
-   * Reset research memory
-   */
+  
   reset() {
     this.recentTopics.clear();
     this.activeWorkbooks.clear();
@@ -835,10 +702,8 @@ class ResearchMemory {
   }
 }
 
-// Export singleton instance
 export const researchMemory = new ResearchMemory();
 
-// Export utilities
 export const addRecentTopic = researchMemory.addRecentTopic.bind(researchMemory);
 export const getRecentTopics = researchMemory.getRecentTopics.bind(researchMemory);
 export const addActiveWorkbook = researchMemory.addActiveWorkbook.bind(researchMemory);

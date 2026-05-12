@@ -1,45 +1,31 @@
-/**
- * ExtensionProvider - React Context Provider for Extension Integration
- * 
- * Provides global extension state and functionality to all React components
- * through React Context, eliminating the need for prop drilling.
- * 
- * Features:
- * - Global extension state management
- * - MessageBus integration
- * - Error boundary handling
- * - Performance optimization with memoization
- * - Development/production mode detection
- * - Automatic cleanup on unmount
- */
+
 
 import React, { createContext, useContext, useReducer, useCallback, useMemo, useEffect } from 'react';
 import { useMessageBus } from './useMessageBus';
 import { useExtensionState } from './useExtensionState';
 import { useSidebarState } from './useSidebarState';
 
-// Initial state
 const initialState = {
-  // Extension state
+
   isConnected: false,
   isLoading: true,
   error: null,
   
-  // Tab and content state
+
   currentTab: null,
   selectedText: '',
   extractedContent: '',
   
-  // Sidebar state
+
   sidebarOpen: false,
   sidebarAnimating: false,
   isMobile: false,
   
-  // UI state
+
   activeView: 'launcher', // launcher, dashboard, research, aide
   theme: 'dark',
   
-  // Performance and debugging
+
   debugMode: false,
   performance: {
     messageCount: 0,
@@ -48,37 +34,35 @@ const initialState = {
   }
 };
 
-// Action types
 const actionTypes = {
-  // Connection actions
+
   SET_CONNECTED: 'SET_CONNECTED',
   SET_LOADING: 'SET_LOADING',
   SET_ERROR: 'SET_ERROR',
   CLEAR_ERROR: 'CLEAR_ERROR',
   
-  // Content actions
+
   SET_CURRENT_TAB: 'SET_CURRENT_TAB',
   SET_SELECTED_TEXT: 'SET_SELECTED_TEXT',
   SET_EXTRACTED_CONTENT: 'SET_EXTRACTED_CONTENT',
   CLEAR_CONTENT: 'CLEAR_CONTENT',
   
-  // Sidebar actions
+
   SET_SIDEBAR_OPEN: 'SET_SIDEBAR_OPEN',
   SET_SIDEBAR_ANIMATING: 'SET_SIDEBAR_ANIMATING',
   SET_MOBILE: 'SET_MOBILE',
   
-  // UI actions
+
   SET_ACTIVE_VIEW: 'SET_ACTIVE_VIEW',
   SET_THEME: 'SET_THEME',
   
-  // Performance actions
+
   INCREMENT_MESSAGE_COUNT: 'INCREMENT_MESSAGE_COUNT',
   UPDATE_LAST_ACTIVITY: 'UPDATE_LAST_ACTIVITY',
   ADD_ERROR: 'ADD_ERROR',
   CLEAR_ERRORS: 'CLEAR_ERRORS'
 };
 
-// Reducer function
 function extensionReducer(state, action) {
   switch (action.type) {
     case actionTypes.SET_CONNECTED:
@@ -172,20 +156,16 @@ function extensionReducer(state, action) {
   }
 }
 
-// Create context
 const ExtensionContext = createContext();
 
-/**
- * ExtensionProvider component
- */
 export const ExtensionProvider = ({ children }) => {
   const [state, dispatch] = useReducer(extensionReducer, initialState);
   
-  // Extension hooks
+
   const { isConnected, lastError, sendToBackground, sendToContentScript, onMessage } = useMessageBus();
   const sidebarState = useSidebarState();
   
-  // Extension state subscriptions
+
   const [currentTab] = useExtensionState('aideCurrentTab', {
     storage: 'session',
     defaultValue: null
@@ -201,19 +181,16 @@ export const ExtensionProvider = ({ children }) => {
     defaultValue: ''
   });
 
-  // Update state when extension connection changes
   useEffect(() => {
     dispatch({ type: actionTypes.SET_CONNECTED, payload: isConnected });
   }, [isConnected]);
 
-  // Update state when extension errors occur
   useEffect(() => {
     if (lastError) {
       dispatch({ type: actionTypes.SET_ERROR, payload: lastError });
     }
   }, [lastError]);
 
-  // Update state when extension data changes
   useEffect(() => {
     dispatch({ type: actionTypes.SET_CURRENT_TAB, payload: currentTab });
   }, [currentTab]);
@@ -226,7 +203,6 @@ export const ExtensionProvider = ({ children }) => {
     dispatch({ type: actionTypes.SET_EXTRACTED_CONTENT, payload: extractedContent });
   }, [extractedContent]);
 
-  // Update sidebar state - useSidebarState returns object with properties, not nested object
   useEffect(() => {
     console.log('🔍 ExtensionProvider: Updating sidebar state', {
       sidebarState,
@@ -235,7 +211,7 @@ export const ExtensionProvider = ({ children }) => {
       timestamp: Date.now()
     });
     
-    // useSidebarState returns object with direct properties, not nested object
+
     if (sidebarState && typeof sidebarState.isOpen === 'boolean' && typeof sidebarState.isVisible === 'boolean') {
       dispatch({ type: actionTypes.SET_SIDEBAR_OPEN, payload: sidebarState.isOpen });
       dispatch({ type: actionTypes.SET_SIDEBAR_ANIMATING, payload: sidebarState.isAnimating });
@@ -251,11 +227,9 @@ export const ExtensionProvider = ({ children }) => {
     }
   }, [sidebarState?.isOpen, sidebarState?.isVisible, sidebarState?.isAnimating, sidebarState?.isMobile]);
 
-  // Setup message listeners
   useEffect(() => {
     const unsubscribers = [];
 
-    // Listen for tab changes
     unsubscribers.push(
       onMessage('TAB_CHANGED', (message) => {
         dispatch({ type: actionTypes.SET_CURRENT_TAB, payload: message.tab });
@@ -263,7 +237,6 @@ export const ExtensionProvider = ({ children }) => {
       })
     );
 
-    // Listen for text selection
     unsubscribers.push(
       onMessage('TEXT_SELECTED', (message) => {
         dispatch({ type: actionTypes.SET_SELECTED_TEXT, payload: message.text });
@@ -271,7 +244,6 @@ export const ExtensionProvider = ({ children }) => {
       })
     );
 
-    // Listen for content extraction
     unsubscribers.push(
       onMessage('CONTENT_EXTRACTED', (message) => {
         dispatch({ type: actionTypes.SET_EXTRACTED_CONTENT, payload: message.content });
@@ -279,7 +251,6 @@ export const ExtensionProvider = ({ children }) => {
       })
     );
 
-    // Listen for sidebar state changes
     unsubscribers.push(
       onMessage('SIDEBAR_STATE_CHANGED', (message) => {
         dispatch({ type: actionTypes.SET_SIDEBAR_OPEN, payload: message.isOpen });
@@ -287,7 +258,6 @@ export const ExtensionProvider = ({ children }) => {
       })
     );
 
-    // Performance monitoring
     unsubscribers.push(
       onMessage('*', () => {
         dispatch({ type: actionTypes.INCREMENT_MESSAGE_COUNT });
@@ -303,9 +273,8 @@ export const ExtensionProvider = ({ children }) => {
     };
   }, [onMessage]);
 
-  // Action creators
   const actions = useMemo(() => ({
-    // Connection actions
+
     setConnected: (connected) => 
       dispatch({ type: actionTypes.SET_CONNECTED, payload: connected }),
     
@@ -318,7 +287,7 @@ export const ExtensionProvider = ({ children }) => {
     clearError: () => 
       dispatch({ type: actionTypes.CLEAR_ERROR }),
     
-    // Content actions
+
     setCurrentTab: (tab) => 
       dispatch({ type: actionTypes.SET_CURRENT_TAB, payload: tab }),
     
@@ -331,34 +300,34 @@ export const ExtensionProvider = ({ children }) => {
     clearContent: () => 
       dispatch({ type: actionTypes.CLEAR_CONTENT }),
     
-    // Sidebar actions
+
     setSidebarOpen: (open) => 
       dispatch({ type: actionTypes.SET_SIDEBAR_OPEN, payload: open }),
     
     setSidebarAnimating: (animating) => 
       dispatch({ type: actionTypes.SET_SIDEBAR_ANIMATING, payload: animating }),
     
-    // UI actions
+
     setActiveView: (view) => 
       dispatch({ type: actionTypes.SET_ACTIVE_VIEW, payload: view }),
     
     setTheme: (theme) => 
       dispatch({ type: actionTypes.SET_THEME, payload: theme }),
     
-    // Performance actions
+
     clearErrors: () => 
       dispatch({ type: actionTypes.CLEAR_ERRORS }),
     
-    // Extension communication
+
     sendMessage: sendToBackground,
     sendToContent: sendToContentScript,
     
-    // Sidebar controls
+
     toggleSidebar: sidebarState.toggleSidebar,
     openSidebar: sidebarState.openSidebar,
     closeSidebar: sidebarState.closeSidebar,
     
-    // Debug actions
+
     exportState: () => ({
       context: state,
       sidebar: sidebarState.getState(),
@@ -366,12 +335,11 @@ export const ExtensionProvider = ({ children }) => {
     })
   }), [dispatch, sendToBackground, sendToContentScript, sidebarState]);
 
-  // Context value
   const contextValue = useMemo(() => ({
     ...state,
     ...sidebarState,
     actions,
-    // Computed values
+
     isReady: state.isConnected && !state.isLoading,
     hasContent: !!(state.extractedContent || state.selectedText),
     hasError: !!state.error,
@@ -385,10 +353,6 @@ export const ExtensionProvider = ({ children }) => {
   );
 };
 
-/**
- * Hook to use extension context
- * @returns {Object} Extension context value
- */
 export const useExtension = () => {
   const context = useContext(ExtensionContext);
   
@@ -399,20 +363,11 @@ export const useExtension = () => {
   return context;
 };
 
-/**
- * Hook to use extension actions only
- * @returns {Object} Extension actions
- */
 export const useExtensionActions = () => {
   const { actions } = useExtension();
   return actions;
 };
 
-
-/**
- * Hook to use extension performance monitoring
- * @returns {Object} Performance state and actions
- */
 export const useExtensionPerformance = () => {
   const { performance, actions } = useExtension();
   

@@ -1,20 +1,9 @@
-/**
- * GlobalStatusProvider - Global Loading and Error State Management
- * 
- * Provides centralized state management for:
- * - Loading states for different operations
- * - Error states with recovery options
- * - Toast notifications
- * - Progress indicators
- * - User feedback
- * - Graceful degradation
- */
+
 
 import React, { createContext, useContext, useReducer, useCallback } from 'react';
 
-// Initial state
 const initialState = {
-  // Loading states
+
   loading: {
     extracting: false,
     summarizing: false,
@@ -25,7 +14,7 @@ const initialState = {
     sidebar: false
   },
   
-  // Error states
+
   errors: {
     extracting: null,
     summarizing: null,
@@ -37,10 +26,10 @@ const initialState = {
     global: null
   },
   
-  // Toast notifications
+
   toasts: [],
   
-  // Progress tracking
+
   progress: {
     extracting: 0,
     summarizing: 0,
@@ -49,14 +38,14 @@ const initialState = {
     embedding: 0
   },
   
-  // Connection state
+
   connection: {
     online: navigator.onLine,
     api: true,
     extension: true
   },
   
-  // Performance metrics
+
   performance: {
     lastActivity: null,
     operationCount: 0,
@@ -64,37 +53,35 @@ const initialState = {
   }
 };
 
-// Action types
 const actionTypes = {
-  // Loading actions
+
   SET_LOADING: 'SET_LOADING',
   CLEAR_LOADING: 'CLEAR_LOADING',
   CLEAR_ALL_LOADING: 'CLEAR_ALL_LOADING',
   
-  // Error actions
+
   SET_ERROR: 'SET_ERROR',
   CLEAR_ERROR: 'CLEAR_ERROR',
   CLEAR_ALL_ERRORS: 'CLEAR_ALL_ERRORS',
   
-  // Toast actions
+
   ADD_TOAST: 'ADD_TOAST',
   REMOVE_TOAST: 'REMOVE_TOAST',
   CLEAR_TOASTS: 'CLEAR_TOASTS',
   
-  // Progress actions
+
   SET_PROGRESS: 'SET_PROGRESS',
   CLEAR_PROGRESS: 'CLEAR_PROGRESS',
   
-  // Connection actions
+
   SET_CONNECTION: 'SET_CONNECTION',
   
-  // Performance actions
+
   UPDATE_ACTIVITY: 'UPDATE_ACTIVITY',
   INCREMENT_OPERATION: 'INCREMENT_OPERATION',
   INCREMENT_ERROR: 'INCREMENT_ERROR'
 };
 
-// Reducer function
 function globalStatusReducer(state, action) {
   switch (action.type) {
     case actionTypes.SET_LOADING:
@@ -232,16 +219,11 @@ function globalStatusReducer(state, action) {
   }
 }
 
-// Create context
 const GlobalStatusContext = createContext();
 
-/**
- * GlobalStatusProvider component
- */
 export const GlobalStatusProvider = ({ children }) => {
   const [state, dispatch] = useReducer(globalStatusReducer, initialState);
 
-  // Monitor connection status
   React.useEffect(() => {
     const handleOnline = () => {
       dispatch({
@@ -277,7 +259,6 @@ export const GlobalStatusProvider = ({ children }) => {
     };
   }, []);
 
-  // Auto-remove old toasts
   React.useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
@@ -294,9 +275,8 @@ export const GlobalStatusProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [state.toasts]);
 
-  // Action creators
   const actions = {
-    // Loading actions
+
     setLoading: (operation, loading) => {
       dispatch({
         type: actionTypes.SET_LOADING,
@@ -328,14 +308,14 @@ export const GlobalStatusProvider = ({ children }) => {
       });
     },
     
-    // Error actions
+
     setError: (operation, error, options = {}) => {
       dispatch({
         type: actionTypes.SET_ERROR,
         payload: { operation, error }
       });
       
-      // Auto-toast for errors
+
       if (options.showToast !== false) {
         dispatch({
           type: actionTypes.ADD_TOAST,
@@ -364,7 +344,7 @@ export const GlobalStatusProvider = ({ children }) => {
       });
     },
     
-    // Toast actions
+
     addToast: (toast) => {
       const newToast = {
         id: Date.now(),
@@ -392,7 +372,7 @@ export const GlobalStatusProvider = ({ children }) => {
       });
     },
     
-    // Progress actions
+
     setProgress: (operation, value) => {
       dispatch({
         type: actionTypes.SET_PROGRESS,
@@ -407,7 +387,7 @@ export const GlobalStatusProvider = ({ children }) => {
       });
     },
     
-    // Connection actions
+
     setConnection: (connection) => {
       dispatch({
         type: actionTypes.SET_CONNECTION,
@@ -415,7 +395,7 @@ export const GlobalStatusProvider = ({ children }) => {
       });
     },
     
-    // Performance actions
+
     updateActivity: () => {
       dispatch({
         type: actionTypes.UPDATE_ACTIVITY,
@@ -423,7 +403,7 @@ export const GlobalStatusProvider = ({ children }) => {
       });
     },
     
-    // Utility actions
+
     startOperation: (operation, options = {}) => {
       actions.setLoading(operation, true);
       actions.clearError(operation);
@@ -457,7 +437,7 @@ export const GlobalStatusProvider = ({ children }) => {
   const contextValue = {
     ...state,
     actions,
-    // Computed values
+
     isLoadingAny: Object.values(state.loading).some(Boolean),
     hasAnyErrors: Object.values(state.errors).some(Boolean),
     isOnline: state.connection.online,
@@ -471,10 +451,6 @@ export const GlobalStatusProvider = ({ children }) => {
   );
 };
 
-/**
- * Hook to use global status context
- * @returns {Object} Global status context
- */
 export const useGlobalStatus = () => {
   const context = useContext(GlobalStatusContext);
   
@@ -485,10 +461,6 @@ export const useGlobalStatus = () => {
   return context;
 };
 
-/**
- * Hook to use loading states
- * @returns {Object} Loading states and actions
- */
 export const useLoadingStates = () => {
   const { loading, actions } = useGlobalStatus();
   
@@ -501,10 +473,6 @@ export const useLoadingStates = () => {
   };
 };
 
-/**
- * Hook to use error states
- * @returns {Object} Error states and actions
- */
 export const useErrorStates = () => {
   const { errors, actions } = useGlobalStatus();
   
@@ -517,10 +485,6 @@ export const useErrorStates = () => {
   };
 };
 
-/**
- * Hook to use toast notifications
- * @returns {Object} Toast state and actions
- */
 export const useToasts = () => {
   const { toasts, actions } = useGlobalStatus();
   
@@ -532,10 +496,6 @@ export const useToasts = () => {
   };
 };
 
-/**
- * Hook to use progress tracking
- * @returns {Object} Progress state and actions
- */
 export const useProgress = () => {
   const { progress, actions } = useGlobalStatus();
   
@@ -547,10 +507,6 @@ export const useProgress = () => {
   };
 };
 
-/**
- * Hook to use connection status
- * @returns {Object} Connection state and actions
- */
 export const useConnection = () => {
   const { connection, actions } = useGlobalStatus();
   

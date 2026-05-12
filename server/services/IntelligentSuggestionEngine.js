@@ -1,36 +1,25 @@
-/**
- * IntelligentSuggestionEngine - Lightweight Context-Aware Suggestions for FocusFlow AI
- * 
- * Provides intelligent suggestions:
- * - Related saved notes
- * - Relevant workbook suggestions
- * - Useful follow-up questions
- * - Related concepts
- * - Unresolved research threads
- * - Potential contradictions
- * - Contextual next steps
- */
+
 
 class IntelligentSuggestionEngine {
   constructor(options = {}) {
     this.config = {
-      // Suggestion settings
+
       maxSuggestionsPerType: options.maxSuggestionsPerType || 3,
       enableContextualSuggestions: options.enableContextualSuggestions !== false,
       enableFollowUpQuestions: options.enableFollowUpQuestions !== false,
       enableContradictionDetection: options.enableContradictionDetection !== false,
       
-      // Context analysis
+
       contextWindow: options.contextWindow || 5, // Last 5 activities
       relevanceThreshold: options.relevanceThreshold || 0.6,
       diversityThreshold: options.diversityThreshold || 0.3,
       
-      // Performance
+
       enableCaching: options.enableCaching !== false,
       cacheTimeout: options.cacheTimeout || 300000, // 5 minutes
       enableBatchProcessing: options.enableBatchProcessing !== false,
       
-      // UX settings
+
       maxTotalSuggestions: options.maxTotalSuggestions || 8,
       enableSubtleHints: options.enableSubtleHints !== false,
       suggestionPriority: options.suggestionPriority || 'relevance' // relevance, diversity, novelty
@@ -48,27 +37,21 @@ class IntelligentSuggestionEngine {
     };
   }
 
-  /**
-   * Generate intelligent suggestions
-   * @param {Object} context - Current context
-   * @param {Object} options - Suggestion options
-   * @returns {Array} Generated suggestions
-   */
+  
   async generateSuggestions(context, options = {}) {
     try {
       const startTime = Date.now();
       
-      // Check cache first
+
       const cacheKey = this.generateCacheKey(context, options);
       const cached = this.getFromCache(cacheKey);
       if (cached) {
         return cached;
       }
 
-      // Analyze current context
       const contextAnalysis = await this.analyzeContext(context);
       
-      // Generate different types of suggestions
+
       const suggestionTypes = [
         'related_notes',
         'workbook_suggestions',
@@ -91,13 +74,12 @@ class IntelligentSuggestionEngine {
         allSuggestions.push(...typeSuggestions);
       }
 
-      // Filter, rank, and select best suggestions
       const selectedSuggestions = this.selectBestSuggestions(allSuggestions, contextAnalysis);
       
-      // Update performance metrics
+
       this.updatePerformanceMetrics(selectedSuggestions, startTime);
       
-      // Cache results
+
       this.setCache(cacheKey, selectedSuggestions);
       
       return selectedSuggestions;
@@ -108,11 +90,7 @@ class IntelligentSuggestionEngine {
     }
   }
 
-  /**
-   * Analyze current context
-   * @param {Object} context - Current context
-   * @returns {Object} Context analysis
-   */
+  
   async analyzeContext(context) {
     const analysis = {
       currentTopic: context.currentTopic || '',
@@ -130,19 +108,12 @@ class IntelligentSuggestionEngine {
       productivity: this.assessProductivity(context)
     };
 
-    // Store context analysis for learning
     this.contextAnalyzer.set(context.sessionId || 'default', analysis);
     
     return analysis;
   }
 
-  /**
-   * Generate suggestions for specific type
-   * @param {string} suggestionType - Type of suggestion
-   * @param {Object} contextAnalysis - Context analysis
-   * @param {Object} options - Suggestion options
-   * @returns {Array} Type-specific suggestions
-   */
+  
   async generateSuggestionType(suggestionType, contextAnalysis, options) {
     switch (suggestionType) {
       case 'related_notes':
@@ -166,22 +137,16 @@ class IntelligentSuggestionEngine {
     }
   }
 
-  /**
-   * Generate related notes suggestions
-   * @param {Object} contextAnalysis - Context analysis
-   * @param {Object} options - Suggestion options
-   * @returns {Array} Related notes suggestions
-   */
+  
   generateRelatedNotesSuggestions(contextAnalysis, options) {
     const suggestions = [];
     const { currentTopic, recentNotes, focusAreas } = contextAnalysis;
     
-    // Find notes related to current topic
+
     const relatedNotes = recentNotes.filter(note => 
       this.calculateRelevance(note.content, currentTopic) >= this.config.relevanceThreshold
     );
 
-    // Sort by relevance and recency
     relatedNotes.sort((a, b) => {
       const relevanceA = this.calculateRelevance(a.content, currentTopic);
       const relevanceB = this.calculateRelevance(b.content, currentTopic);
@@ -191,7 +156,6 @@ class IntelligentSuggestionEngine {
       return (relevanceB * 0.7 + recencyB * 0.3) - (relevanceA * 0.7 + recencyA * 0.3);
     });
 
-    // Generate suggestions
     relatedNotes.slice(0, this.config.maxSuggestionsPerType).forEach((note, index) => {
       suggestions.push({
         id: `related_note_${index}`,
@@ -212,22 +176,16 @@ class IntelligentSuggestionEngine {
     return suggestions;
   }
 
-  /**
-   * Generate workbook suggestions
-   * @param {Object} contextAnalysis - Context analysis
-   * @param {Object} options - Suggestion options
-   * @returns {Array} Workbook suggestions
-   */
+  
   generateWorkbookSuggestions(contextAnalysis, options) {
     const suggestions = [];
     const { currentTopic, activeWorkbooks, focusAreas } = contextAnalysis;
     
-    // Find workbooks related to current topic
+
     const relevantWorkbooks = activeWorkbooks.filter(workbook => 
       this.calculateWorkbookRelevance(workbook, currentTopic) >= this.config.relevanceThreshold
     );
 
-    // Sort by relevance and usage
     relevantWorkbooks.sort((a, b) => {
       const relevanceA = this.calculateWorkbookRelevance(a, currentTopic);
       const relevanceB = this.calculateWorkbookRelevance(b, currentTopic);
@@ -237,7 +195,6 @@ class IntelligentSuggestionEngine {
       return (relevanceB * 0.6 + usageB * 0.4) - (relevanceA * 0.6 + usageA * 0.4);
     });
 
-    // Generate suggestions
     relevantWorkbooks.slice(0, this.config.maxSuggestionsPerType).forEach((workbook, index) => {
       suggestions.push({
         id: `workbook_${index}`,
@@ -258,25 +215,19 @@ class IntelligentSuggestionEngine {
     return suggestions;
   }
 
-  /**
-   * Generate follow-up questions
-   * @param {Object} contextAnalysis - Context analysis
-   * @param {Object} options - Suggestion options
-   * @returns {Array} Follow-up question suggestions
-   */
+  
   generateFollowUpQuestions(contextAnalysis, options) {
     const suggestions = [];
     const { currentTopic, recentQueries, researchPhase, knowledgeGaps } = contextAnalysis;
     
-    // Generate questions based on research phase
+
     const questions = this.generateQuestionsForPhase(researchPhase, currentTopic, knowledgeGaps);
     
-    // Filter out already asked questions
+
     const uniqueQuestions = questions.filter(question => 
       !recentQueries.some(query => this.calculateSimilarity(query, question) > 0.8)
     );
 
-    // Generate suggestions
     uniqueQuestions.slice(0, this.config.maxSuggestionsPerType).forEach((question, index) => {
       suggestions.push({
         id: `question_${index}`,
@@ -297,28 +248,22 @@ class IntelligentSuggestionEngine {
     return suggestions;
   }
 
-  /**
-   * Generate related concepts suggestions
-   * @param {Object} contextAnalysis - Context analysis
-   * @param {Object} options - Suggestion options
-   * @returns {Array} Related concepts suggestions
-   */
+  
   generateRelatedConcepts(contextAnalysis, options) {
     const suggestions = [];
     const { currentTopic, focusAreas, knowledgeGaps } = contextAnalysis;
     
-    // Extract concepts from current topic
+
     const currentConcepts = this.extractConcepts(currentTopic);
     
-    // Find related concepts
+
     const relatedConcepts = this.findRelatedConcepts(currentConcepts, focusAreas);
     
-    // Filter out already explored concepts
+
     const newConcepts = relatedConcepts.filter(concept => 
       !focusAreas.some(area => this.calculateSimilarity(area, concept) > 0.7)
     );
 
-    // Generate suggestions
     newConcepts.slice(0, this.config.maxSuggestionsPerType).forEach((concept, index) => {
       suggestions.push({
         id: `concept_${index}`,
@@ -339,23 +284,17 @@ class IntelligentSuggestionEngine {
     return suggestions;
   }
 
-  /**
-   * Generate unresolved threads suggestions
-   * @param {Object} contextAnalysis - Context analysis
-   * @param {Object} options - Suggestion options
-   * @returns {Array} Unresolved threads suggestions
-   */
+  
   generateUnresolvedThreads(contextAnalysis, options) {
     const suggestions = [];
     const { researchThreads, currentTopic } = contextAnalysis;
     
-    // Find unresolved threads related to current topic
+
     const unresolvedThreads = researchThreads.filter(thread => 
       thread.status === 'active' && 
       this.calculateRelevance(thread.topic, currentTopic) >= this.config.relevanceThreshold
     );
 
-    // Sort by urgency and relevance
     unresolvedThreads.sort((a, b) => {
       const urgencyA = this.calculateThreadUrgency(a);
       const urgencyB = this.calculateThreadUrgency(b);
@@ -365,7 +304,6 @@ class IntelligentSuggestionEngine {
       return (urgencyB * 0.6 + relevanceB * 0.4) - (urgencyA * 0.6 + relevanceA * 0.4);
     });
 
-    // Generate suggestions
     unresolvedThreads.slice(0, this.config.maxSuggestionsPerType).forEach((thread, index) => {
       suggestions.push({
         id: `thread_${index}`,
@@ -387,12 +325,7 @@ class IntelligentSuggestionEngine {
     return suggestions;
   }
 
-  /**
-   * Generate contradiction alerts
-   * @param {Object} contextAnalysis - Context analysis
-   * @param {Object} options - Suggestion options
-   * @returns {Array} Contradiction alert suggestions
-   */
+  
   generateContradictionAlerts(contextAnalysis, options) {
     const suggestions = [];
     const { contradictions, recentNotes } = contextAnalysis;
@@ -401,7 +334,6 @@ class IntelligentSuggestionEngine {
       return suggestions;
     }
 
-    // Generate suggestions for each contradiction
     contradictions.slice(0, this.config.maxSuggestionsPerType).forEach((contradiction, index) => {
       suggestions.push({
         id: `contradiction_${index}`,
@@ -423,20 +355,15 @@ class IntelligentSuggestionEngine {
     return suggestions;
   }
 
-  /**
-   * Generate next steps suggestions
-   * @param {Object} contextAnalysis - Context analysis
-   * @param {Object} options - Suggestion options
-   * @returns {Array} Next steps suggestions
-   */
+  
   generateNextSteps(contextAnalysis, options) {
     const suggestions = [];
     const { researchPhase, currentTopic, knowledgeGaps, productivity } = contextAnalysis;
     
-    // Generate next steps based on research phase
+
     const nextSteps = this.generateNextStepsForPhase(researchPhase, currentTopic, knowledgeGaps);
     
-    // Generate suggestions
+
     nextSteps.slice(0, this.config.maxSuggestionsPerType).forEach((step, index) => {
       suggestions.push({
         id: `next_step_${index}`,
@@ -458,17 +385,12 @@ class IntelligentSuggestionEngine {
     return suggestions;
   }
 
-  /**
-   * Generate productivity hints
-   * @param {Object} contextAnalysis - Context analysis
-   * @param {Object} options - Suggestion options
-   * @returns {Array} Productivity hint suggestions
-   */
+  
   generateProductivityHints(contextAnalysis, options) {
     const suggestions = [];
     const { productivity, researchPhase, focusAreas } = contextAnalysis;
     
-    // Generate hints based on productivity level
+
     if (productivity < 0.5) {
       suggestions.push({
         id: 'productivity_low',
@@ -486,7 +408,6 @@ class IntelligentSuggestionEngine {
       });
     }
 
-    // Generate hints based on focus areas
     if (focusAreas.length > 3) {
       suggestions.push({
         id: 'productivity_focus',
@@ -507,22 +428,16 @@ class IntelligentSuggestionEngine {
     return suggestions;
   }
 
-  /**
-   * Select best suggestions from all generated
-   * @param {Array} allSuggestions - All generated suggestions
-   * @param {Object} contextAnalysis - Context analysis
-   * @returns {Array} Selected suggestions
-   */
+  
   selectBestSuggestions(allSuggestions, contextAnalysis) {
-    // Filter by relevance threshold
+
     const relevantSuggestions = allSuggestions.filter(suggestion => 
       (suggestion.metadata?.relevance || 0) >= this.config.relevanceThreshold
     );
 
-    // Ensure diversity of suggestion types
     const diverseSuggestions = this.ensureDiversity(relevantSuggestions);
     
-    // Sort by priority and relevance
+
     diverseSuggestions.sort((a, b) => {
       const priorityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
       const priorityA = priorityOrder[a.priority] || 1;
@@ -533,10 +448,9 @@ class IntelligentSuggestionEngine {
       return (priorityB * 0.7 + relevanceB * 0.3) - (priorityA * 0.7 + relevanceA * 0.3);
     });
 
-    // Select top suggestions
     const selected = diverseSuggestions.slice(0, this.config.maxTotalSuggestions);
     
-    // Add subtle hints if enabled
+
     if (this.config.enableSubtleHints) {
       this.addSubtleHints(selected, contextAnalysis);
     }
@@ -544,11 +458,7 @@ class IntelligentSuggestionEngine {
     return selected;
   }
 
-  /**
-   * Ensure diversity in suggestions
-   * @param {Array} suggestions - All suggestions
-   * @returns {Array} Diverse suggestions
-   */
+  
   ensureDiversity(suggestions) {
     const typeCounts = new Map();
     const diverse = [];
@@ -566,13 +476,9 @@ class IntelligentSuggestionEngine {
     return diverse;
   }
 
-  /**
-   * Add subtle hints to suggestions
-   * @param {Array} suggestions - Selected suggestions
-   * @param {Object} contextAnalysis - Context analysis
-   */
+  
   addSubtleHints(suggestions, contextAnalysis) {
-    // Add contextual hints based on user behavior
+
     if (contextAnalysis.userIntent === 'deep_research') {
       suggestions.forEach(suggestion => {
         if (suggestion.type === 'related_concepts') {
@@ -583,14 +489,12 @@ class IntelligentSuggestionEngine {
     }
   }
 
-  /**
-   * Helper methods for context analysis
-   */
+  
   analyzeUserIntent(context) {
     const queries = context.recentQueries || [];
     const topics = context.recentTopics || [];
     
-    // Analyze query patterns
+
     const queryPatterns = {
       deep_research: queries.length > 5 && topics.length > 3,
       quick_lookup: queries.length <= 2,
@@ -616,7 +520,7 @@ class IntelligentSuggestionEngine {
     const topics = context.recentTopics || [];
     const queries = context.recentQueries || [];
     
-    // Extract focus areas from topics and queries
+
     const focusAreas = new Set();
     
     topics.forEach(topic => focusAreas.add(topic));
@@ -629,11 +533,11 @@ class IntelligentSuggestionEngine {
   }
 
   identifyKnowledgeGaps(context) {
-    // Simple knowledge gap detection
+
     const gaps = [];
     const queries = context.recentQueries || [];
     
-    // Look for unanswered questions
+
     const unansweredQuestions = queries.filter(query => 
       query.includes('?') && queries.filter(q => this.calculateSimilarity(q, query) > 0.8).length === 1
     );
@@ -644,11 +548,11 @@ class IntelligentSuggestionEngine {
   }
 
   detectPotentialContradictions(context) {
-    // Simple contradiction detection
+
     const contradictions = [];
     const notes = context.recentNotes || [];
     
-    // Look for conflicting statements
+
     for (let i = 0; i < notes.length; i++) {
       for (let j = i + 1; j < notes.length; j++) {
         const conflict = this.detectConflict(notes[i], notes[j]);
@@ -666,25 +570,23 @@ class IntelligentSuggestionEngine {
     const notes = context.recentNotes || [];
     const threads = context.researchThreads || [];
     
-    // Simple productivity assessment
+
     let productivity = 0.5; // Base score
     
-    // Boost for queries
+
     productivity += Math.min(0.2, queries.length * 0.05);
     
-    // Boost for notes
+
     productivity += Math.min(0.2, notes.length * 0.04);
     
-    // Boost for thread activity
+
     const activeThreads = threads.filter(t => t.status === 'active').length;
     productivity += Math.min(0.1, activeThreads * 0.03);
     
     return Math.min(1, productivity);
   }
 
-  /**
-   * Utility methods
-   */
+  
   calculateRelevance(text, topic) {
     if (!text || !topic) return 0;
     
@@ -712,10 +614,10 @@ class IntelligentSuggestionEngine {
   calculateWorkbookRelevance(workbook, topic) {
     let relevance = 0;
     
-    // Check title
+
     relevance += this.calculateRelevance(workbook.title || '', topic) * 0.4;
     
-    // Check topics
+
     if (workbook.topics) {
       const topicRelevance = Math.max(...workbook.topics.map(t => this.calculateRelevance(t, topic)));
       relevance += topicRelevance * 0.6;
@@ -725,7 +627,7 @@ class IntelligentSuggestionEngine {
   }
 
   extractConcepts(text) {
-    // Simple concept extraction
+
     const conceptPatterns = [
       /\b(?:research|study|analysis|investigation)\b/gi,
       /\b(?:technology|science|medicine|education)\b/gi,
@@ -744,7 +646,7 @@ class IntelligentSuggestionEngine {
   }
 
   findRelatedConcepts(currentConcepts, focusAreas) {
-    // Simple related concept finding
+
     const relatedConcepts = new Set();
     
     for (const concept of currentConcepts) {
@@ -752,14 +654,14 @@ class IntelligentSuggestionEngine {
       related.forEach(c => relatedConcepts.add(c));
     }
     
-    // Filter out existing focus areas
+
     return Array.from(relatedConcepts).filter(concept => 
       !focusAreas.some(area => this.calculateSimilarity(area, concept) > 0.7)
     );
   }
 
   getRelatedConcepts(concept) {
-    // Simple concept relationships
+
     const relationships = {
       'research': ['study', 'investigation', 'analysis'],
       'technology': ['innovation', 'digital', 'software'],
@@ -823,9 +725,7 @@ class IntelligentSuggestionEngine {
     return stepTemplates[phase] || stepTemplates.exploration;
   }
 
-  /**
-   * Cache management
-   */
+  
   generateCacheKey(context, options) {
     const contextStr = JSON.stringify(context);
     const optionsStr = JSON.stringify(options);
@@ -865,23 +765,21 @@ class IntelligentSuggestionEngine {
     return hash.toString(36);
   }
 
-  /**
-   * Performance tracking
-   */
+  
   updatePerformanceMetrics(suggestions, startTime) {
     const duration = Date.now() - startTime;
     const totalSuggestions = this.performanceMetrics.totalSuggestions;
     
     this.performanceMetrics.totalSuggestions += suggestions.length;
     
-    // Update average relevance
+
     if (suggestions.length > 0) {
       const avgRelevance = suggestions.reduce((sum, s) => sum + (s.metadata?.relevance || 0), 0) / suggestions.length;
       this.performanceMetrics.averageRelevance = 
         (this.performanceMetrics.averageRelevance * totalSuggestions + avgRelevance) / (totalSuggestions + suggestions.length);
     }
     
-    // Track suggestion types
+
     suggestions.forEach(suggestion => {
       const type = suggestion.type;
       const count = this.performanceMetrics.suggestionTypes.get(type) || 0;
@@ -889,10 +787,7 @@ class IntelligentSuggestionEngine {
     });
   }
 
-  /**
-   * Get suggestion statistics
-   * @returns {Object} Statistics
-   */
+  
   getStats() {
     return {
       ...this.performanceMetrics,
@@ -915,9 +810,7 @@ class IntelligentSuggestionEngine {
     };
   }
 
-  /**
-   * Reset suggestion engine
-   */
+  
   reset() {
     this.suggestionCache.clear();
     this.contextAnalyzer.clear();
@@ -933,10 +826,8 @@ class IntelligentSuggestionEngine {
   }
 }
 
-// Export singleton instance
 export const intelligentSuggestionEngine = new IntelligentSuggestionEngine();
 
-// Export utilities
 export const generateSuggestions = intelligentSuggestionEngine.generateSuggestions.bind(intelligentSuggestionEngine);
 export const getStats = intelligentSuggestionEngine.getStats.bind(intelligentSuggestionEngine);
 export const reset = intelligentSuggestionEngine.reset.bind(intelligentSuggestionEngine);

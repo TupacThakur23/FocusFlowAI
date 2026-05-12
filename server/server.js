@@ -31,7 +31,7 @@ app.use(
 
 app.use(express.json({ limit: "5mb" }));
 
-// Routes
+
 app.use("/api/focus", focusRoutes);
 app.use("/api/research", researchRoutes);
 app.use("/api/ai", aiRoutes);
@@ -44,7 +44,7 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Error handler
+
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err.message);
   res.status(500).json({ error: err.message || "Internal server error" });

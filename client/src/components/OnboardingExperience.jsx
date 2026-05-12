@@ -1,15 +1,4 @@
-/**
- * OnboardingExperience - First-Time User Experience for FocusFlow AI
- * 
- * Provides elegant onboarding flow:
- * - First-launch onboarding flow
- * - Guided feature walkthrough
- * - Permission explanations
- * - Contextual tips
- * - Interactive demos
- * - Quick-start templates
- * - Extension setup guidance
- */
+
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
@@ -43,7 +32,7 @@ const OnboardingExperience = ({
   className = '',
   forceShow = false 
 }) => {
-  // State management
+
   const [currentStep, setCurrentStep] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isSkipped, setIsSkipped] = useState(false);
@@ -51,12 +40,11 @@ const OnboardingExperience = ({
   const [interactiveDemo, setInteractiveDemo] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   
-  // Extension integration
+
   const [onboardingState, setOnboardingState] = useExtensionState('onboarding', { storage: 'local' });
   const [permissions] = useExtensionState('permissions', { storage: 'local' });
   const { addToast } = useGlobalStatus();
 
-  // Onboarding steps
   const onboardingSteps = [
     {
       id: 'welcome',
@@ -148,7 +136,6 @@ const OnboardingExperience = ({
     }
   ];
 
-  // Check if onboarding should be shown
   useEffect(() => {
     if (!forceShow && onboardingState?.completed) {
       setIsCompleted(true);
@@ -156,12 +143,11 @@ const OnboardingExperience = ({
     }
     
     if (forceShow || !onboardingState?.seen) {
-      // Show onboarding
+
       setCurrentStep(0);
     }
   }, [forceShow, onboardingState]);
 
-  // Event handlers
   const handleNext = useCallback(() => {
     if (currentStep < onboardingSteps.length - 1) {
       setCurrentStep(prev => prev + 1);
@@ -195,7 +181,7 @@ const OnboardingExperience = ({
   }, [onComplete, selectedTemplate, showPermissions, setOnboardingState]);
 
   const handlePermissionToggle = useCallback((permissionName, granted) => {
-    // Handle permission toggle
+
     console.log('Permission toggle:', permissionName, granted);
   }, []);
 
@@ -205,13 +191,12 @@ const OnboardingExperience = ({
 
   const handleDemoStart = useCallback(() => {
     setInteractiveDemo('active');
-    // Start interactive demo
+
     setTimeout(() => {
       setInteractiveDemo('completed');
     }, 3000);
   }, []);
 
-  // Render current step
   const renderStep = () => {
     const step = onboardingSteps[currentStep];
     
@@ -235,7 +220,6 @@ const OnboardingExperience = ({
     }
   };
 
-  // Render welcome step
   const renderWelcomeStep = (step) => (
     <div className="onboarding-welcome">
       <div className="welcome-icon">
@@ -276,7 +260,6 @@ const OnboardingExperience = ({
     </div>
   );
 
-  // Render value proposition step
   const renderValuePropStep = (step) => (
     <div className="onboarding-value-prop">
       <div className="value-icon">
@@ -312,7 +295,6 @@ const OnboardingExperience = ({
     </div>
   );
 
-  // Render permissions step
   const renderPermissionsStep = (step) => (
     <div className="onboarding-permissions">
       <div className="permissions-icon">
@@ -368,7 +350,6 @@ const OnboardingExperience = ({
     </div>
   );
 
-  // Render features step
   const renderFeaturesStep = (step) => (
     <div className="onboarding-features">
       <div className="features-icon">
@@ -407,7 +388,6 @@ const OnboardingExperience = ({
     </div>
   );
 
-  // Render demo step
   const renderDemoStep = (step) => (
     <div className="onboarding-demo">
       <div className="demo-icon">
@@ -491,7 +471,6 @@ const OnboardingExperience = ({
     </div>
   );
 
-  // Render templates step
   const renderTemplatesStep = (step) => (
     <div className="onboarding-templates">
       <div className="templates-icon">
@@ -539,7 +518,6 @@ const OnboardingExperience = ({
     </div>
   );
 
-  // Render completion step
   const renderCompletionStep = (step) => (
     <div className="onboarding-completion">
       <div className="completion-icon">
@@ -593,7 +571,6 @@ const OnboardingExperience = ({
     </div>
   );
 
-  // Don't render if completed or skipped
   if (isCompleted || isSkipped) {
     return null;
   }
@@ -605,7 +582,7 @@ const OnboardingExperience = ({
     <div className={`onboarding-experience ${className}`}>
       <div className="onboarding-overlay">
         <div className="onboarding-modal">
-          {/* Header */}
+          
           <div className="onboarding-header">
             <div className="progress-bar">
               <div 
@@ -623,18 +600,18 @@ const OnboardingExperience = ({
             </button>
           </div>
 
-          {/* Step indicator */}
+          
           <div className="step-indicator">
             <span className="step-number">{currentStep + 1}</span>
             <span className="step-total">of {onboardingSteps.length}</span>
           </div>
 
-          {/* Current step content */}
+          
           <div className="onboarding-content">
             {renderStep()}
           </div>
 
-          {/* Navigation */}
+          
           <div className="onboarding-navigation">
             <button
               onClick={handlePrevious}

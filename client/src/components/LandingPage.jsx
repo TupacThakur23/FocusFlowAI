@@ -1,17 +1,4 @@
-/**
- * LandingPage - Premium Product Messaging for FocusFlow AI
- * 
- * Communicates the value proposition:
- * "An AI-powered contextual research workspace integrated directly into browsing."
- * 
- * Emphasizes:
- * - Contextual intelligence
- * - Semantic continuity
- * - Research workflows
- * - Calm productivity
- * - Connected knowledge
- * - Trustworthy AI assistance
- */
+
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -51,7 +38,6 @@ const LandingPage = ({ className = '' }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Auto-rotate features
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveFeature(prev => (prev + 1) % 4);
@@ -60,7 +46,7 @@ const LandingPage = ({ className = '' }) => {
   }, []);
 
   const handleInstall = () => {
-    // Handle Chrome extension installation
+
     if (typeof chrome !== 'undefined' && chrome.webstore) {
       chrome.webstore.install();
     } else {
@@ -70,12 +56,12 @@ const LandingPage = ({ className = '' }) => {
 
   const handlePlayDemo = () => {
     setIsPlaying(true);
-    // Play demo video
+
   };
 
   return (
     <div className={`landing-page ${className}`}>
-      {/* Hero Section */}
+      
       <section className="hero">
         <div className="hero-background">
           <div className="gradient-overlay" />
@@ -185,7 +171,7 @@ const LandingPage = ({ className = '' }) => {
         </div>
       </section>
 
-      {/* Value Proposition */}
+      
       <section className="value-proposition">
         <div className="container">
           <div className="section-header">
@@ -234,7 +220,7 @@ const LandingPage = ({ className = '' }) => {
         </div>
       </section>
 
-      {/* Features */}
+      
       <section className="features">
         <div className="container">
           <div className="section-header">
@@ -359,7 +345,7 @@ const LandingPage = ({ className = '' }) => {
         </div>
       </section>
 
-      {/* Workflow */}
+      
       <section className="workflow">
         <div className="container">
           <div className="section-header">
@@ -406,7 +392,7 @@ const LandingPage = ({ className = '' }) => {
         </div>
       </section>
 
-      {/* Trust & Security */}
+      
       <section className="trust">
         <div className="container">
           <div className="trust-content">
@@ -464,7 +450,7 @@ const LandingPage = ({ className = '' }) => {
         </div>
       </section>
 
-      {/* Testimonials */}
+      
       <section className="testimonials">
         <div className="container">
           <div className="section-header">
@@ -548,7 +534,7 @@ const LandingPage = ({ className = '' }) => {
         </div>
       </section>
 
-      {/* CTA Section */}
+      
       <section className="cta">
         <div className="container">
           <div className="cta-content">
@@ -622,7 +608,7 @@ const LandingPage = ({ className = '' }) => {
         </div>
       </section>
 
-      {/* Footer */}
+      
       <footer className="footer">
         <div className="container">
           <div className="footer-content">

@@ -1,14 +1,4 @@
-/**
- * UserFeedbackSystem - Feedback Collection and Issue Reporting for FocusFlow AI
- * 
- * Provides comprehensive feedback features:
- * - Feedback collection
- * - Issue reporting
- * - Workflow feedback
- * - Feature request system
- * - Bug reporting
- * - Satisfaction prompts
- */
+
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
@@ -55,7 +45,7 @@ const UserFeedbackSystem = ({
   trigger = 'manual',
   position = 'bottom-right'
 }) => {
-  // State management
+
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('feedback');
   const [feedbackType, setFeedbackType] = useState('general');
@@ -64,7 +54,7 @@ const UserFeedbackSystem = ({
   const [showSuccess, setShowSuccess] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState(new Set());
   
-  // Form data
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -79,12 +69,11 @@ const UserFeedbackSystem = ({
     actualBehavior: ''
   });
   
-  // Extension integration
+
   const [feedbackHistory] = useExtensionState('feedbackHistory', { storage: 'local' });
   const [userProfile] = useExtensionState('userProfile', { storage: 'local' });
   const { addToast } = useGlobalStatus();
 
-  // Feedback categories
   const feedbackCategories = {
     general: {
       icon: <MessageSquare className="w-4 h-4" />,
@@ -112,7 +101,6 @@ const UserFeedbackSystem = ({
     }
   };
 
-  // Severity levels
   const severityLevels = {
     low: { label: 'Low', color: 'green', description: 'Minor issue or suggestion' },
     medium: { label: 'Medium', color: 'yellow', description: 'Moderate impact on usability' },
@@ -120,7 +108,6 @@ const UserFeedbackSystem = ({
     critical: { label: 'Critical', color: 'red', description: 'Blocks core functionality' }
   };
 
-  // Satisfaction prompts
   const satisfactionPrompts = [
     { id: 'onboarding', trigger: 'session_start', delay: 30000, question: 'How was your onboarding experience?' },
     { id: 'first_use', trigger: 'first_feature_use', delay: 60000, question: 'How helpful was this feature?' },
@@ -128,15 +115,13 @@ const UserFeedbackSystem = ({
     { id: 'weekly', trigger: 'weekly', delay: 0, question: 'How satisfied are you with FocusFlow AI?' }
   ];
 
-  // Effects
   useEffect(() => {
     if (trigger === 'auto') {
-      // Auto-trigger satisfaction prompts based on user behavior
+
       setupSatisfactionPrompts();
     }
   }, [trigger]);
 
-  // Event handlers
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -154,14 +139,13 @@ const UserFeedbackSystem = ({
         userProfile: userProfile || {}
       };
 
-      // Submit feedback
       const result = await submitFeedback(feedbackData);
       
       if (result.success) {
         setShowSuccess(true);
         onFeedbackSubmit?.(feedbackData);
         
-        // Reset form
+
         setFormData({
           title: '',
           description: '',
@@ -177,7 +161,7 @@ const UserFeedbackSystem = ({
         });
         setRating(0);
         
-        // Close after success
+
         setTimeout(() => {
           setShowSuccess(false);
           setIsOpen(false);
@@ -198,7 +182,7 @@ const UserFeedbackSystem = ({
   const handleRatingChange = useCallback((newRating) => {
     setRating(newRating);
     
-    // Show quick feedback form after rating
+
     if (newRating > 0 && newRating <= 3) {
       setFeedbackType('general');
       setActiveTab('feedback');
@@ -230,7 +214,6 @@ const UserFeedbackSystem = ({
     submitFeedback(quickFeedback);
   }, []);
 
-  // Render feedback button
   const renderFeedbackButton = () => {
     if (trigger === 'auto') return null;
 
@@ -246,7 +229,6 @@ const UserFeedbackSystem = ({
     );
   };
 
-  // Render satisfaction prompt
   const renderSatisfactionPrompt = (prompt) => (
     <div className="satisfaction-prompt">
       <div className="prompt-content">
@@ -270,7 +252,7 @@ const UserFeedbackSystem = ({
           </div>
           <button
             onClick={() => {
-              // Dismiss prompt
+
               const promptElement = document.querySelector('.satisfaction-prompt');
               if (promptElement) {
                 promptElement.remove();
@@ -285,7 +267,6 @@ const UserFeedbackSystem = ({
     </div>
   );
 
-  // Render feedback modal
   const renderFeedbackModal = () => {
     if (!isOpen) return null;
 
@@ -502,7 +483,6 @@ const UserFeedbackSystem = ({
     );
   };
 
-  // Render quick feedback options
   const renderQuickFeedback = () => (
     <div className="quick-feedback">
       <div className="quick-feedback-header">
@@ -546,7 +526,6 @@ const UserFeedbackSystem = ({
     </div>
   );
 
-  // Render feedback history
   const renderFeedbackHistory = () => {
     if (!feedbackHistory || feedbackHistory.length === 0) return null;
 
@@ -608,7 +587,6 @@ const UserFeedbackSystem = ({
     );
   };
 
-  // Helper functions
   const getSessionId = () => {
     return 'session_' + Date.now();
   };
@@ -622,13 +600,12 @@ const UserFeedbackSystem = ({
 
   const submitFeedback = async (feedbackData) => {
     try {
-      // Store feedback locally
+
       const updatedHistory = [...(feedbackHistory || []), feedbackData];
       if (typeof chrome !== 'undefined' && chrome.storage) {
         chrome.storage.local.set({ feedbackHistory: updatedHistory });
       }
 
-      // Send to server (in production)
       const response = await fetch('/api/feedback', {
         method: 'POST',
         headers: {
@@ -649,8 +626,7 @@ const UserFeedbackSystem = ({
   };
 
   const setupSatisfactionPrompts = () => {
-    // Set up automatic satisfaction prompts based on user behavior
-    // This would be implemented with actual user behavior tracking
+
   };
 
   return (
@@ -660,7 +636,7 @@ const UserFeedbackSystem = ({
       {renderQuickFeedback()}
       {renderFeedbackHistory()}
       
-      {/* Auto-triggered satisfaction prompts */}
+      
       {trigger === 'auto' && satisfactionPrompts.map(prompt => (
         <div key={prompt.id} className="auto-prompt">
           {renderSatisfactionPrompt(prompt)}

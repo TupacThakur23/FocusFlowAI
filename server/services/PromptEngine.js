@@ -1,13 +1,4 @@
-/**
- * PromptEngine - Advanced AI Prompt Engineering for FocusFlow AI
- * 
- * Provides contextual, mode-aware prompting for:
- * - Dynamic prompt generation based on user intent
- * - Context-aware instruction layering
- * - Mode-specific prompt templates
- * - Source-grounded responses
- * - Structured output formatting
- */
+
 
 class PromptEngine {
   constructor() {
@@ -114,13 +105,7 @@ class PromptEngine {
     };
   }
 
-  /**
-   * Generate contextual prompt based on mode and content
-   * @param {string} mode - AI interaction mode
-   * @param {Object} content - Content context
-   * @param {Object} options - Additional options
-   * @returns {Object} Generated prompt configuration
-   */
+  
   generatePrompt(mode, content, options = {}) {
     const modeConfig = this.modes[mode];
     if (!modeConfig) {
@@ -138,16 +123,15 @@ class PromptEngine {
       customInstructions = ''
     } = options;
 
-    // Build context window
     const contextWindow = this.buildContextWindow(content, sources);
     
-    // Select appropriate template
+
     const template = this.selectTemplate(mode, content.type);
     
-    // Generate system prompt
+
     const systemPrompt = this.buildSystemPrompt(mode, userLevel, language, customInstructions);
     
-    // Generate user prompt
+
     const userPrompt = this.buildUserPrompt(template, {
       context: contextWindow,
       question,
@@ -175,16 +159,10 @@ class PromptEngine {
     };
   }
 
-  /**
-   * Build context window from content and sources
-   * @param {Object} content - Content data
-   * @param {Array} sources - Source references
-   * @returns {string} Formatted context window
-   */
+  
   buildContextWindow(content, sources = []) {
     let context = '';
 
-    // Add priority sections first
     if (content.title) {
       context += `Title: ${content.title}\n\n`;
     }
@@ -197,14 +175,12 @@ class PromptEngine {
       context += `Summary: ${content.summary}\n\n`;
     }
 
-    // Add main content with token limit
     const mainContent = content.text || content.content || '';
     const maxContentTokens = this.contextWindow.maxTokens - this.estimateTokens(context);
     const truncatedContent = this.truncateToTokens(mainContent, maxContentTokens);
     
     context += `Content:\n${truncatedContent}\n\n`;
 
-    // Add sources if available
     if (sources.length > 0) {
       context += `Sources:\n${this.formatSources(sources)}\n\n`;
     }
@@ -212,12 +188,7 @@ class PromptEngine {
     return context;
   }
 
-  /**
-   * Select appropriate template based on mode and content type
-   * @param {string} mode - AI interaction mode
-   * @param {string} contentType - Type of content
-   * @returns {string} Template string
-   */
+  
   selectTemplate(mode, contentType) {
     const templates = this.templates[contentType];
     if (!templates) {
@@ -246,47 +217,31 @@ class PromptEngine {
     }
   }
 
-  /**
-   * Build system prompt with mode-specific instructions
-   * @param {string} mode - AI interaction mode
-   * @param {string} userLevel - User expertise level
-   * @param {string} language - Response language
-   * @param {string} customInstructions - Additional instructions
-   * @returns {string} System prompt
-   */
+  
   buildSystemPrompt(mode, userLevel, language, customInstructions) {
     const modeConfig = this.modes[mode];
     let systemPrompt = modeConfig.systemPrompt;
 
-    // Add user level adjustments
     if (userLevel) {
       systemPrompt += this.getUserLevelInstructions(userLevel);
     }
 
-    // Add language instructions
     if (language && language !== 'en') {
       systemPrompt += `\n\nRespond in ${language}.`;
     }
 
-    // Add response format instructions
     systemPrompt += this.getResponseFormatInstructions(mode);
 
-    // Add custom instructions
     if (customInstructions) {
       systemPrompt += `\n\nAdditional instructions: ${customInstructions}`;
     }
 
-    // Add quality guidelines
     systemPrompt += this.getQualityGuidelines(mode);
 
     return systemPrompt;
   }
 
-  /**
-   * Get user level specific instructions
-   * @param {string} level - User expertise level
-   * @returns {string} Level-specific instructions
-   */
+  
   getUserLevelInstructions(level) {
     const instructions = {
       beginner: '\n\nUse simple language, avoid jargon, provide examples, and explain step-by-step.',
@@ -298,11 +253,7 @@ class PromptEngine {
     return instructions[level] || instructions.intermediate;
   }
 
-  /**
-   * Get response format instructions for mode
-   * @param {string} mode - AI interaction mode
-   * @returns {string} Format instructions
-   */
+  
   getResponseFormatInstructions(mode) {
     const formatConfig = this.outputFormats[mode];
     if (!formatConfig) return '';
@@ -351,11 +302,7 @@ class PromptEngine {
     return instructions;
   }
 
-  /**
-   * Get quality guidelines for responses
-   * @param {string} mode - AI interaction mode
-   * @returns {string} Quality guidelines
-   */
+  
   getQualityGuidelines(mode) {
     const baseGuidelines = `
 - Be accurate and factual
@@ -377,16 +324,10 @@ class PromptEngine {
     return baseGuidelines + (modeSpecific[mode] || '');
   }
 
-  /**
-   * Build user prompt with template variables
-   * @param {string} template - Prompt template
-   * @param {Object} variables - Template variables
-   * @returns {string} Formatted user prompt
-   */
+  
   buildUserPrompt(template, variables) {
     let prompt = template;
 
-    // Replace template variables
     Object.entries(variables).forEach(([key, value]) => {
       const placeholder = `{${key}}`;
       if (typeof value === 'string') {
@@ -401,11 +342,7 @@ class PromptEngine {
     return prompt;
   }
 
-  /**
-   * Format sources for inclusion in prompts
-   * @param {Array} sources - Source references
-   * @returns {string} Formatted sources
-   */
+  
   formatSources(sources) {
     if (!sources || sources.length === 0) return '';
 
@@ -425,27 +362,17 @@ class PromptEngine {
     }).join('\n');
   }
 
-  /**
-   * Estimate token count for text
-   * @param {string} text - Text to estimate
-   * @returns {number} Estimated token count
-   */
+  
   estimateTokens(text) {
-    // Simple estimation: ~4 characters per token
+
     return Math.ceil(text.length / 4);
   }
 
-  /**
-   * Truncate text to fit within token limit
-   * @param {string} text - Text to truncate
-   * @param {number} maxTokens - Maximum tokens allowed
-   * @returns {string} Truncated text
-   */
+  
   truncateToTokens(text, maxTokens) {
     const maxChars = maxTokens * 4;
     if (text.length <= maxChars) return text;
 
-    // Try to truncate at sentence boundaries
     const truncated = text.substring(0, maxChars);
     const lastSentenceEnd = Math.max(
       truncated.lastIndexOf('.'),
@@ -460,13 +387,7 @@ class PromptEngine {
     return truncated + '...';
   }
 
-  /**
-   * Generate streaming prompt configuration
-   * @param {string} mode - AI interaction mode
-   * @param {Object} content - Content context
-   * @param {Object} options - Streaming options
-   * @returns {Object} Streaming prompt configuration
-   */
+  
   generateStreamingPrompt(mode, content, options = {}) {
     const basePrompt = this.generatePrompt(mode, content, options);
     
@@ -486,12 +407,7 @@ class PromptEngine {
     };
   }
 
-  /**
-   * Generate contextual action prompt
-   * @param {string} action - Type of contextual action
-   * @param {Object} context - Action context
-   * @returns {Object} Action prompt configuration
-   */
+  
   generateActionPrompt(action, context) {
     const actionPrompts = {
       explainSelection: {
@@ -530,10 +446,7 @@ class PromptEngine {
     };
   }
 
-  /**
-   * Get available modes
-   * @returns {Array} Available AI modes
-   */
+  
   getAvailableModes() {
     return Object.keys(this.modes).map(key => ({
       id: key,
@@ -543,32 +456,19 @@ class PromptEngine {
     }));
   }
 
-  /**
-   * Get mode configuration
-   * @param {string} mode - Mode identifier
-   * @returns {Object} Mode configuration
-   */
+  
   getModeConfig(mode) {
     return this.modes[mode];
   }
 
-  /**
-   * Update mode configuration
-   * @param {string} mode - Mode identifier
-   * @param {Object} config - New configuration
-   */
+  
   updateModeConfig(mode, config) {
     if (this.modes[mode]) {
       this.modes[mode] = { ...this.modes[mode], ...config };
     }
   }
 
-  /**
-   * Add custom template
-   * @param {string} category - Template category
-   * @param {string} name - Template name
-   * @param {string} template - Template string
-   */
+  
   addTemplate(category, name, template) {
     if (!this.templates[category]) {
       this.templates[category] = {};
@@ -576,10 +476,7 @@ class PromptEngine {
     this.templates[category][name] = template;
   }
 
-  /**
-   * Get prompt statistics
-   * @returns {Object} Prompt engine statistics
-   */
+  
   getStats() {
     return {
       modesCount: Object.keys(this.modes).length,
@@ -591,10 +488,8 @@ class PromptEngine {
   }
 }
 
-// Export singleton instance
 export const promptEngine = new PromptEngine();
 
-// Export utilities
 export const generatePrompt = promptEngine.generatePrompt.bind(promptEngine);
 export const generateStreamingPrompt = promptEngine.generateStreamingPrompt.bind(promptEngine);
 export const generateActionPrompt = promptEngine.generateActionPrompt.bind(promptEngine);
