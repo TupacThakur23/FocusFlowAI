@@ -1,71 +1,55 @@
-/**
- * ResearchSessionManager - Session Management for FocusFlow AI
- * 
- * Provides research session features:
- * - Session summaries
- * - Active topic tracking
- * - Quick resume
- * - Interrupted session recovery
- * - Recent focus areas
- * - Session timeline
- * - Contextual workspace restoration
- */
+
 
 export class ResearchSessionManager {
   constructor(options = {}) {
     this.config = {
-      // Session settings
+
       enableSessionPersistence: options.enableSessionPersistence !== false,
       sessionTimeout: options.sessionTimeout || 24 * 60 * 60 * 1000, // 24 hours
       maxActiveSessions: options.maxActiveSessions || 5,
       enableSessionRecovery: options.enableSessionRecovery !== false,
       
-      // Tracking settings
+
       enableTopicTracking: options.enableTopicTracking !== false,
       enableActivityTracking: options.enableActivityTracking !== false,
       enableFocusTracking: options.enableFocusTracking !== false,
       
-      // Storage settings
+
       storageKey: options.storageKey || 'focusflow_research_sessions',
       enableCompression: options.enableCompression !== false,
       
-      // Recovery settings
+
       enableAutoRecovery: options.enableAutoRecovery !== false,
       recoveryPromptDelay: options.recoveryPromptDelay || 30000, // 30 seconds
       enableWorkspaceRestoration: options.enableWorkspaceRestoration !== false
     };
 
-    // Session storage
     this.activeSessions = new Map();
     this.sessionHistory = [];
     this.currentSession = null;
     this.focusAreas = new Map();
     this.activityLog = [];
     
-    // Recovery state
+
     this.interruptedSessions = new Set();
     this.recoveryPrompts = new Map();
-    
-    this.initializeSessionManager();
   }
 
-  /**
-   * Initialize session manager
-   */
+  
   async initializeSessionManager() {
     try {
-      // Load existing sessions
+
       await this.loadSessions();
       
-      // Setup session monitoring
+
       this.setupSessionMonitoring();
       
-      // Check for interrupted sessions
+
       if (this.config.enableAutoRecovery) {
         this.checkForInterruptedSessions();
       }
       
-      // Start current session if none exists
+
       if (!this.currentSession) {
         this.startNewSession();
       }
@@ -75,11 +59,7 @@ export class ResearchSessionManager {
     }
   }
 
-  /**
-   * Start new research session
-   * @param {Object} sessionData - Initial session data
-   * @returns {Object} Session object
-   */
+  
   startNewSession(sessionData = {}) {
     const sessionId = this.generateSessionId();
     const now = Date.now();
@@ -109,29 +89,23 @@ export class ResearchSessionManager {
       }
     };
 
-    // End current session if exists
     if (this.currentSession) {
       this.endSession(this.currentSession.id);
     }
 
-    // Set as current session
     this.currentSession = session;
     this.activeSessions.set(sessionId, session);
     
-    // Log session start
+
     this.logActivity('session_started', { sessionId, url: window.location.href });
     
-    // Persist session
+
     this.persistSessions();
     
     return session;
   }
 
-  /**
-   * End research session
-   * @param {string} sessionId - Session ID
-   * @returns {Object} Session summary
-   */
+  
   endSession(sessionId) {
     const session = this.activeSessions.get(sessionId);
     if (!session) return null;
@@ -139,54 +113,50 @@ export class ResearchSessionManager {
     const endTime = Date.now();
     const duration = endTime - session.startTime;
     
-    // Update session
+
     session.endTime = endTime;
     session.status = 'completed';
     session.duration = duration;
     
-    // Generate summary
+
     const summary = this.generateSessionSummary(session);
     session.summary = { ...session.summary, ...summary };
     
-    // Move to history
+
     this.activeSessions.delete(sessionId);
     this.sessionHistory.unshift(session);
     
-    // Maintain history size
+
     if (this.sessionHistory.length > this.config.maxActiveSessions * 2) {
       this.sessionHistory = this.sessionHistory.slice(0, this.config.maxActiveSessions * 2);
     }
     
-    // Update current session
+
     if (this.currentSession?.id === sessionId) {
       this.currentSession = null;
     }
     
-    // Log session end
+
     this.logActivity('session_ended', { sessionId, duration });
     
-    // Persist sessions
+
     this.persistSessions();
     
     return session;
   }
 
-  /**
-   * Track research topic
-   * @param {string} topic - Research topic
-   * @param {Object} metadata - Topic metadata
-   */
+  
   trackTopic(topic, metadata = {}) {
     if (!this.currentSession || !this.config.enableTopicTracking) return;
 
     const session = this.currentSession;
     const now = Date.now();
     
-    // Add topic to session
+
     session.topics.add(topic);
     session.summary.totalTopics = session.topics.size;
     
-    // Track topic focus time
+
     if (!session.topicFocus) {
       session.topicFocus = new Map();
     }
@@ -196,24 +166,20 @@ export class ResearchSessionManager {
     currentFocus.lastUpdate = now;
     session.topicFocus.set(topic, currentFocus);
     
-    // Update focus areas
+
     this.updateFocusAreas(topic, metadata);
     
-    // Log topic tracking
+
     this.logActivity('topic_tracked', { topic, metadata });
     
-    // Update session summary
+
     this.updateSessionSummary();
     
-    // Persist session
+
     this.persistSessions();
   }
 
-  /**
-   * Track user activity
-   * @param {string} activityType - Type of activity
-   * @param {Object} activityData - Activity data
-   */
+  
   trackActivity(activityType, activityData = {}) {
     if (!this.currentSession || !this.config.enableActivityTracking) return;
 
@@ -226,10 +192,9 @@ export class ResearchSessionManager {
       sessionId: session.id
     };
 
-    // Add to session activities
     session.activities.push(activity);
     
-    // Update summary based on activity type
+
     switch (activityType) {
       case 'query':
         session.summary.totalQueries++;
@@ -243,31 +208,27 @@ export class ResearchSessionManager {
         break;
     }
     
-    // Log activity
+
     this.logActivity('activity_tracked', { activityType, activityData });
     
-    // Update session summary
+
     this.updateSessionSummary();
     
-    // Persist session
+
     this.persistSessions();
   }
 
-  /**
-   * Track focus area
-   * @param {string} focusArea - Focus area
-   * @param {Object} metadata - Focus metadata
-   */
+  
   trackFocusArea(focusArea, metadata = {}) {
     if (!this.currentSession || !this.config.enableFocusTracking) return;
 
     const session = this.currentSession;
     const now = Date.now();
     
-    // Add focus area to session
+
     session.focusAreas.add(focusArea);
     
-    // Track focus time
+
     if (!session.focusAreaTime) {
       session.focusAreaTime = new Map();
     }
@@ -277,21 +238,17 @@ export class ResearchSessionManager {
     currentFocus.lastUpdate = now;
     session.focusAreaTime.set(focusArea, currentFocus);
     
-    // Update global focus areas
+
     this.updateFocusAreas(focusArea, metadata);
     
-    // Log focus tracking
+
     this.logActivity('focus_tracked', { focusArea, metadata });
     
-    // Persist session
+
     this.persistSessions();
   }
 
-  /**
-   * Get session summary
-   * @param {string} sessionId - Session ID (optional, uses current session)
-   * @returns {Object} Session summary
-   */
+  
   getSessionSummary(sessionId = null) {
     const session = sessionId 
       ? this.activeSessions.get(sessionId) || this.sessionHistory.find(s => s.id === sessionId)
@@ -314,20 +271,15 @@ export class ResearchSessionManager {
     };
   }
 
-  /**
-   * Resume interrupted session
-   * @param {string} sessionId - Session ID to resume
-   * @returns {Object} Resumed session
-   */
+  
   resumeSession(sessionId) {
     const session = this.sessionHistory.find(s => s.id === sessionId);
     if (!session) return null;
 
-    // Mark session as resumed
     session.status = 'resumed';
     session.resumedAt = Date.now();
     
-    // Create new session based on old one
+
     const resumedSession = this.startNewSession({
       originalSessionId: sessionId,
       resumedFrom: sessionId,
@@ -336,24 +288,19 @@ export class ResearchSessionManager {
       previousFocusAreas: Array.from(session.focusAreas)
     });
 
-    // Remove from interrupted sessions
     this.interruptedSessions.delete(sessionId);
     
-    // Log session resume
+
     this.logActivity('session_resumed', { sessionId, newSessionId: resumedSession.id });
     
     return resumedSession;
   }
 
-  /**
-   * Get active topics
-   * @param {number} limit - Maximum topics to return
-   * @returns {Array} Active topics
-   */
+  
   getActiveTopics(limit = 10) {
     const allTopics = new Map();
     
-    // Collect topics from current session
+
     if (this.currentSession) {
       this.currentSession.topics.forEach(topic => {
         const focus = this.currentSession.topicFocus?.get(topic);
@@ -367,7 +314,7 @@ export class ResearchSessionManager {
       });
     }
     
-    // Collect topics from recent sessions
+
     this.sessionHistory.slice(0, 5).forEach(session => {
       session.topics.forEach(topic => {
         if (!allTopics.has(topic)) {
@@ -383,7 +330,7 @@ export class ResearchSessionManager {
       });
     });
     
-    // Sort by focus time and recency
+
     const sortedTopics = Array.from(allTopics.values())
       .sort((a, b) => {
         const aScore = a.focusTime * 0.7 + a.lastUpdate * 0.3;
@@ -394,15 +341,11 @@ export class ResearchSessionManager {
     return sortedTopics.slice(0, limit);
   }
 
-  /**
-   * Get recent focus areas
-   * @param {number} limit - Maximum focus areas to return
-   * @returns {Array} Recent focus areas
-   */
+  
   getRecentFocusAreas(limit = 5) {
     const allFocusAreas = new Map();
     
-    // Collect from current session
+
     if (this.currentSession) {
       this.currentSession.focusAreas.forEach(area => {
         const focus = this.currentSession.focusAreaTime?.get(area);
@@ -415,7 +358,7 @@ export class ResearchSessionManager {
       });
     }
     
-    // Collect from recent sessions
+
     this.sessionHistory.slice(0, 3).forEach(session => {
       session.focusAreas.forEach(area => {
         if (!allFocusAreas.has(area)) {
@@ -430,18 +373,14 @@ export class ResearchSessionManager {
       });
     });
     
-    // Sort by focus time
+
     const sortedAreas = Array.from(allFocusAreas.values())
       .sort((a, b) => b.focusTime - a.focusTime);
     
     return sortedAreas.slice(0, limit);
   }
 
-  /**
-   * Get session timeline
-   * @param {string} sessionId - Session ID (optional)
-   * @returns {Array} Session timeline
-   */
+  
   getSessionTimeline(sessionId = null) {
     const session = sessionId 
       ? this.activeSessions.get(sessionId) || this.sessionHistory.find(s => s.id === sessionId)
@@ -451,14 +390,14 @@ export class ResearchSessionManager {
 
     const timeline = [];
     
-    // Add session start
+
     timeline.push({
       type: 'session_start',
       timestamp: session.startTime,
       data: { sessionId: session.id, url: session.metadata?.url }
     });
     
-    // Add activities
+
     session.activities.forEach(activity => {
       timeline.push({
         type: activity.type,
@@ -467,7 +406,7 @@ export class ResearchSessionManager {
       });
     });
     
-    // Add session end if completed
+
     if (session.endTime) {
       timeline.push({
         type: 'session_end',
@@ -479,11 +418,7 @@ export class ResearchSessionManager {
     return timeline.sort((a, b) => a.timestamp - b.timestamp);
   }
 
-  /**
-   * Restore workspace context
-   * @param {string} sessionId - Session ID
-   * @returns {Object} Workspace context
-   */
+  
   restoreWorkspaceContext(sessionId) {
     if (!this.config.enableWorkspaceRestoration) return null;
 
@@ -501,17 +436,12 @@ export class ResearchSessionManager {
       summary: session.summary
     };
 
-    // Log workspace restoration
     this.logActivity('workspace_restored', { sessionId });
 
     return context;
   }
 
-  /**
-   * Update focus areas
-   * @param {string} focusArea - Focus area
-   * @param {Object} metadata - Focus metadata
-   */
+  
   updateFocusAreas(focusArea, metadata) {
     const existing = this.focusAreas.get(focusArea) || {
       area: focusArea,
@@ -530,11 +460,7 @@ export class ResearchSessionManager {
     this.focusAreas.set(focusArea, existing);
   }
 
-  /**
-   * Generate session summary
-   * @param {Object} session - Session object
-   * @returns {Object} Session summary
-   */
+  
   generateSessionSummary(session) {
     const duration = session.duration || (Date.now() - session.startTime);
     
@@ -549,23 +475,19 @@ export class ResearchSessionManager {
     };
   }
 
-  /**
-   * Calculate session productivity
-   * @param {Object} session - Session object
-   * @returns {number} Productivity score (0-1)
-   */
+  
   calculateProductivity(session) {
     let score = 0.5; // Base score
     
-    // Boost for more topics
+
     const topicsScore = Math.min(0.2, session.topics.size * 0.05);
     score += topicsScore;
     
-    // Boost for more activities
+
     const activitiesScore = Math.min(0.2, session.activities.length * 0.02);
     score += activitiesScore;
     
-    // Boost for focus time
+
     const focusTime = Array.from(session.focusAreaTime?.values() || [])
       .reduce((sum, focus) => sum + focus.totalTime, 0);
     const focusScore = Math.min(0.2, focusTime / (30 * 60 * 1000)); // 30 minutes max
@@ -574,15 +496,11 @@ export class ResearchSessionManager {
     return Math.min(1, score);
   }
 
-  /**
-   * Generate session insights
-   * @param {Object} session - Session object
-   * @returns {Array} Session insights
-   */
+  
   generateSessionInsights(session) {
     const insights = [];
     
-    // Most focused topic
+
     if (session.topicFocus && session.topicFocus.size > 0) {
       const topTopic = Array.from(session.topicFocus.entries())
         .sort((a, b) => b[1].totalTime - a[1].totalTime)[0];
@@ -595,7 +513,7 @@ export class ResearchSessionManager {
       });
     }
     
-    // Most productive time
+
     if (session.activities.length > 0) {
       const productiveActivities = session.activities.filter(a => 
         ['query', 'note_created', 'synthesis'].includes(a.type)
@@ -611,7 +529,7 @@ export class ResearchSessionManager {
       }
     }
     
-    // Session length insight
+
     const duration = session.duration || (Date.now() - session.startTime);
     if (duration > 60 * 60 * 1000) { // More than 1 hour
       insights.push({
@@ -625,9 +543,7 @@ export class ResearchSessionManager {
     return insights;
   }
 
-  /**
-   * Update session summary
-   */
+  
   updateSessionSummary() {
     if (!this.currentSession) return;
     
@@ -635,11 +551,7 @@ export class ResearchSessionManager {
     this.currentSession.summary = { ...this.currentSession.summary, ...summary };
   }
 
-  /**
-   * Log activity
-   * @param {string} activityType - Activity type
-   * @param {Object} data - Activity data
-   */
+  
   logActivity(activityType, data) {
     const activity = {
       id: this.generateActivityId(),
@@ -651,17 +563,15 @@ export class ResearchSessionManager {
 
     this.activityLog.unshift(activity);
     
-    // Maintain activity log size
+
     if (this.activityLog.length > 1000) {
       this.activityLog = this.activityLog.slice(0, 500);
     }
   }
 
-  /**
-   * Setup session monitoring
-   */
+  
   setupSessionMonitoring() {
-    // Monitor page visibility changes
+
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         this.handlePageHidden();
@@ -670,12 +580,10 @@ export class ResearchSessionManager {
       }
     });
 
-    // Monitor page unload
     window.addEventListener('beforeunload', () => {
       this.handlePageUnload();
     });
 
-    // Monitor tab changes (if available)
     if (chrome?.tabs?.onActivated) {
       chrome.tabs.onActivated.addListener(() => {
         this.handleTabChange();
@@ -683,15 +591,13 @@ export class ResearchSessionManager {
     }
   }
 
-  /**
-   * Handle page hidden
-   */
+  
   handlePageHidden() {
     if (this.currentSession) {
       this.currentSession.status = 'interrupted';
       this.interruptedSessions.add(this.currentSession.id);
       
-      // Set recovery prompt
+
       setTimeout(() => {
         if (this.interruptedSessions.has(this.currentSession.id)) {
           this.showRecoveryPrompt(this.currentSession.id);
@@ -700,45 +606,37 @@ export class ResearchSessionManager {
     }
   }
 
-  /**
-   * Handle page visible
-   */
+  
   handlePageVisible() {
     if (this.currentSession && this.currentSession.status === 'interrupted') {
       this.currentSession.status = 'active';
       this.interruptedSessions.delete(this.currentSession.id);
       
-      // Clear recovery prompt
+
       this.clearRecoveryPrompt(this.currentSession.id);
     }
   }
 
-  /**
-   * Handle page unload
-   */
+  
   handlePageUnload() {
     if (this.currentSession) {
       this.endSession(this.currentSession.id);
     }
     
-    // Persist all sessions
+
     this.persistSessions();
   }
 
-  /**
-   * Handle tab change
-   */
+  
   handleTabChange() {
-    // Track tab changes as focus area changes
+
     this.trackFocusArea('tab_navigation', {
       url: window.location.href,
       title: document.title
     });
   }
 
-  /**
-   * Check for interrupted sessions
-   */
+  
   checkForInterruptedSessions() {
     const now = Date.now();
     
@@ -750,17 +648,13 @@ export class ResearchSessionManager {
     }
   }
 
-  /**
-   * Show recovery prompt
-   * @param {string} sessionId - Session ID
-   */
+  
   showRecoveryPrompt(sessionId) {
     if (this.recoveryPrompts.has(sessionId)) return;
 
     const session = this.sessionHistory.find(s => s.id === sessionId);
     if (!session) return;
 
-    // Create recovery prompt UI
     const prompt = document.createElement('div');
     prompt.className = 'session-recovery-prompt';
     prompt.innerHTML = `
@@ -784,13 +678,10 @@ export class ResearchSessionManager {
       </div>
     `;
 
-    // Add styles
     this.addRecoveryPromptStyles(prompt);
 
-    // Add to page
     document.body.appendChild(prompt);
 
-    // Show with animation
     setTimeout(() => {
       prompt.classList.add('visible');
     }, 100);
@@ -798,10 +689,7 @@ export class ResearchSessionManager {
     this.recoveryPrompts.set(sessionId, prompt);
   }
 
-  /**
-   * Clear recovery prompt
-   * @param {string} sessionId - Session ID
-   */
+  
   clearRecoveryPrompt(sessionId) {
     const prompt = this.recoveryPrompts.get(sessionId);
     if (prompt) {
@@ -815,10 +703,7 @@ export class ResearchSessionManager {
     }
   }
 
-  /**
-   * Add recovery prompt styles
-   * @param {HTMLElement} prompt - Prompt element
-   */
+  
   addRecoveryPromptStyles(prompt) {
     const style = document.createElement('style');
     style.textContent = `
@@ -926,9 +811,7 @@ export class ResearchSessionManager {
     document.head.appendChild(style);
   }
 
-  /**
-   * Load sessions from storage
-   */
+  
   async loadSessions() {
     try {
       if (typeof chrome !== 'undefined' && chrome.storage) {
@@ -950,9 +833,7 @@ export class ResearchSessionManager {
     }
   }
 
-  /**
-   * Persist sessions to storage
-   */
+  
   async persistSessions() {
     try {
       if (typeof chrome !== 'undefined' && chrome.storage) {
@@ -974,13 +855,9 @@ export class ResearchSessionManager {
     }
   }
 
-  /**
-   * Compress data for storage
-   * @param {Object} data - Data to compress
-   * @returns {Object} Compressed data
-   */
+  
   compressData(data) {
-    // Simple compression - remove redundant whitespace
+
     const jsonString = JSON.stringify(data);
     return {
       compressed: true,
@@ -989,11 +866,7 @@ export class ResearchSessionManager {
     };
   }
 
-  /**
-   * Decompress data from storage
-   * @param {Object} compressed - Compressed data
-   * @returns {Object} Decompressed data
-   */
+  
   decompressData(compressed) {
     if (!compressed.compressed) return compressed;
     
@@ -1005,26 +878,17 @@ export class ResearchSessionManager {
     }
   }
 
-  /**
-   * Generate session ID
-   * @returns {string} Session ID
-   */
+  
   generateSessionId() {
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  /**
-   * Generate activity ID
-   * @returns {string} Activity ID
-   */
+  
   generateActivityId() {
     return `activity_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  /**
-   * Get session statistics
-   * @returns {Object} Session statistics
-   */
+  
   getStats() {
     return {
       currentSession: this.currentSession?.id || null,
@@ -1048,16 +912,13 @@ export class ResearchSessionManager {
     };
   }
 
-  /**
-   * Reset session manager
-   */
+  
   reset() {
-    // End current session
+
     if (this.currentSession) {
       this.endSession(this.currentSession.id);
     }
 
-    // Clear all data
     this.activeSessions.clear();
     this.sessionHistory = [];
     this.focusAreas.clear();
@@ -1065,29 +926,26 @@ export class ResearchSessionManager {
     this.interruptedSessions.clear();
     this.recoveryPrompts.clear();
 
-    // Start new session
     this.startNewSession();
   }
 }
 
-// Export singleton instance
-export const researchSessionManager = new ResearchSessionManager();
+// export const researchSessionManager = new ResearchSessionManager();
+export const researchSessionManager = null;
 
-// Export utilities
-export const startNewSession = researchSessionManager.startNewSession.bind(researchSessionManager);
-export const endSession = researchSessionManager.endSession.bind(researchSessionManager);
-export const trackTopic = researchSessionManager.trackTopic.bind(researchSessionManager);
-export const trackActivity = researchSessionManager.trackActivity.bind(researchSessionManager);
-export const getSessionSummary = researchSessionManager.getSessionSummary.bind(researchSessionManager);
-export const resumeSession = researchSessionManager.resumeSession.bind(researchSessionManager);
-export const getActiveTopics = researchSessionManager.getActiveTopics.bind(researchSessionManager);
-export const getRecentFocusAreas = researchSessionManager.getRecentFocusAreas.bind(researchSessionManager);
-export const getStats = researchSessionManager.getStats.bind(researchSessionManager);
-export const reset = researchSessionManager.reset.bind(researchSessionManager);
+// export const startNewSession = researchSessionManager.startNewSession.bind(researchSessionManager);
+// export const endSession = researchSessionManager.endSession.bind(researchSessionManager);
+// export const trackTopic = researchSessionManager.trackTopic.bind(researchSessionManager);
+// export const trackActivity = researchSessionManager.trackActivity.bind(researchSessionManager);
+// export const getSessionSummary = researchSessionManager.getSessionSummary.bind(researchSessionManager);
+// export const resumeSession = researchSessionManager.resumeSession.bind(researchSessionManager);
+// export const getActiveTopics = researchSessionManager.getActiveTopics.bind(researchSessionManager);
+// export const getRecentFocusAreas = researchSessionManager.getRecentFocusAreas.bind(researchSessionManager);
+// export const getStats = researchSessionManager.getStats.bind(researchSessionManager);
+// export const reset = researchSessionManager.reset.bind(researchSessionManager);
 
 export default researchSessionManager;
 
-// Helper functions
 const formatRelativeTime = (timestamp) => {
   const now = Date.now();
   const diff = now - timestamp;

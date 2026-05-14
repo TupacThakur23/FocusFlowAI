@@ -34,7 +34,6 @@ export class SidebarManager {
     document.addEventListener('mousemove', this._onMouseMove);
     document.addEventListener('mouseup', this._onMouseUp);
     this.isInjected = true;
-    console.log('✅ FocusFlow: Floating panel injected');
     return true;
   }
 
@@ -89,53 +88,12 @@ export class SidebarManager {
     `;
     this.host = host;
 
-    const header = document.createElement('div');
-    header.id = 'focusflow-panel-header';
-    header.style.cssText = `
-      height: ${this.headerH}px !important;
-      min-height: ${this.headerH}px !important;
-      background: rgba(99,102,241,0.12) !important;
-      border-bottom: 1px solid rgba(255,255,255,0.08) !important;
-      display: flex !important;
-      align-items: center !important;
-      padding: 0 12px !important;
-      cursor: grab !important;
-      flex-shrink: 0 !important;
-      gap: 8px !important;
-    `;
-
-    const grip = document.createElement('span');
-    grip.style.cssText = 'font-size:13px; color:rgba(255,255,255,0.3); letter-spacing:1px; pointer-events:none !important;';
-    grip.textContent = '⠿';
-
-    const title = document.createElement('span');
-    title.style.cssText = 'flex:1; font-size:13px; font-weight:600; color:#fff; pointer-events:none !important; letter-spacing:0.3px;';
-    title.textContent = '⚡ FocusFlow AI';
-
-    const closeBtn = document.createElement('button');
-    closeBtn.style.cssText = this._iconBtnStyle();
-    closeBtn.title = 'Close panel';
-    closeBtn.innerHTML = '✕';
-    closeBtn.addEventListener('click', () => this._hide());
-
-    header.appendChild(grip);
-    header.appendChild(title);
-    header.appendChild(closeBtn);
-
-    header.addEventListener('mousedown', (e) => {
-      if (e.target === closeBtn) return;
-      e.preventDefault();
-      const rect = this.host.getBoundingClientRect();
-      this._drag = { startX: e.clientX, startY: e.clientY, origLeft: rect.left, origTop: rect.top };
-      this.host.style.transition = 'none !important';
-      this.host.style.cursor = 'grabbing !important';
-    });
-
     const iframe = document.createElement('iframe');
     iframe.src = chrome.runtime.getURL('index.html?mode=sidebar');
     iframe.style.cssText = `
       flex: 1 !important;
       width: 100% !important;
+      height: 100% !important;
       border: none !important;
       background: #050816 !important;
       display: block !important;
@@ -165,7 +123,6 @@ export class SidebarManager {
       host.appendChild(handle);
     });
 
-    host.appendChild(header);
     host.appendChild(iframe);
     document.body.appendChild(host);
   }

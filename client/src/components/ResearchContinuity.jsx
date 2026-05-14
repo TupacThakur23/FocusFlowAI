@@ -65,7 +65,7 @@ const ResearchContinuity = ({
     const suggestions = [];
     
 
-    const sessionContext = getSessionContext();
+
     const currentTime = Date.now();
     
 
@@ -785,18 +785,7 @@ const calculateThreadPriority = (thread, currentTime) => {
   return Math.min(1, priority);
 };
 
-const getSessionContext = () => {
 
-  try {
-    if (typeof chrome !== 'undefined' && chrome.storage) {
-      return chrome.storage.session.get(['focusflow_session_context']) || {};
-    }
-  } catch (error) {
-
-    return {};
-  }
-  return {};
-};
 
 const formatRelativeTime = (timestamp) => {
   const now = Date.now();

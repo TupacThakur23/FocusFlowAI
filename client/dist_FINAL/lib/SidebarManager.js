@@ -1,17 +1,4 @@
-/**
- * SidebarManager - Floating Draggable Panel for FocusFlow AI Extension
- *
- * Creates a floating, draggable, resizable iframe panel that hovers above
- * the current page. No DOM injection side effects on the host page.
- *
- * Features:
- * - Draggable via title bar
- * - Resizable from any edge/corner
- * - Collapsible (collapses to just the header strip)
- * - Persists position/size in chrome.storage.local
- * - Toggle show/hide
- * - No body margin changes
- */
+
 
 export class SidebarManager {
   constructor(options = {}) {
@@ -22,24 +9,21 @@ export class SidebarManager {
     this.isVisible = false;
     this.isCollapsed = false;
 
-    // Saved state
     this.savedPos = { x: null, y: 0 };
     this.savedSize = { w: 420, h: window.innerHeight };
     this.minW = 320;
     this.minH = window.innerHeight;
     this.headerH = 52; // px — refined height for elite feel
 
-    // Drag state
     this._drag = null;
-    // Resize state
+
     this._resize = null;
 
-    // Bind handlers so we can remove them later
     this._onMouseMove = this._onMouseMove.bind(this);
     this._onMouseUp = this._onMouseUp.bind(this);
   }
 
-  /* ─────────────────────────── PUBLIC API ─────────────────────────── */
+  
 
   async injectSidebar() {
     if (this.isInjected) return true;
@@ -50,7 +34,6 @@ export class SidebarManager {
     document.addEventListener('mousemove', this._onMouseMove);
     document.addEventListener('mouseup', this._onMouseUp);
     this.isInjected = true;
-    console.log('✅ FocusFlow: Floating panel injected');
     return true;
   }
 
@@ -77,13 +60,12 @@ export class SidebarManager {
     this.isVisible = false;
   }
 
-  /* ──────────────────────── PANEL CONSTRUCTION ──────────────────────── */
+  
 
   _buildPanel() {
     const { x, y } = this._defaultPos();
     const { w, h } = this.savedSize;
 
-    // ── Host wrapper ──
     const host = document.createElement('div');
     host.id = 'focusflow-panel-host';
     host.style.cssText = `
@@ -95,7 +77,7 @@ export class SidebarManager {
       z-index: 2147483647 !important;
       display: flex !important;
       flex-direction: column !important;
-      border-radius: 0 !important; /* Sharp edge for docked look */
+      border-radius: 0 !important; 
       overflow: hidden !important;
       box-shadow: -10px 0 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05) !important;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
@@ -106,59 +88,12 @@ export class SidebarManager {
     `;
     this.host = host;
 
-    // ── Header / drag bar ──
-    const header = document.createElement('div');
-    header.id = 'focusflow-panel-header';
-    header.style.cssText = `
-      height: ${this.headerH}px !important;
-      min-height: ${this.headerH}px !important;
-      background: rgba(99,102,241,0.12) !important;
-      border-bottom: 1px solid rgba(255,255,255,0.08) !important;
-      display: flex !important;
-      align-items: center !important;
-      padding: 0 12px !important;
-      cursor: grab !important;
-      flex-shrink: 0 !important;
-      gap: 8px !important;
-    `;
-
-    // Drag handle dots
-    const grip = document.createElement('span');
-    grip.style.cssText = 'font-size:13px; color:rgba(255,255,255,0.3); letter-spacing:1px; pointer-events:none !important;';
-    grip.textContent = '⠿';
-
-    // Logo + title
-    const title = document.createElement('span');
-    title.style.cssText = 'flex:1; font-size:13px; font-weight:600; color:#fff; pointer-events:none !important; letter-spacing:0.3px;';
-    title.textContent = '⚡ FocusFlow AI';
-
-    // Close button
-    const closeBtn = document.createElement('button');
-    closeBtn.style.cssText = this._iconBtnStyle();
-    closeBtn.title = 'Close panel';
-    closeBtn.innerHTML = '✕';
-    closeBtn.addEventListener('click', () => this._hide());
-
-    header.appendChild(grip);
-    header.appendChild(title);
-    header.appendChild(closeBtn);
-
-    // ── Drag logic on header ──
-    header.addEventListener('mousedown', (e) => {
-      if (e.target === closeBtn) return;
-      e.preventDefault();
-      const rect = this.host.getBoundingClientRect();
-      this._drag = { startX: e.clientX, startY: e.clientY, origLeft: rect.left, origTop: rect.top };
-      this.host.style.transition = 'none !important';
-      this.host.style.cursor = 'grabbing !important';
-    });
-
-    // ── iFrame ──
     const iframe = document.createElement('iframe');
     iframe.src = chrome.runtime.getURL('index.html?mode=sidebar');
     iframe.style.cssText = `
       flex: 1 !important;
       width: 100% !important;
+      height: 100% !important;
       border: none !important;
       background: #050816 !important;
       display: block !important;
@@ -166,9 +101,6 @@ export class SidebarManager {
     iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups');
     this.iframe = iframe;
 
-    // ── No bottom bar for docked elite look ──
-
-    // ── Resize handles ──
     const directions = ['n','s','e','w','ne','nw','se','sw'];
     directions.forEach(dir => {
       const handle = document.createElement('div');
@@ -191,8 +123,6 @@ export class SidebarManager {
       host.appendChild(handle);
     });
 
-    // Assemble
-    host.appendChild(header);
     host.appendChild(iframe);
     document.body.appendChild(host);
   }
@@ -234,7 +164,7 @@ export class SidebarManager {
     document.body.appendChild(fab);
   }
 
-  /* ───────────────────────── DRAG & RESIZE ───────────────────────── */
+  
 
   _onMouseMove(e) {
     if (this._drag) {
@@ -243,11 +173,10 @@ export class SidebarManager {
       let newLeft = this._drag.origLeft + dx;
       let newTop  = this._drag.origTop  + dy;
 
-      // Clamp to viewport
       const panelW = this.host.offsetWidth;
       const panelH = this.host.offsetHeight;
       newLeft = Math.max(0, Math.min(window.innerWidth  - panelW, newLeft));
-      // Locked to top: 0
+
       newTop = 0;
 
       this.host.style.left = newLeft + 'px';
@@ -284,7 +213,7 @@ export class SidebarManager {
     this._resize = null;
   }
 
-  /* ──────────────────────── SHOW / HIDE / COLLAPSE ─────────────────── */
+  
 
   _show() {
     if (!this.host) return;
@@ -305,7 +234,7 @@ export class SidebarManager {
     const arrow = document.getElementById('focusflow-collapse-arrow');
 
     if (this.isCollapsed) {
-      // Save current height then collapse
+
       this.savedSize.h = this.host.offsetHeight;
       this.host.style.height = (this.headerH + 28) + 'px'; // header + collapseBar
       if (this.iframe) this.iframe.style.display = 'none';
@@ -319,7 +248,7 @@ export class SidebarManager {
     this._saveState();
   }
 
-  /* ─────────────────────── STATE PERSISTENCE ─────────────────────── */
+  
 
   _loadSavedState() {
     try {
@@ -334,7 +263,7 @@ export class SidebarManager {
           this.savedSize = data.ff_panel_size;
         }
       });
-    } catch (e) { /* storage not available */ }
+    } catch (e) {  }
   }
 
   _saveState() {
@@ -344,10 +273,10 @@ export class SidebarManager {
         ff_panel_pos:  { x: rect.left, y: rect.top },
         ff_panel_size: { w: rect.width, h: rect.height }
       });
-    } catch (e) { /* storage not available */ }
+    } catch (e) {  }
   }
 
-  /* ─────────────────────────── UTILITIES ─────────────────────────── */
+  
 
   _defaultPos() {
     const w = this.savedSize.w;
@@ -405,13 +334,12 @@ export class SidebarManager {
     return { isInjected: this.isInjected, isVisible: this.isVisible, isCollapsed: this.isCollapsed };
   }
 
-  /* ──── Legacy compat methods (no-ops now since panel is not docked) ── */
+  
   isSidebarInjected() { return this.isInjected; }
-  applyDockedStyles()  { /* no-op */ }
-  restoreOriginalStyles() { /* no-op */ }
+  applyDockedStyles()  {  }
+  restoreOriginalStyles() {  }
 }
 
-// Singleton export
 export const sidebarManager = new SidebarManager();
 
 if (typeof window !== 'undefined') {

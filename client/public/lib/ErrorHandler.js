@@ -128,7 +128,6 @@ export class ErrorHandler {
   isCriticalError(errorEntry) {
     const criticalContexts = [
       'SidebarManager',
-      'MessageBus',
       'StateManager'
     ];
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   BookOpen, Search, Plus, Folder, Tag, Clock, ChevronRight,
   FileText, ExternalLink, Trash2, RefreshCw, LayoutGrid,
@@ -7,6 +7,7 @@ import {
   Bell, Home, Users, CheckCircle2, FileJson, ArrowRight, Star, BrainCircuit
 } from "lucide-react";
 import Workbook from "./Workbook";
+import api from "../services/api";
 
 export default function ResearchHub() {
   const [researchData, setResearchData] = useState([]);
@@ -16,73 +17,124 @@ export default function ResearchHub() {
   const [isSearching, setIsSearching] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const [activeWorkbook, setActiveWorkbook] = useState(null);
+  const [savedWorkbooks, setSavedWorkbooks] = useState(["Research Workbook"]);
+  const [isCreatingWorkbook, setIsCreatingWorkbook] = useState(false);
+  const [newWorkbookName, setNewWorkbookName] = useState("");
+  const [initialWorkbookPrompt, setInitialWorkbookPrompt] = useState("");
+
+  const refreshResearch = async () => {
+    setIsLoading(true);
+    try {
+      const [researchRes, workbookRes] = await Promise.all([
+        api.get("/api/research"),
+        api.get("/api/research/workbooks"),
+      ]);
+      const research = Array.isArray(researchRes.data) ? researchRes.data : [];
+      const workbooks = Array.isArray(workbookRes.data) && workbookRes.data.length ? workbookRes.data : ["Research Workbook"];
+      setResearchData(research);
+      setFilteredData(research);
+      setSavedWorkbooks(workbooks);
+    } catch (error) {
+      console.error("Failed to fetch research:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshResearch();
+  }, []);
+
+  const workbookSummaries = useMemo(() => {
+    return savedWorkbooks.map((name) => {
+      const items = researchData.filter((item) => (item.workbook || "Research Workbook") === name);
+      const lastDate = items[0]?.date ? new Date(items[0].date) : null;
+      return {
+        name,
+        count: items.length,
+        desc: items[0]?.summary || "Research workspace.",
+        time: lastDate ? `Updated ${lastDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : "Ready for pages",
+      };
+    });
+  }, [researchData, savedWorkbooks]);
+
+  const activeFilteredData = useMemo(() => {
+    if (activeTab === "recent") return filteredData.slice(0, 6);
+    if (activeTab === "pinned") return filteredData.filter((item) => item.tags?.includes("Pinned") || item.saveOptions?.includes("Pinned"));
+    if (activeTab === "flashcards") return filteredData.filter((item) => item.outputs?.flashcards?.length);
+    if (activeTab === "viva") return filteredData.filter((item) => item.outputs?.viva?.length);
+    return filteredData;
+  }, [activeTab, filteredData]);
+
+  const openWorkbook = (name, prompt = "") => {
+    setInitialWorkbookPrompt(prompt);
+    setActiveWorkbook(name);
+  };
+
+  const handleCreateWorkbook = async () => {
+    const name = newWorkbookName.trim();
+    if (!name) return;
+    try {
+      await api.post("/api/research/workbooks", { name });
+      setSavedWorkbooks((items) => [name, ...items.filter((item) => item !== name)]);
+      setNewWorkbookName("");
+      setIsCreatingWorkbook(false);
+      openWorkbook(name);
+    } catch (error) {
+      console.error("Failed to create workbook:", error);
+    }
+  };
+
+  const openCopilot = (prompt = "What are the key themes in my research?") => {
+    const target = workbookSummaries.find((workbook) => workbook.count > 0)?.name || workbookSummaries[0]?.name || "Research Workbook";
+    openWorkbook(target, prompt);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/research");
-        const data = await res.json();
-        setResearchData(data);
-        setFilteredData(data);
+        const res = await api.post("/api/research/semantic-search", { query: searchQuery });
+        const data = res.data;
+        const localResults = researchData.filter(item =>
+          (item?.topic || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (item?.summary && item.summary.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (item?.notes && item.notes.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (item?.workbook && item.workbook.toLowerCase().includes(searchQuery.toLowerCase()))
+        );
+        setFilteredData(Array.isArray(data) && data.length > 0 ? data : localResults);
       } catch (error) {
-        console.error("Failed to fetch research:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    const performSearch = async () => {
-      if (!searchQuery.trim()) {
-        setFilteredData(researchData);
-        return;
-      }
-
-      const localResults = researchData.filter(item =>
-        (item?.topic || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (item?.summary && item.summary.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
-      setFilteredData(localResults);
-      
-
-      setIsSearching(true);
-      try {
-        const res = await fetch("http://localhost:5000/api/research/semantic-search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: searchQuery })
-        });
-        const data = await res.json();
-        if (data && data.length > 0) {
-          setFilteredData(data);
-        }
-      } catch (e) {
-        console.error("Semantic search failed", e);
+        console.error("Semantic search failed", error);
       } finally {
         setIsSearching(false);
       }
     };
 
-    const debounceTimer = setTimeout(performSearch, 500);
+    if (!searchQuery.trim()) {
+      setFilteredData(researchData);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    const debounceTimer = setTimeout(fetchData, 500);
     return () => clearTimeout(debounceTimer);
   }, [searchQuery, researchData]);
 
   const handleDelete = async (id) => {
     try {
-      await fetch(`http://localhost:5000/api/research/${id}`, { method: 'DELETE' });
+      await api.delete(`/api/research/${id}`);
       setResearchData(prev => prev.filter(item => item._id !== id));
+      setFilteredData(prev => prev.filter(item => item._id !== id));
     } catch (error) {
       console.error("Failed to delete:", error);
     }
   };
 
-  const totalWorkbooks = new Set(researchData.map(d => d.workbook || "Uncategorized")).size;
+  const totalWorkbooks = workbookSummaries.length;
   const totalItems = researchData.length;
 
   if (activeWorkbook) {
-    return <Workbook title={activeWorkbook} onBack={() => setActiveWorkbook(null)} />;
+    return <Workbook title={activeWorkbook} initialPrompt={initialWorkbookPrompt} onBack={() => { setActiveWorkbook(null); refreshResearch(); }} />;
   }
 
   return (
@@ -104,25 +156,25 @@ export default function ResearchHub() {
           <div className="space-y-1">
             <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-3 mb-3">Discovery</h3>
             <NavItem icon={Home} label="Home" active={activeTab === "all"} onClick={() => setActiveTab("all")} />
-            <NavItem icon={Library} label="Knowledge Base" />
-            <NavItem icon={Clock} label="Recent Sessions" />
-            <NavItem icon={Bookmark} label="Pinned Insights" />
+            <NavItem icon={Library} label="Knowledge Base" active={activeTab === "knowledge"} onClick={() => setActiveTab("knowledge")} />
+            <NavItem icon={Clock} label="Recent Sessions" active={activeTab === "recent"} onClick={() => setActiveTab("recent")} />
+            <NavItem icon={Bookmark} label="Pinned Insights" active={activeTab === "pinned"} count={researchData.filter((item) => item.tags?.includes("Pinned") || item.saveOptions?.includes("Pinned")).length} onClick={() => setActiveTab("pinned")} />
           </div>
 
           
           <div className="space-y-1">
             <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-3 mb-3">Workspaces</h3>
-            <NavItem icon={Folder} label="All Workbooks" />
-            <NavItem icon={LayoutGrid} label="Collections" />
-            <NavItem icon={Users} label="Shared with Me" />
+            <NavItem icon={Folder} label="All Workbooks" active={activeTab === "workbooks"} count={totalWorkbooks} onClick={() => setActiveTab("workbooks")} />
+            <NavItem icon={LayoutGrid} label="Collections" active={activeTab === "collections"} onClick={() => setActiveTab("collections")} />
+            <NavItem icon={Users} label="Shared with Me" active={activeTab === "shared"} onClick={() => setActiveTab("shared")} />
           </div>
 
           
           <div className="space-y-1">
             <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-3 mb-3">Tools</h3>
-            <NavItem icon={LayoutGrid} label="Flashcards" />
-            <NavItem icon={Sparkles} label="Viva Practice" />
-            <NavItem icon={BrainCircuit} label="AI Assistant" />
+            <NavItem icon={LayoutGrid} label="Flashcards" active={activeTab === "flashcards"} onClick={() => setActiveTab("flashcards")} />
+            <NavItem icon={Sparkles} label="Viva Practice" active={activeTab === "viva"} onClick={() => setActiveTab("viva")} />
+            <NavItem icon={BrainCircuit} label="AI Assistant" onClick={() => openCopilot()} />
           </div>
 
           
@@ -176,10 +228,25 @@ export default function ResearchHub() {
 
           <div className="flex items-center gap-5">
             <button className="text-gray-400 hover:text-white transition-colors"><Bell className="w-5 h-5" /></button>
-            <button className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-[12px] font-bold transition-all shadow-lg shadow-blue-600/20 active:scale-95 flex items-center gap-2">
-              <Plus className="w-4 h-4" />
-              New Workbook <ChevronDown className="w-3 h-3 ml-1" />
-            </button>
+            {isCreatingWorkbook ? (
+              <div className="flex items-center gap-2 rounded-xl border border-blue-500/30 bg-[#05060b] p-1.5">
+                <input
+                  value={newWorkbookName}
+                  onChange={(event) => setNewWorkbookName(event.target.value)}
+                  onKeyDown={(event) => event.key === "Enter" && handleCreateWorkbook()}
+                  autoFocus
+                  placeholder="Workbook name"
+                  className="w-44 bg-transparent px-2 text-[12px] font-bold text-white outline-none placeholder:text-gray-600"
+                />
+                <button onClick={handleCreateWorkbook} className="rounded-lg bg-blue-600 px-3 py-1.5 text-[11px] font-black text-white">Create</button>
+                <button onClick={() => { setIsCreatingWorkbook(false); setNewWorkbookName(""); }} className="rounded-lg px-2 py-1.5 text-[11px] font-bold text-gray-400 hover:text-white">Cancel</button>
+              </div>
+            ) : (
+              <button onClick={() => setIsCreatingWorkbook(true)} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-[12px] font-bold transition-all shadow-lg shadow-blue-600/20 active:scale-95 flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                New Workbook <ChevronDown className="w-3 h-3 ml-1" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -213,7 +280,6 @@ export default function ResearchHub() {
               </div>
               <div className="grid grid-cols-4 gap-4">
                  {(() => {
-                    const workbooks = [...new Set(researchData.map(d => d.workbook || "Research Workbook"))];
                     const themes = [
                        "from-indigo-900/40 to-blue-900/20 border-indigo-500/20",
                        "from-emerald-900/40 to-teal-900/20 border-emerald-500/20",
@@ -222,7 +288,7 @@ export default function ResearchHub() {
                     ];
                     const accents = ["bg-indigo-500", "bg-emerald-500", "bg-orange-500", "bg-blue-500"];
                     
-                    if (workbooks.length === 0) {
+                    if (workbookSummaries.length === 0) {
                        return (
                           <div className="col-span-4 border border-dashed border-white/[0.1] rounded-2xl p-10 flex flex-col items-center justify-center text-center bg-white/[0.01]">
                              <Folder className="w-10 h-10 text-gray-600 mb-4" />
@@ -232,19 +298,18 @@ export default function ResearchHub() {
                        );
                     }
 
-                    return workbooks.map((wb, idx) => {
-                       const count = researchData.filter(d => (d.workbook || "Research Workbook") === wb).length;
+                    return workbookSummaries.map((wb, idx) => {
                        return (
                           <WorkbookCard 
                             key={idx}
-                            title={wb} 
-                            desc="Research workspace." 
-                            items={`${count} items`} 
-                            time="Updated recently" 
+                            title={wb.name} 
+                            desc={wb.desc} 
+                            items={`${wb.count} items`} 
+                            time={wb.time} 
                             theme={themes[idx % themes.length]} 
                             accent={accents[idx % accents.length]}
-                            progress={`w-[${Math.min(count * 5, 100)}%]`}
-                            onClick={() => setActiveWorkbook(wb)}
+                            progress={`w-[${Math.min(Math.max(wb.count, 1) * 8, 100)}%]`}
+                            onClick={() => openWorkbook(wb.name)}
                           />
                        );
                     });
@@ -266,8 +331,8 @@ export default function ResearchHub() {
                      
                      {isLoading ? (
                         <div className="text-center py-10 text-gray-500 text-xs font-bold uppercase tracking-widest animate-pulse">Loading Activity...</div>
-                     ) : filteredData.length > 0 ? (
-                        filteredData.slice(0, 5).map((item, idx) => (
+                     ) : activeFilteredData.length > 0 ? (
+                        activeFilteredData.slice(0, 5).map((item, idx) => (
                            <TimelineItem 
                              key={item._id || idx}
                              icon={FileText} 
@@ -276,6 +341,8 @@ export default function ResearchHub() {
                              target={item?.topic ? (item.topic.length > 30 ? item.topic.substring(0, 30) + '...' : item.topic) : 'Untitled'}
                              context={item?.workbook || "Research"}
                              time={item?.date ? new Date(item.date).toLocaleDateString(undefined, {month:'short', day:'numeric'}) : 'Unknown'}
+                             onOpen={() => openWorkbook(item?.workbook || "Research Workbook", `Summarize "${item?.topic || "this saved page"}"`)}
+                             onDelete={() => handleDelete(item._id)}
                            />
                         ))
                      ) : (
@@ -300,22 +367,22 @@ export default function ResearchHub() {
                   <div className="space-y-2.5 mb-6 relative z-10 flex-1">
                      {totalItems > 0 ? (
                         <>
-                           <CopilotQuery text="What are the key themes in my research?" />
-                           <CopilotQuery text="Find connections across my workbooks" />
-                           <CopilotQuery text="Summarize my saved insights" />
-                           <CopilotQuery text="How can I optimize my research flow?" />
+                           <CopilotQuery text="What are the key themes in my research?" onClick={openCopilot} />
+                           <CopilotQuery text="Find connections across my workbooks" onClick={openCopilot} />
+                           <CopilotQuery text="Summarize my saved insights" onClick={openCopilot} />
+                           <CopilotQuery text="How can I optimize my research flow?" onClick={openCopilot} />
                         </>
                      ) : (
                         <>
-                           <CopilotQuery text="How do I get started with FocusFlow?" />
-                           <CopilotQuery text="How do I extract notes using the Aide?" />
-                           <CopilotQuery text="What can the AI Copilot do for me?" />
-                           <CopilotQuery text="Show me a quick start guide" />
+                           <CopilotQuery text="How do I get started with FocusFlow?" onClick={openCopilot} />
+                           <CopilotQuery text="How do I extract notes using the Aide?" onClick={openCopilot} />
+                           <CopilotQuery text="What can the AI Copilot do for me?" onClick={openCopilot} />
+                           <CopilotQuery text="Show me a quick start guide" onClick={openCopilot} />
                         </>
                      )}
                   </div>
 
-                  <button className="w-full relative z-10 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl text-white font-black text-[13px] transition-all shadow-[0_8px_20px_rgba(37,99,235,0.2)] hover:shadow-[0_12px_25px_rgba(37,99,235,0.3)] active:scale-95 flex items-center justify-between px-6">
+                  <button onClick={() => openCopilot()} className="w-full relative z-10 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl text-white font-black text-[13px] transition-all shadow-[0_8px_20px_rgba(37,99,235,0.2)] hover:shadow-[0_12px_25px_rgba(37,99,235,0.3)] active:scale-95 flex items-center justify-between px-6">
                      Ask Copilot <ArrowUpRight size={16} />
                   </button>
                </div>
@@ -390,25 +457,34 @@ function WorkbookCard({ title, desc, items, time, theme, accent, progress, onCli
   );
 }
 
-function TimelineItem({ icon: Icon, color, bg, action, target, context, time }) {
+function TimelineItem({ icon: Icon, color, bg, action, target, context, time, onOpen, onDelete }) {
   return (
     <div className="flex items-center gap-4 p-2.5 hover:bg-white/[0.02] rounded-xl transition-colors cursor-pointer group">
        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${bg}`}>
           <Icon className={`w-3.5 h-3.5 ${color}`} />
        </div>
-       <div className="flex-1 min-w-0">
+       <button onClick={onOpen} className="flex-1 min-w-0 text-left">
           <p className="text-[13px] text-gray-400 truncate">
             {action} <span className="text-blue-400 group-hover:underline">{target}</span> • <span className="text-gray-500">{context}</span>
           </p>
-       </div>
+       </button>
        <span className="text-[11px] text-gray-500 shrink-0">{time}</span>
+       {onDelete && (
+         <button
+           onClick={(event) => { event.stopPropagation(); onDelete(); }}
+           className="rounded-lg p-1 text-gray-600 opacity-0 transition hover:bg-red-500/10 hover:text-red-300 group-hover:opacity-100"
+           title="Delete saved item"
+         >
+           <Trash2 size={13} />
+         </button>
+       )}
     </div>
   );
 }
 
-function CopilotQuery({ text }) {
+function CopilotQuery({ text, onClick }) {
   return (
-    <button className="w-full flex items-center gap-3 p-3 bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] rounded-xl transition-colors group text-left">
+    <button onClick={() => onClick?.(text)} className="w-full flex items-center gap-3 p-3 bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] rounded-xl transition-colors group text-left">
        <div className="w-5 h-5 rounded-md bg-white/[0.05] flex items-center justify-center shrink-0 border border-white/[0.05]">
           <Search className="w-3 h-3 text-gray-400 group-hover:text-blue-400 transition-colors" />
        </div>

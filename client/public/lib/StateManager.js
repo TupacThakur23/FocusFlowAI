@@ -15,9 +15,8 @@ export class StateManager {
   
   async initializeState() {
     try {
-
       await this.loadFromStorage('local');
-      await this.loadFromStorage('session');
+      // session storage load disabled for demo stability
     } catch (error) {
       console.error('StateManager initialization failed:', error);
     }
@@ -48,17 +47,15 @@ export class StateManager {
       'aideIsCollapsed',
       'aideCommand',
       'focusflow_settings',
-      'focusflow_user_preferences'
-    ];
-
-    const sessionKeys = [
+      'focusflow_user_preferences',
       'aideCurrentTab',
       'aideCurrentSelection',
       'aideActiveTabId',
-      'focusflow_temp_data'
+      'focusflow_temp_data',
+      'aideExtractedContent'
     ];
 
-    return storageArea === 'local' ? localKeys : sessionKeys;
+    return localKeys;
   }
 
   
@@ -241,7 +238,8 @@ export class StateManager {
   
   getStorage(storageArea) {
     if (typeof chrome !== 'undefined' && chrome.storage) {
-      return chrome.storage[storageArea] || null;
+      // Force all storage to local to avoid MV3 session context errors
+      return chrome.storage.local || null;
     }
     return null;
   }

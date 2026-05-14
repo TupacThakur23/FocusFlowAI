@@ -908,12 +908,13 @@ export class ContextualActions {
   }
 }
 
-export const contextualActions = new ContextualActions();
+// export const contextualActions = new ContextualActions();
+export const contextualActions = null;
 
-export const executeAction = contextualActions.executeAction.bind(contextualActions);
-export const getStats = contextualActions.getStats.bind(contextualActions);
-export const updateConfig = contextualActions.updateConfig.bind(contextualActions);
-export const clearCache = contextualActions.clearCache.bind(contextualActions);
-export const reset = contextualActions.reset.bind(contextualActions);
+// export const executeAction = contextualActions.executeAction.bind(contextualActions);
+// export const getStats = contextualActions.getStats.bind(contextualActions);
+// export const updateConfig = contextualActions.updateConfig.bind(contextualActions);
+// export const clearCache = contextualActions.clearCache.bind(contextualActions);
+// export const reset = contextualActions.reset.bind(contextualActions);
 
 export default contextualActions;

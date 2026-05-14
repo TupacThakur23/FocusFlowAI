@@ -1,447 +1,178 @@
+/**
+ * FOCUSFLOW REFINEMENT v3.2 — ABSOLUTE RUNTIME REDUCTION
+ * Optimization: In-Memory Payload Cache + Minimalist Storage + Stable Messaging
+ */
 
+const rawContentCache = new Map();
+const pageCache = new Map();
+const contentScriptRegistry = new Map(); // tabId -> timestamp
 
+const getActiveTab = async () => {
+  try {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    return tabs[0] || null;
+  } catch (err) { return null; }
+};
 
-import { messageBus } from './lib/MessageBus.js';
-import { stateManager } from './lib/StateManager.js';
-import { errorHandler } from './lib/ErrorHandler.js';
-
-class BackgroundService {
-  constructor() {
-    this.isInitialized = false;
-    this.activeTabId = null;
-    this.tabStates = new Map();
-    this.keepAliveInterval = null;
-  }
-
+const updateTabState = async (tab) => {
+  if (!tab || !tab.url) return;
+  const tabInfo = { title: tab.title, url: tab.url, id: tab.id };
   
-  async initialize() {
-    try {
-      console.log('Background Service: Starting initialization');
-      
+  chrome.storage.local.set({ 
+    [`focus_tab_${tab.id}`]: JSON.stringify(tabInfo),
+    'lastActiveTabId': tab.id
+  }, () => {
+    chrome.runtime.sendMessage({ type: 'TAB_CHANGED', tab: tabInfo });
+  });
+};
 
-      errorHandler.setupGlobalHandlers();
-      
+/**
+ * CRITICAL ISSUE 1: Stable Messaging with Injection Support
+ * Checks tab status and reinjects ONCE if content script is missing.
+ */
+async function safeSendMessage(tabId, message, retry = true) {
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    if (!tab || tab.status !== 'complete') return { success: false, error: 'Tab not ready' };
 
-      await this.initializeStateManager();
-      
+    // Check registry for freshness
+    const lastSeen = contentScriptRegistry.get(tabId);
+    const isStale = !lastSeen || (Date.now() - lastSeen > 30000);
 
-      this.setupMessageHandlers();
-      
-
-      this.setupTabListeners();
-      
-
-      this.setupServiceWorkerLifecycle();
-      
-
-      await this.initializeActiveTab();
-      
-      this.isInitialized = true;
-      console.log('Background Service: Initialization complete');
-      
-    } catch (error) {
-      errorHandler.log(error, 'BackgroundService.initialize');
+    if (isStale && retry) {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['content.js']
+      });
+      // Small delay for script initialization
+      await new Promise(r => setTimeout(r, 100));
+      return safeSendMessage(tabId, message, false); // Try once more, no further retries
     }
-  }
 
-  
-  async initializeStateManager() {
-    try {
-
-      await stateManager.setState('aideCurrentTab', null, { storage: 'session' });
-      await stateManager.setState('aideCurrentSelection', '', { storage: 'session' });
-      await stateManager.setState('aideActiveTabId', null, { storage: 'session' });
-      
-      console.log('Background Service: State manager initialized');
-    } catch (error) {
-      errorHandler.log(error, 'BackgroundService.initializeStateManager');
-    }
-  }
-
-  
-  setupMessageHandlers() {
-
-    messageBus.onMessage('AIDE_GET_ACTIVE_TAB', async (message, sender) => {
-      try {
-        const tab = await this.getActiveTab();
-        if (tab) {
-          const tabInfo = { title: tab.title, url: tab.url, id: tab.id };
-          await stateManager.setState('aideCurrentTab', tabInfo, { storage: 'session' });
-          await stateManager.setState('aideActiveTabId', tab.id, { storage: 'session' });
-          return { success: true, tab: tabInfo };
-        }
-        return { success: false, error: 'No active tab found' };
-      } catch (error) {
-        errorHandler.log(error, 'BackgroundService.AIDE_GET_ACTIVE_TAB');
-        return { success: false, error: error.message };
-      }
-    });
-
-
-    messageBus.onMessage('TOGGLE_SIDEBAR', async (message, sender) => {
-      try {
-        const activeTab = await this.getActiveTab();
-        if (activeTab) {
-          const response = await messageBus.sendMessage(activeTab.id, {
-            type: 'TOGGLE_SIDEBAR',
-            source: 'background'
-          });
-          return response;
-        }
-        return { success: false, error: 'No active tab' };
-      } catch (error) {
-        errorHandler.log(error, 'BackgroundService.TOGGLE_SIDEBAR');
-        return { success: false, error: error.message };
-      }
-    });
-
-
-    messageBus.onMessage('OPEN_SIDEBAR', async (message, sender) => {
-      try {
-        const activeTab = await this.getActiveTab();
-        if (activeTab) {
-          const response = await messageBus.sendMessage(activeTab.id, {
-            type: 'OPEN_SIDEBAR',
-            source: 'background'
-          });
-          return response;
-        }
-        return { success: false, error: 'No active tab' };
-      } catch (error) {
-        errorHandler.log(error, 'BackgroundService.OPEN_SIDEBAR');
-        return { success: false, error: error.message };
-      }
-    });
-
-
-    messageBus.onMessage('CLOSE_SIDEBAR', async (message, sender) => {
-      try {
-        const activeTab = await this.getActiveTab();
-        if (activeTab) {
-          const response = await messageBus.sendMessage(activeTab.id, {
-            type: 'CLOSE_SIDEBAR',
-            source: 'background'
-          });
-          return response;
-        }
-        return { success: false, error: 'No active tab' };
-      } catch (error) {
-        errorHandler.log(error, 'BackgroundService.CLOSE_SIDEBAR');
-        return { success: false, error: error.message };
-      }
-    });
-
-
-    messageBus.onMessage('GET_SIDEBAR_STATE', async (message, sender) => {
-      try {
-        console.log('🔍 Background: GET_SIDEBAR_STATE request received');
-        
-
-        const sidebarState = await stateManager.get('sidebar');
-        console.log('🔍 Background: Retrieved sidebar state from StateManager:', sidebarState);
-        
-
-        const response = {
-          success: true,
-          state: {
-            isVisible: Boolean(sidebarState?.isVisible),
-            isOpen: Boolean(sidebarState?.isOpen),
-            isCollapsed: Boolean(sidebarState?.isCollapsed),
-            activeView: sidebarState?.activeView || 'launcher',
-            width: sidebarState?.width || 400
+    return new Promise((resolve) => {
+      chrome.tabs.sendMessage(tabId, message, (response) => {
+        if (chrome.runtime.lastError) {
+          if (retry) {
+            // Unexpected loss of connection, try reinjecting once
+            chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] }, () => {
+              chrome.tabs.sendMessage(tabId, message, (r2) => resolve(r2 || { success: false }));
+            });
+          } else {
+            resolve({ success: false, error: chrome.runtime.lastError.message });
           }
-        };
-        
-        console.log('🔍 Background: Returning sidebar state response:', response);
-        return response;
-      } catch (error) {
-        console.error('🚨 Background: Failed to get sidebar state:', error);
-        errorHandler.log(error, 'BackgroundService.GET_SIDEBAR_STATE');
-        return { 
-          success: false, 
-          error: error.message,
-          state: {
-            isVisible: false,
-            isOpen: false,
-            isCollapsed: false,
-            activeView: 'launcher',
-            width: 400
-          }
-        };
-      }
-    });
-
-
-    messageBus.onMessage('CONTENT_SCRIPT_READY', async (message, sender) => {
-      try {
-        console.log('Background Service: Content script ready for tab:', sender.tab?.id);
-        
-        if (sender.tab?.id) {
-          this.tabStates.set(sender.tab.id, {
-            ready: true,
-            url: message.url,
-            timestamp: message.timestamp
-          });
+        } else {
+          resolve(response || { success: true });
         }
-        
-        return { success: true };
-      } catch (error) {
-        errorHandler.log(error, 'BackgroundService.CONTENT_SCRIPT_READY');
-        return { success: false, error: error.message };
-      }
+      });
     });
-
-
-    messageBus.onMessage('TEXT_SELECTED', async (message, sender) => {
-      try {
-        await stateManager.setState('aideCurrentSelection', message.text, { storage: 'session' });
-        return { success: true };
-      } catch (error) {
-        errorHandler.log(error, 'BackgroundService.TEXT_SELECTED');
-        return { success: false, error: error.message };
-      }
-    });
-
-
-    messageBus.onMessage('URL_CHANGED', async (message, sender) => {
-      try {
-        console.log('Background Service: URL changed:', message.newUrl);
-        
-
-        if (sender.tab?.id) {
-          const tabInfo = {
-            id: sender.tab.id,
-            url: message.newUrl,
-            title: sender.tab.title || 'Unknown'
-          };
-          
-          await stateManager.setState('aideCurrentTab', tabInfo, { storage: 'session' });
-          
-
-          await messageBus.sendMessage(sender.tab.id, {
-            type: 'EXTRACT_CONTENT',
-            source: 'background'
-          });
-        }
-        
-        return { success: true };
-      } catch (error) {
-        errorHandler.log(error, 'BackgroundService.URL_CHANGED');
-        return { success: false, error: error.message };
-      }
-    });
-
-
-    messageBus.onMessage('PAGE_VISIBLE', async (message, sender) => {
-      try {
-        console.log('Background Service: Page visible:', message.url);
-        return { success: true };
-      } catch (error) {
-        errorHandler.log(error, 'BackgroundService.PAGE_VISIBLE');
-        return { success: false, error: error.message };
-      }
-    });
-
-
-    messageBus.onMessage('SIDEBAR_INJECTION_FAILED', async (message, sender) => {
-      try {
-        console.error('Background Service: Sidebar injection failed:', message);
-        
-
-        errorHandler.log(new Error(message.error), 'BackgroundService.SIDEBAR_INJECTION_FAILED', {
-          url: message.url,
-          attempts: message.attempts,
-          tabId: sender.tab?.id
-        });
-        
-        return { success: true };
-      } catch (error) {
-        errorHandler.log(error, 'BackgroundService.SIDEBAR_INJECTION_FAILED');
-        return { success: false, error: error.message };
-      }
-    });
-
-    console.log('Background Service: Message handlers setup complete');
-  }
-
-  
-  setupTabListeners() {
-
-    chrome.tabs.onActivated.addListener(async (activeInfo) => {
-      try {
-        this.activeTabId = activeInfo.tabId;
-        
-        const tab = await chrome.tabs.get(activeInfo.tabId);
-        if (tab?.url) {
-          const tabInfo = { title: tab.title, url: tab.url, id: tab.id };
-          
-          await stateManager.setState('aideCurrentTab', tabInfo, { storage: 'session' });
-          await stateManager.setState('aideActiveTabId', tab.id, { storage: 'session' });
-          
-
-          await messageBus.sendMessage(activeInfo.tabId, {
-            type: 'EXTRACT_CONTENT',
-            source: 'background'
-          }).catch(() => {
-
-          });
-        }
-      } catch (error) {
-        errorHandler.log(error, 'BackgroundService.onActivated');
-      }
-    });
-
-
-    chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-      try {
-        if (changeInfo.status === 'complete' && tab.url) {
-
-          if (tab.active) {
-            const tabInfo = { title: tab.title, url: tab.url, id: tab.id };
-            
-            await stateManager.setState('aideCurrentTab', tabInfo, { storage: 'session' });
-            await stateManager.setState('aideActiveTabId', tab.id, { storage: 'session' });
-          }
-          
-
-          await messageBus.sendMessage(tabId, {
-            type: 'EXTRACT_CONTENT',
-            source: 'background'
-          }).catch(() => {
-
-          });
-        }
-      } catch (error) {
-        errorHandler.log(error, 'BackgroundService.onUpdated');
-      }
-    });
-
-
-    chrome.tabs.onRemoved.addListener(async (tabId) => {
-      try {
-
-        this.tabStates.delete(tabId);
-        
-
-        if (this.activeTabId === tabId) {
-          await stateManager.setState('aideCurrentTab', null, { storage: 'session' });
-          await stateManager.setState('aideActiveTabId', null, { storage: 'session' });
-          this.activeTabId = null;
-        }
-        
-        console.log('Background Service: Tab removed:', tabId);
-      } catch (error) {
-        errorHandler.log(error, 'BackgroundService.onRemoved');
-      }
-    });
-
-    console.log('Background Service: Tab listeners setup complete');
-  }
-
-  
-  setupServiceWorkerLifecycle() {
-
-    this.keepAliveInterval = setInterval(() => {
-      chrome.runtime.getPlatformInfo?.().catch(() => {});
-    }, 20000);
-
-
-    chrome.runtime.onSuspend.addListener(async () => {
-      try {
-        console.log('Background Service: Service worker suspending');
-        
-
-        if (this.keepAliveInterval) {
-          clearInterval(this.keepAliveInterval);
-          this.keepAliveInterval = null;
-        }
-        
-
-        if (messageBus) messageBus.cleanup();
-        if (stateManager) stateManager.cleanup();
-        if (errorHandler) errorHandler.cleanup();
-        
-        this.isInitialized = false;
-      } catch (error) {
-        console.error('Background Service: Suspend cleanup error:', error);
-      }
-    });
-
-    console.log('Background Service: Service worker lifecycle setup complete');
-  }
-
-  
-  async initializeActiveTab() {
-    try {
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      const activeTab = tabs[0];
-      
-      if (activeTab?.url) {
-        this.activeTabId = activeTab.id;
-        const tabInfo = { title: activeTab.title, url: activeTab.url, id: activeTab.id };
-        
-        await stateManager.setState('aideCurrentTab', tabInfo, { storage: 'session' });
-        await stateManager.setState('aideActiveTabId', activeTab.id, { storage: 'session' });
-        
-        console.log('Background Service: Active tab initialized:', tabInfo);
-      }
-    } catch (error) {
-      errorHandler.log(error, 'BackgroundService.initializeActiveTab');
-    }
-  }
-
-  
-  async getActiveTab() {
-    try {
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      return tabs[0] || null;
-    } catch (error) {
-      errorHandler.log(error, 'BackgroundService.getActiveTab');
-      return null;
-    }
-  }
-
-  
-  getStats() {
-    return {
-      initialized: this.isInitialized,
-      activeTabId: this.activeTabId,
-      tabStatesCount: this.tabStates.size,
-      messageBusStats: messageBus.getStats(),
-      stateManagerStats: stateManager.getStats()
-    };
-  }
-
-  
-  async cleanup() {
-    try {
-      console.log('Background Service: Starting cleanup');
-      
-
-      if (this.keepAliveInterval) {
-        clearInterval(this.keepAliveInterval);
-        this.keepAliveInterval = null;
-      }
-      
-
-      this.tabStates.clear();
-      
-
-      if (messageBus) messageBus.cleanup();
-      if (stateManager) stateManager.cleanup();
-      if (errorHandler) errorHandler.cleanup();
-      
-      this.isInitialized = false;
-      console.log('Background Service: Cleanup complete');
-    } catch (error) {
-      console.error('Background Service: Cleanup error:', error);
-    }
+  } catch (err) {
+    return { success: false, error: err.message };
   }
 }
 
+const manageSession = async (content, tabId) => {
+  if (!content || !content.url) return null;
+  
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['aideResearchSession'], (data) => {
+      let session = data.aideResearchSession ? JSON.parse(data.aideResearchSession) : {
+        id: `session_${Date.now()}`,
+        pages: [],
+        createdAt: new Date().toISOString()
+      };
 
-const backgroundService = new BackgroundService();
-backgroundService.initialize();
+      rawContentCache.set(content.url, content.text || content.content);
+      
+      const metadataOnly = { ...content };
+      delete metadataOnly.text;
+      delete metadataOnly.content;
+      
+      pageCache.set(content.url, { ...metadataOnly, cachedAt: Date.now() });
 
+      const existingIndex = session.pages.findIndex(p => p.url === content.url);
+      const pageEntry = { ...metadataOnly, timestamp: new Date().toISOString() };
 
-globalThis.backgroundService = backgroundService;
+      if (existingIndex > -1) session.pages[existingIndex] = pageEntry;
+      else session.pages.push(pageEntry);
+
+      session.updatedAt = new Date().toISOString();
+
+      chrome.storage.local.set({ aideResearchSession: JSON.stringify(session) }, () => {
+        chrome.runtime.sendMessage({ type: 'SESSION_UPDATED', session });
+        resolve(session);
+      });
+    });
+  });
+};
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  const type = request.type || request.action;
+
+  if (type === 'CONTENT_SCRIPT_READY') {
+    if (sender.tab?.id) contentScriptRegistry.set(sender.tab.id, Date.now());
+    return false;
+  }
+
+  if (type === 'EXTRACT_CONTENT_REQUEST') {
+    (async () => {
+      const targetTab = sender.tab || await getActiveTab();
+      const targetId = targetTab?.id;
+      const targetUrl = targetTab?.url;
+
+      if (!targetId) {
+        sendResponse({ success: false, error: 'No active tab available for extraction' });
+        return;
+      }
+
+      if (targetUrl && pageCache.has(targetUrl)) {
+        const cached = pageCache.get(targetUrl);
+        if (Date.now() - cached.cachedAt < 600000) {
+          const rawText = rawContentCache.get(targetUrl);
+          sendResponse({ success: true, content: { ...cached, text: rawText, content: rawText }, cached: true });
+          return;
+        }
+      }
+
+      const response = await safeSendMessage(targetId, { type: 'EXTRACT_CONTENT' });
+      sendResponse(response);
+    })();
+    return true;
+  }
+
+  if (type === 'SAVE_TO_SESSION' && request.content) {
+    manageSession(request.content, sender.tab?.id).then(session => {
+      sendResponse({ success: true, session });
+    });
+    return true;
+  }
+
+  if (type === 'GET_RAW_CONTENT' && request.url) {
+    sendResponse({ success: rawContentCache.has(request.url), text: rawContentCache.get(request.url) });
+    return false;
+  }
+
+  if (type === 'AIDE_GET_ACTIVE_TAB') {
+    if (sender.tab) {
+      sendResponse({ success: true, tab: { title: sender.tab.title, url: sender.tab.url, id: sender.tab.id } });
+    } else {
+      getActiveTab().then(tab => sendResponse(tab ? { success: true, tab } : { success: false }));
+    }
+    return true;
+  }
+
+  return false;
+});
+
+chrome.tabs.onActivated.addListener((info) => {
+  chrome.tabs.get(info.tabId, (tab) => {
+    if (!chrome.runtime.lastError && tab) updateTabState(tab);
+  });
+});
+
+chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
+  if (change.status === 'complete') {
+    contentScriptRegistry.set(tabId, Date.now()); // Mark as fresh on load
+    updateTabState(tab);
+  }
+});
+

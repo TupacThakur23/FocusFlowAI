@@ -330,18 +330,18 @@ export class SecurityManager {
   }
 
   
-  logSecurityEvent(event) {
+  async logSecurityEvent(event) {
     try {
-
-      const events = JSON.parse(localStorage.getItem('securityEvents') || '[]');
-      events.push(event);
-      
-
-      if (events.length > 100) {
-        events.splice(0, events.length - 100);
-      }
-      
-      localStorage.setItem('securityEvents', JSON.stringify(events));
+      chrome.storage.local.get(['securityEvents'], (data) => {
+        const events = data.securityEvents || [];
+        events.push(event);
+        
+        if (events.length > 100) {
+          events.splice(0, events.length - 100);
+        }
+        
+        chrome.storage.local.set({ securityEvents: events });
+      });
     } catch (error) {
       console.error('Failed to log security event:', error);
     }
@@ -391,18 +391,21 @@ export class SecurityManager {
   }
 
   
-  getSecurityEvents() {
-    try {
-      return JSON.parse(localStorage.getItem('securityEvents') || '[]');
-    } catch (error) {
-      return [];
-    }
+  async getSecurityEvents() {
+    return new Promise((resolve) => {
+      try {
+        chrome.storage.local.get(['securityEvents'], (data) => {
+          resolve(data.securityEvents || []);
+        });
+      } catch (error) {
+        resolve([]);
+      }
+    });
   }
 
-  
-  clearSecurityEvents() {
+  async clearSecurityEvents() {
     try {
-      localStorage.removeItem('securityEvents');
+      chrome.storage.local.remove(['securityEvents']);
     } catch (error) {
       console.error('Failed to clear security events:', error);
     }

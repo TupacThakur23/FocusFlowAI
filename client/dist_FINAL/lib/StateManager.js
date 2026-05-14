@@ -1,15 +1,4 @@
-/**
- * StateManager - Event-Driven State Management for FocusFlow AI Extension
- * 
- * Replaces storage polling with event-driven architecture:
- * - Centralized state management
- * - Event-driven updates using chrome.storage.onChanged
- * - Subscriber pattern for reactive updates
- * - Support for both local and session storage
- * - Automatic synchronization across extension components
- * - Memory-efficient state caching
- * - Proper cleanup and memory management
- */
+
 
 export class StateManager {
   constructor(options = {}) {
@@ -23,23 +12,17 @@ export class StateManager {
     this.initializeState();
   }
 
-  /**
-   * Initialize state from storage
-   */
+  
   async initializeState() {
     try {
-      // Load initial state from both storage areas
       await this.loadFromStorage('local');
-      await this.loadFromStorage('session');
+      // session storage load disabled for demo stability
     } catch (error) {
       console.error('StateManager initialization failed:', error);
     }
   }
 
-  /**
-   * Load state from specific storage area
-   * @param {string} storageArea - 'local' or 'session'
-   */
+  
   async loadFromStorage(storageArea) {
     const storage = this.getStorage(storageArea);
     if (!storage) return;
@@ -57,54 +40,41 @@ export class StateManager {
     }
   }
 
-  /**
-   * Get storage keys for a specific storage area
-   * @param {string} storageArea - 'local' or 'session'
-   * @returns {Promise<Array>} Storage keys
-   */
+  
   async getStorageKeys(storageArea) {
-    // Define keys that should be loaded from each storage area
+
     const localKeys = [
       'aideIsCollapsed',
       'aideCommand',
       'focusflow_settings',
-      'focusflow_user_preferences'
-    ];
-
-    const sessionKeys = [
+      'focusflow_user_preferences',
       'aideCurrentTab',
       'aideCurrentSelection',
       'aideActiveTabId',
-      'focusflow_temp_data'
+      'focusflow_temp_data',
+      'aideExtractedContent'
     ];
 
-    return storageArea === 'local' ? localKeys : sessionKeys;
+    return localKeys;
   }
 
-  /**
-   * Set state value with automatic persistence
-   * @param {string} key - State key
-   * @param {*} value - State value
-   * @param {Object} options - Options for storage
-   */
+  
   async setState(key, value, options = {}) {
     const storageArea = options.storage || 'local';
     const storageKey = options.storageKey || key;
     const fullKey = `${storageArea}:${storageKey}`;
     
     try {
-      // Validate value
+
       if (!this.isValidStateValue(value)) {
         throw new Error(`Invalid state value for key: ${key}`);
       }
 
-      // Update in-memory state
       this.state.set(fullKey, value);
       
-      // Update cache
+
       this.updateCache(fullKey, value);
 
-      // Persist to storage if enabled
       if (this.enablePersistence) {
         const storage = this.getStorage(storageArea);
         if (storage) {
@@ -112,7 +82,6 @@ export class StateManager {
         }
       }
 
-      // Notify subscribers
       this.notifySubscribers(fullKey, value, options);
 
       return true;
@@ -122,19 +91,14 @@ export class StateManager {
     }
   }
 
-  /**
-   * Get state value with caching
-   * @param {string} key - State key
-   * @param {Object} options - Options for retrieval
-   * @returns {*} State value
-   */
+  
   async getState(key, options = {}) {
     const storageArea = options.storage || 'local';
     const storageKey = options.storageKey || key;
     const fullKey = `${storageArea}:${storageKey}`;
     
     try {
-      // Check cache first
+
       if (this.cache.has(fullKey)) {
         const cached = this.cache.get(fullKey);
         if (Date.now() - cached.timestamp < this.cacheTimeout) {
@@ -142,7 +106,6 @@ export class StateManager {
         }
       }
 
-      // Load from storage if not in cache or cache expired
       const storage = this.getStorage(storageArea);
       if (storage) {
         const result = await storage.get([storageKey]);
@@ -155,7 +118,6 @@ export class StateManager {
         }
       }
 
-      // Return in-memory state if available
       if (this.state.has(fullKey)) {
         return this.state.get(fullKey);
       }
@@ -167,13 +129,7 @@ export class StateManager {
     }
   }
 
-  /**
-   * Subscribe to state changes
-   * @param {string} key - State key to subscribe to
-   * @param {Function} callback - Callback function
-   * @param {Object} options - Subscription options
-   * @returns {Function} Unsubscribe function
-   */
+  
   subscribe(key, callback, options = {}) {
     const storageArea = options.storage || 'local';
     const storageKey = options.storageKey || key;
@@ -191,7 +147,6 @@ export class StateManager {
 
     this.subscribers.get(fullKey).add(subscriber);
 
-    // Return unsubscribe function
     return () => {
       const subscribers = this.subscribers.get(fullKey);
       if (subscribers) {
@@ -203,11 +158,7 @@ export class StateManager {
     };
   }
 
-  /**
-   * Unsubscribe from state changes
-   * @param {string} key - State key
-   * @param {Function} callback - Callback function to remove
-   */
+  
   unsubscribe(key, callback) {
     for (const [fullKey, subscribers] of this.subscribers.entries()) {
       if (fullKey.includes(key)) {
@@ -225,9 +176,7 @@ export class StateManager {
     }
   }
 
-  /**
-   * Setup storage change listener
-   */
+  
   setupStorageListener() {
     if (typeof chrome !== 'undefined' && chrome.storage) {
       chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -235,13 +184,13 @@ export class StateManager {
           const fullKey = `${areaName}:${key}`;
           const newValue = change.newValue;
           
-          // Update in-memory state
+
           this.state.set(fullKey, newValue);
           
-          // Update cache
+
           this.updateCache(fullKey, newValue);
           
-          // Notify subscribers
+
           this.notifySubscribers(fullKey, newValue, { 
             source: 'storage',
             oldValue: change.oldValue
@@ -251,11 +200,7 @@ export class StateManager {
     }
   }
 
-  /**
-   * Update cache with timeout
-   * @param {string} key - Cache key
-   * @param {*} value - Value to cache
-   */
+  
   updateCache(key, value) {
     this.cache.set(key, {
       value,
@@ -263,12 +208,7 @@ export class StateManager {
     });
   }
 
-  /**
-   * Notify subscribers of state change
-   * @param {string} key - State key
-   * @param {*} value - New value
-   * @param {Object} options - Notification options
-   */
+  
   notifySubscribers(key, value, options = {}) {
     const subscribers = this.subscribers.get(key);
     if (!subscribers) return;
@@ -281,13 +221,12 @@ export class StateManager {
       timestamp: Date.now()
     };
 
-    // Notify all subscribers asynchronously
     subscribers.forEach(subscriber => {
       try {
         if (subscriber.options.immediate) {
           subscriber.callback(notification);
         } else {
-          // Use setTimeout to avoid blocking
+
           setTimeout(() => subscriber.callback(notification), 0);
         }
       } catch (error) {
@@ -296,25 +235,18 @@ export class StateManager {
     });
   }
 
-  /**
-   * Get storage object for area
-   * @param {string} storageArea - 'local' or 'session'
-   * @returns {Object} Storage object
-   */
+  
   getStorage(storageArea) {
     if (typeof chrome !== 'undefined' && chrome.storage) {
-      return chrome.storage[storageArea] || null;
+      // Force all storage to local to avoid MV3 session context errors
+      return chrome.storage.local || null;
     }
     return null;
   }
 
-  /**
-   * Validate state value
-   * @param {*} value - Value to validate
-   * @returns {boolean} Whether value is valid
-   */
+  
   isValidStateValue(value) {
-    // Check for circular references
+
     try {
       JSON.stringify(value);
       return true;
@@ -323,25 +255,18 @@ export class StateManager {
     }
   }
 
-  /**
-   * Generate unique subscriber ID
-   * @returns {string} Subscriber ID
-   */
+  
   generateSubscriberId() {
     return `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  /**
-   * Clear state for specific key or all state
-   * @param {string} key - Key to clear (optional)
-   * @param {Object} options - Clear options
-   */
+  
   async clearState(key = null, options = {}) {
     const storageArea = options.storage || 'local';
     
     try {
       if (key) {
-        // Clear specific key
+
         const fullKey = `${storageArea}:${key}`;
         this.state.delete(fullKey);
         this.cache.delete(fullKey);
@@ -353,10 +278,10 @@ export class StateManager {
           }
         }
         
-        // Remove subscribers
+
         this.subscribers.delete(fullKey);
       } else {
-        // Clear all state for storage area
+
         const keysToRemove = [];
         for (const stateKey of this.state.keys()) {
           if (stateKey.startsWith(`${storageArea}:`)) {
@@ -382,10 +307,7 @@ export class StateManager {
     }
   }
 
-  /**
-   * Get state statistics
-   * @returns {Object} State statistics
-   */
+  
   getStats() {
     return {
       stateSize: this.state.size,
@@ -396,10 +318,7 @@ export class StateManager {
     };
   }
 
-  /**
-   * Export all state for debugging
-   * @returns {Object} Complete state export
-   */
+  
   exportState() {
     const exported = {};
     
@@ -414,9 +333,7 @@ export class StateManager {
     };
   }
 
-  /**
-   * Cleanup resources
-   */
+  
   cleanup() {
     this.state.clear();
     this.cache.clear();
@@ -424,8 +341,6 @@ export class StateManager {
   }
 }
 
-// Export singleton instance for easy usage
 export const stateManager = new StateManager();
 
-// Export default
 export default StateManager;

@@ -613,12 +613,13 @@ export class SelectionActionManager {
   }
 }
 
-export const selectionActionManager = new SelectionActionManager();
+// export const selectionActionManager = new SelectionActionManager();
+export const selectionActionManager = null;
 
-export const initialize = selectionActionManager.initialize.bind(selectionActionManager);
-export const cleanup = selectionActionManager.cleanup.bind(selectionActionManager);
-export const updateConfig = selectionActionManager.updateConfig.bind(selectionActionManager);
-export const getConfig = selectionActionManager.getConfig.bind(selectionActionManager);
-export const getCurrentSelection = selectionActionManager.getCurrentSelection.bind(selectionActionManager);
+// export const initialize = selectionActionManager.initialize.bind(selectionActionManager);
+// export const cleanup = selectionActionManager.cleanup.bind(selectionActionManager);
+// export const updateConfig = selectionActionManager.updateConfig.bind(selectionActionManager);
+// export const getConfig = selectionActionManager.getConfig.bind(selectionActionManager);
+// export const getCurrentSelection = selectionActionManager.getCurrentSelection.bind(selectionActionManager);
 
 export default selectionActionManager;

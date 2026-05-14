@@ -3,25 +3,20 @@
 class ChunkProcessor {
   constructor(options = {}) {
     this.config = {
-
-      maxChunkTokens: options.maxChunkTokens || 800,
-      minChunkTokens: options.minChunkTokens || 200,
-      overlapTokens: options.overlapTokens || 100,
+      maxChunkTokens: options.maxChunkTokens || 2500,
+      minChunkTokens: options.minChunkTokens || 500,
+      overlapTokens: options.overlapTokens || 200,
       
-
       preserveHeadings: options.preserveHeadings !== false,
       preserveCodeBlocks: options.preserveCodeBlocks !== false,
       preserveLists: options.preserveLists !== false,
       
-
       enableSemanticGrouping: options.enableSemanticGrouping !== false,
       enableImportanceScoring: options.enableImportanceScoring !== false,
       
-
       includeSourceMetadata: options.includeSourceMetadata !== false,
       includeTimestamps: options.includeTimestamps !== false,
       
-
       enableDeduplication: options.enableDeduplication !== false,
       enableCompression: options.enableCompression !== false
     };

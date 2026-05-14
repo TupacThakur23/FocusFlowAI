@@ -1,7 +1,4 @@
-
-
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useMessageBus } from './useMessageBus';
 import { useExtensionState } from './useExtensionState';
 
 export const useSidebarState = (options = {}) => {
@@ -12,128 +9,51 @@ export const useSidebarState = (options = {}) => {
     animationDuration = 300
   } = options;
 
-  const { sendToBackground, sendToContentScript, onMessage } = useMessageBus();
-  
-  console.log('🔍 useSidebarState: Initializing with options', options);
-  
-
   const [isOpen, setIsOpen] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [size, setSize] = useState({ width: 400, height: '100vh' });
-  
-  console.log('🔍 useSidebarState: State initialized', {
-    isOpen,
-    isAnimating,
-    isVisible,
-    position,
-    size,
-    timestamp: Date.now()
-  });
-  
-
   const [isMobile, setIsMobile] = useState(false);
   const [hasOverlay, setHasOverlay] = useState(false);
-  
-
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  
 
   const [collapsedState, setCollapsedState] = useExtensionState('aideIsCollapsed', {
     defaultValue: true,
     storage: 'local'
   });
-  
 
   const animationTimeoutRef = useRef(null);
-  const resizeObserverRef = useRef(null);
-  const unsubscribeRef = useRef(null);
 
   useEffect(() => {
     const initializeSidebar = async () => {
       try {
-        console.log('🔍 Step 1: Starting sidebar initialization');
         setIsLoading(true);
         setError(null);
         
-        console.log('🔍 Step 2: Loading state set to true');
         const isSidebarMode = window.location.search.includes('mode=sidebar');
         
         if (isSidebarMode) {
-          console.log('🔍 Step 3: Detected sidebar mode');
-
           setIsVisible(true);
-          setIsOpen(!collapsedState[0]);
-          
-          console.log('🔍 Step 4: Sidebar state initialized in sidebar mode');
-
-          unsubscribeRef.current = onMessage('SIDEBAR_TOGGLED', (message) => {
-            setIsOpen(message.isVisible);
-            setIsVisible(message.isVisible);
-            setCollapsedState[1](!message.isVisible);
-          });
+          setIsOpen(!collapsedState);
         } else {
-          console.log('🔍 Step 3: Detected popup mode');
-
-          const response = await sendToBackground({
-            type: 'GET_SIDEBAR_STATE'
-          });
-          
-          if (response.success) {
-            console.log('🔍 Step 4: Successfully retrieved sidebar state from background');
-            console.log('🔍 RAW RETRIEVED STATE:', response);
-            console.log('🔍 STATE TYPE:', typeof response.state);
-            console.log('🔍 STATE KEYS:', Object.keys(response.state || {}));
-            console.log('🔍 RESPONSE.STATE:', response.state);
-            console.log('🔍 RESPONSE.STATE.ISVISIBLE:', response.state?.isVisible);
-            console.log('🔍 RESPONSE.STATE.ISOPEN:', response.state?.isOpen);
-            console.log('🔍 RESPONSE.SIDEBAR:', response.sidebar);
-            console.log('🔍 RESPONSE.SIDEBARSTATE:', response.sidebarState);
-            
-
-            const normalizeSidebarState = (rawState) => {
-              console.log('🔍 Normalizing sidebar state:', rawState);
-              
-
-              const state = rawState?.state || rawState?.sidebar || rawState?.sidebarState || rawState;
-              
-              const normalized = {
-                isVisible: Boolean(state?.isVisible),
-                isOpen: Boolean(state?.isOpen),
-                isCollapsed: Boolean(state?.isCollapsed),
-                activeView: state?.activeView || 'launcher',
-                width: state?.width || 400
-              };
-              
-              console.log('🔍 Normalized sidebar state:', normalized);
-              return normalized;
-            };
-            
-            const normalizedState = normalizeSidebarState(response);
-            
-            console.log('� Using normalized sidebar state');
-            setIsOpen(normalizedState.isOpen);
-            setIsVisible(normalizedState.isVisible);
-            setIsOpen(!collapsedState[0]);
-            
-
-            unsubscribeRef.current = onMessage('SIDEBAR_TOGGLED', (message) => {
-              setIsOpen(message.isVisible);
-              setIsVisible(message.isVisible);
-              setCollapsedState[1](!message.isVisible);
+          if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+            chrome.runtime.sendMessage({ type: 'GET_SIDEBAR_STATE' }, (response) => {
+              if (chrome.runtime.lastError) {
+                console.warn('GET_SIDEBAR_STATE failed:', chrome.runtime.lastError.message);
+                return;
+              }
+              if (response && response.success) {
+                const state = response.state || response.sidebar || response;
+                setIsOpen(Boolean(state?.isOpen));
+                setIsVisible(Boolean(state?.isVisible));
+              }
             });
           }
         }
-        
         setIsLoading(false);
       } catch (err) {
-        console.error('🚨 Sidebar initialization failed:', err);
-        console.error('🚨 Error name:', err?.name);
-        console.error('🚨 Error message:', err?.message);
-        console.error('🚨 Error stack:', err?.stack);
-        console.error('🚨 Error timestamp:', Date.now());
         setError(err?.message || 'Unknown error during sidebar initialization');
         setIsLoading(false);
       }
@@ -141,227 +61,166 @@ export const useSidebarState = (options = {}) => {
 
     initializeSidebar();
 
-    return () => {
-      if (animationTimeoutRef.current) {
-        clearTimeout(animationTimeoutRef.current);
-      }
-      
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-      }
-      
-      if (resizeObserverRef.current) {
-        resizeObserverRef.current.disconnect();
+    const messageListener = (message) => {
+      if (message.type === 'SIDEBAR_TOGGLED') {
+        setIsOpen(message.isVisible);
+        setIsVisible(message.isVisible);
+        setCollapsedState(!message.isVisible);
       }
     };
-  }, [collapsedState, sendToBackground, onMessage]);
+
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+      chrome.runtime.onMessage.addListener(messageListener);
+    }
+
+    return () => {
+      if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+        chrome.runtime.onMessage.removeListener(messageListener);
+      }
+    };
+  }, [collapsedState]);
 
   useEffect(() => {
     const checkMobile = () => {
       const mobile = window.innerWidth <= mobileBreakpoint;
       setIsMobile(mobile);
-      
       if (mobile && isOpen) {
         setHasOverlay(true);
       } else {
         setHasOverlay(false);
       }
     };
-
     checkMobile();
-    
-    const handleResize = () => {
-      checkMobile();
-    };
-
-    window.addEventListener('resize', handleResize);
-    
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, [mobileBreakpoint, isOpen]);
 
   useEffect(() => {
     if (!keyboardShortcut) return;
-
     const handleKeyDown = (event) => {
-
-      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'F') {
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'f') {
         event.preventDefault();
         toggleSidebar();
       }
-      
-
       if (event.key === 'Escape' && isOpen) {
         closeSidebar();
       }
     };
-
     document.addEventListener('keydown', handleKeyDown);
-    
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [keyboardShortcut, isOpen]);
 
-  
+  const _sendSidebarMessage = async (type) => {
+    return new Promise((resolve) => {
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        if (window.location.search.includes('mode=sidebar')) {
+          chrome.runtime.sendMessage({ type: type + '_REQUEST' }, (res) => {
+            if (chrome.runtime.lastError) console.warn(chrome.runtime.lastError.message);
+            resolve(res);
+          });
+        } else {
+          // Send to active tab content script
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]) {
+              chrome.tabs.sendMessage(tabs[0].id, { type: type }, (res) => {
+                if (chrome.runtime.lastError) console.warn(chrome.runtime.lastError.message);
+                resolve(res);
+              });
+            } else {
+              resolve(null);
+            }
+          });
+        }
+      } else {
+        resolve(null);
+      }
+    });
+  };
+
   const toggleSidebar = useCallback(async () => {
     if (isAnimating || isLoading) return;
-
     try {
       setIsAnimating(true);
       setError(null);
       
-      const newState = !isOpen;
-      
-      if (window.location.search.includes('mode=sidebar')) {
-
-        await sendToBackground({
-          type: 'TOGGLE_SIDEBAR_REQUEST'
-        });
-      } else {
-
-        const response = await sendToContentScript({
-          type: 'TOGGLE_SIDEBAR'
-        });
-        
-        if (response.success) {
-          setIsOpen(response.visible);
-          setCollapsedState[1](!response.visible);
-        } else {
-          throw new Error(response.error || 'Failed to toggle sidebar');
-        }
+      const response = await _sendSidebarMessage('TOGGLE_SIDEBAR');
+      if (response && response.success) {
+        setIsOpen(response.visible);
+        setCollapsedState(!response.visible);
       }
       
-
-      if (animationTimeoutRef.current) {
-        clearTimeout(animationTimeoutRef.current);
-      }
-      
-      animationTimeoutRef.current = setTimeout(() => {
-        setIsAnimating(false);
-      }, animationDuration);
-      
+      if (animationTimeoutRef.current) clearTimeout(animationTimeoutRef.current);
+      animationTimeoutRef.current = setTimeout(() => setIsAnimating(false), animationDuration);
     } catch (err) {
-      console.error('Toggle sidebar failed:', err);
       setError(err.message);
       setIsAnimating(false);
     }
-  }, [isAnimating, isLoading, isOpen, sendToBackground, sendToContentScript, setCollapsedState, animationDuration]);
+  }, [isAnimating, isLoading, setCollapsedState, animationDuration]);
 
-  
   const openSidebar = useCallback(async () => {
     if (isOpen || isAnimating || isLoading) return;
-
     try {
       setIsAnimating(true);
       setError(null);
       
-      if (window.location.search.includes('mode=sidebar')) {
-        await sendToBackground({
-          type: 'OPEN_SIDEBAR_REQUEST'
-        });
-      } else {
-        const response = await sendToContentScript({
-          type: 'OPEN_SIDEBAR'
-        });
-        
-        if (response.success) {
-          setIsOpen(true);
-          setCollapsedState[1](false);
-        } else {
-          throw new Error(response.error || 'Failed to open sidebar');
-        }
+      const response = await _sendSidebarMessage('OPEN_SIDEBAR');
+      if (response && response.success) {
+        setIsOpen(true);
+        setCollapsedState(false);
       }
       
-      setTimeout(() => {
-        setIsAnimating(false);
-      }, animationDuration);
-      
+      setTimeout(() => setIsAnimating(false), animationDuration);
     } catch (err) {
-      console.error('Open sidebar failed:', err);
       setError(err.message);
       setIsAnimating(false);
     }
-  }, [isOpen, isAnimating, isLoading, sendToBackground, sendToContentScript, setCollapsedState, animationDuration]);
+  }, [isOpen, isAnimating, isLoading, setCollapsedState, animationDuration]);
 
-  
   const closeSidebar = useCallback(async () => {
     if (!isOpen || isAnimating || isLoading) return;
-
     try {
       setIsAnimating(true);
       setError(null);
       
-      if (window.location.search.includes('mode=sidebar')) {
-        await sendToBackground({
-          type: 'CLOSE_SIDEBAR_REQUEST'
-        });
-      } else {
-        const response = await sendToContentScript({
-          type: 'CLOSE_SIDEBAR'
-        });
-        
-        if (response.success) {
-          setIsOpen(false);
-          setCollapsedState[1](true);
-        } else {
-          throw new Error(response.error || 'Failed to close sidebar');
-        }
+      const response = await _sendSidebarMessage('CLOSE_SIDEBAR');
+      if (response && response.success) {
+        setIsOpen(false);
+        setCollapsedState(true);
       }
       
-      setTimeout(() => {
-        setIsAnimating(false);
-      }, animationDuration);
-      
+      setTimeout(() => setIsAnimating(false), animationDuration);
     } catch (err) {
-      console.error('Close sidebar failed:', err);
       setError(err.message);
       setIsAnimating(false);
     }
-  }, [isOpen, isAnimating, isLoading, sendToBackground, sendToContentScript, setCollapsedState, animationDuration]);
+  }, [isOpen, isAnimating, isLoading, setCollapsedState, animationDuration]);
 
-  
-  const updatePosition = useCallback((x, y) => {
-    setPosition({ x, y });
-  }, []);
-
-  
-  const updateSize = useCallback((width, height) => {
-    setSize({ width, height });
-  }, []);
-
-  
+  const updatePosition = useCallback((x, y) => setPosition({ x, y }), []);
+  const updateSize = useCallback((width, height) => setSize({ width, height }), []);
   const resetSidebar = useCallback(async () => {
     try {
       setIsLoading(true);
-      
       await closeSidebar();
       setPosition({ x: 0, y: 0 });
       setSize({ width: 400, height: '100vh' });
-      
       setIsLoading(false);
     } catch (err) {
-      console.error('Reset sidebar failed:', err);
       setError(err.message);
       setIsLoading(false);
     }
   }, [closeSidebar]);
 
-  
   const getSidebarClasses = useCallback(() => {
     const classes = ['focusflow-sidebar'];
-    
     if (isOpen) classes.push('focusflow-sidebar--open');
     if (isAnimating) classes.push('focusflow-sidebar--animating');
     if (isVisible) classes.push('focusflow-sidebar--visible');
     if (isMobile) classes.push('focusflow-sidebar--mobile');
     if (hasOverlay) classes.push('focusflow-sidebar--overlay');
-    
     return classes.join(' ');
   }, [isOpen, isAnimating, isVisible, isMobile, hasOverlay]);
 
-  
   const getSidebarStyles = useCallback(() => {
     return {
       '--sidebar-width': `${size.width}px`,
@@ -375,48 +234,16 @@ export const useSidebarState = (options = {}) => {
   }, [isOpen, isAnimating, size, position, animationDuration]);
 
   return {
-
-    isOpen,
-    isVisible,
-    isAnimating,
-    isLoading,
-    error,
-    isMobile,
-    hasOverlay,
-    position,
-    size,
-    
-
-    isCollapsed: !isOpen,
-    canToggle: !isAnimating && !isLoading,
-    
-
-    toggleSidebar,
-    openSidebar,
-    closeSidebar,
-    resetSidebar,
-    updatePosition,
-    updateSize,
-    
-
-    getSidebarClasses,
-    getSidebarStyles,
-    
-
-    collapsedState
+    isOpen, isVisible, isAnimating, isLoading, error, isMobile, hasOverlay, position, size,
+    isCollapsed: !isOpen, canToggle: !isAnimating && !isLoading,
+    toggleSidebar, openSidebar, closeSidebar, resetSidebar, updatePosition, updateSize,
+    getSidebarClasses, getSidebarStyles, collapsedState
   };
 };
 
 export const useSidebarShortcuts = (shortcuts = {}) => {
   const [activeShortcuts, setActiveShortcuts] = useState({});
-  const { onMessage } = useMessageBus();
-
-  const defaultShortcuts = {
-    toggle: ['ctrl+shift+f', 'meta+shift+f'],
-    close: ['escape'],
-    focus: ['ctrl+shift+a', 'meta+shift+a']
-  };
-
+  const defaultShortcuts = { toggle: ['ctrl+shift+f', 'meta+shift+f'], close: ['escape'], focus: ['ctrl+shift+a', 'meta+shift+a'] };
   const mergedShortcuts = { ...defaultShortcuts, ...shortcuts };
 
   useEffect(() => {
@@ -433,26 +260,16 @@ export const useSidebarShortcuts = (shortcuts = {}) => {
         if (keys.includes(key)) {
           event.preventDefault();
           setActiveShortcuts(prev => ({ ...prev, [action]: true }));
-          
-
-          setTimeout(() => {
-            setActiveShortcuts(prev => ({ ...prev, [action]: false }));
-          }, 200);
+          setTimeout(() => setActiveShortcuts(prev => ({ ...prev, [action]: false })), 200);
         }
       });
     };
-
     document.addEventListener('keydown', handleKeyDown);
-    
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [mergedShortcuts]);
 
-  return {
-    activeShortcuts,
-    shortcuts: mergedShortcuts
-  };
+  return { activeShortcuts, shortcuts: mergedShortcuts };
 };
 
 export default useSidebarState;
+

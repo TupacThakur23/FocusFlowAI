@@ -1,20 +1,9 @@
-/**
- * ContextualActions - Enhanced Cross-Page Actions for FocusFlow AI
- * 
- * Provides intelligent contextual actions:
- * - Compare with saved research
- * - Find related notes
- * - Continue topic research
- * - Summarize across sources
- * - Generate combined notes
- * - Compare viewpoints
- * - Build revision sheets
- */
+
 
 export class ContextualActions {
   constructor(options = {}) {
     this.config = {
-      // Action configuration
+
       enableComparison: options.enableComparison !== false,
       enableRelatedResearch: options.enableRelatedResearch !== false,
       enableContinuation: options.enableContinuation !== false,
@@ -23,13 +12,13 @@ export class ContextualActions {
       enableViewpointComparison: options.enableViewpointComparison !== false,
       enableRevisionSheets: options.enableRevisionSheets !== false,
       
-      // UI settings
+
       showActionPreviews: options.showActionPreviews !== false,
       enableKeyboardShortcuts: options.enableKeyboardShortcuts !== false,
       actionTimeout: options.actionTimeout || 30000, // 30 seconds
       maxResultsPerAction: options.maxResultsPerAction || 5,
       
-      // Integration
+
       researchApi: options.researchApi || '/api/research',
       notesApi: options.notesApi || '/api/notes',
       aiApi: options.aiApi || '/api/ai/actions'
@@ -43,9 +32,7 @@ export class ContextualActions {
     this.setupEventListeners();
   }
 
-  /**
-   * Initialize keyboard shortcuts
-   */
+  
   initializeShortcuts() {
     if (!this.config.enableKeyboardShortcuts) return;
 
@@ -92,27 +79,22 @@ export class ContextualActions {
     });
   }
 
-  /**
-   * Setup event listeners
-   */
+  
   setupEventListeners() {
-    // Listen for text selection
+
     document.addEventListener('mouseup', this.handleTextSelection.bind(this));
     document.addEventListener('selectionchange', this.handleSelectionChange.bind(this));
     
-    // Listen for keyboard shortcuts
+
     document.addEventListener('keydown', this.handleKeyboardShortcut.bind(this));
     
-    // Listen for page navigation
+
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       chrome.runtime.onMessage.addListener(this.handleChromeMessage.bind(this));
     }
   }
 
-  /**
-   * Handle text selection for contextual actions
-   * @param {Event} event - Mouse event
-   */
+  
   handleTextSelection(event) {
     setTimeout(() => {
       const selection = window.getSelection().toString().trim();
@@ -123,23 +105,17 @@ export class ContextualActions {
     }, 100);
   }
 
-  /**
-   * Handle selection change
-   * @param {Event} event - Selection event
-   */
+  
   handleSelectionChange(event) {
     const selection = window.getSelection().toString().trim();
     
-    // Hide actions if selection is cleared
+
     if (selection.length === 0) {
       this.hideContextualActions();
     }
   }
 
-  /**
-   * Handle keyboard shortcuts
-   * @param {Event} event - Keyboard event
-   */
+  
   handleKeyboardShortcut(event) {
     const pressedKeys = [
       event.ctrlKey && 'ctrl',
@@ -167,12 +143,7 @@ export class ContextualActions {
     }
   }
 
-  /**
-   * Handle Chrome extension messages
-   * @param {Object} message - Chrome message
-   * @param {Object} sender - Message sender
-   * @param {Function} sendResponse - Response callback
-   */
+  
   handleChromeMessage(message, sender, sendResponse) {
     switch (message.type) {
       case 'SELECTION_CONTEXT_ACTIONS':
@@ -187,36 +158,27 @@ export class ContextualActions {
     }
   }
 
-  /**
-   * Show contextual actions menu
-   * @param {string} selection - Selected text
-   * @param {Event} event - Triggering event
-   */
+  
   showContextualActions(selection, event) {
-    // Remove existing action menu
+
     this.hideContextualActions();
 
-    // Create action menu
     const actionMenu = this.createActionMenu(selection);
     document.body.appendChild(actionMenu);
 
-    // Position menu near selection
     this.positionActionMenu(actionMenu, event);
     
-    // Show with animation
+
     setTimeout(() => {
       actionMenu.classList.add('contextual-actions-visible');
     }, 50);
 
-    // Auto-hide after timeout
     setTimeout(() => {
       this.hideContextualActions();
     }, this.config.actionTimeout);
   }
 
-  /**
-   * Hide contextual actions menu
-   */
+  
   hideContextualActions() {
     const existingMenu = document.querySelector('.contextual-actions-menu');
     if (existingMenu) {
@@ -229,11 +191,7 @@ export class ContextualActions {
     }
   }
 
-  /**
-   * Create action menu element
-   * @param {string} selection - Selected text
-   * @returns {HTMLElement} Action menu element
-   */
+  
   createActionMenu(selection) {
     const menu = document.createElement('div');
     menu.className = 'contextual-actions-menu';
@@ -251,17 +209,12 @@ export class ContextualActions {
       </div>
     `;
 
-    // Add styles
     this.addMenuStyles(menu);
 
     return menu;
   }
 
-  /**
-   * Generate action items for menu
-   * @param {string} selection - Selected text
-   * @returns {string} Action items HTML
-   */
+  
   generateActionItems(selection) {
     const actions = [];
 
@@ -347,11 +300,7 @@ export class ContextualActions {
     `).join('');
   }
 
-  /**
-   * Position action menu
-   * @param {HTMLElement} menu - Action menu element
-   * @param {Event} event - Triggering event
-   */
+  
   positionActionMenu(menu, event) {
     const selection = window.getSelection();
     const range = selection.getRangeAt(0);
@@ -361,11 +310,11 @@ export class ContextualActions {
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
       
-      // Calculate position
+
       let left = rect.left + rect.width / 2;
       let top = rect.bottom + 10;
       
-      // Adjust if menu would go off-screen
+
       const menuRect = menu.getBoundingClientRect();
       
       if (left + menuRect.width > viewportWidth) {
@@ -379,35 +328,29 @@ export class ContextualActions {
       menu.style.left = `${left}px`;
       menu.style.top = `${top}px`;
     } else {
-      // Fallback position
+
       menu.style.left = '50%';
       menu.style.top = '50%';
       menu.style.transform = 'translate(-50%, -50%)';
     }
   }
 
-  /**
-   * Execute contextual action
-   * @param {string} action - Action to execute
-   * @param {string} selection - Selected text
-   */
+  
   async executeAction(action, selection) {
     try {
-      // Check cache first
+
       const cacheKey = `${action}:${this.simpleHash(selection)}`;
       if (this.actionCache.has(cacheKey)) {
         console.log('Action already in progress:', action);
         return;
       }
 
-      // Set cache to prevent duplicate executions
       this.actionCache.set(cacheKey, {
         action,
         selection,
         timestamp: Date.now()
       });
 
-      // Execute action based on type
       let result;
       switch (action) {
         case 'compare_research':
@@ -435,29 +378,23 @@ export class ContextualActions {
           throw new Error(`Unknown action: ${action}`);
       }
 
-      // Clear cache
       this.actionCache.delete(cacheKey);
 
-      // Show result notification
       this.showActionResult(result);
       
-      // Log action for analytics
+
       this.logAction(action, selection, result);
 
     } catch (error) {
       console.error(`Failed to execute action ${action}:`, error);
       this.showActionError(action, error);
       
-      // Clear cache on error
+
       this.actionCache.delete(cacheKey);
     }
   }
 
-  /**
-   * Compare with saved research
-   * @param {string} selection - Selected text
-   * @returns {Object} Comparison result
-   */
+  
   async compareWithResearch(selection) {
     const response = await fetch(`${this.config.researchApi}/compare`, {
       method: 'POST',
@@ -481,11 +418,7 @@ export class ContextualActions {
     };
   }
 
-  /**
-   * Find related research
-   * @param {string} selection - Selected text
-   * @returns {Object} Related research result
-   */
+  
   async findRelatedResearch(selection) {
     const response = await fetch(`${this.config.researchApi}/related`, {
       method: 'POST',
@@ -510,11 +443,7 @@ export class ContextualActions {
     };
   }
 
-  /**
-   * Continue topic research
-   * @param {string} selection - Selected text
-   * @returns {Object} Continuation result
-   */
+  
   async continueTopicResearch(selection) {
     const response = await fetch(`${this.config.aiApi}/continue`, {
       method: 'POST',
@@ -539,11 +468,7 @@ export class ContextualActions {
     };
   }
 
-  /**
-   * Create cross-source summary
-   * @param {string} selection - Selected text
-   * @returns {Object} Summary result
-   */
+  
   async crossSourceSummary(selection) {
     const response = await fetch(`${this.config.aiApi}/summary`, {
       method: 'POST',
@@ -568,11 +493,7 @@ export class ContextualActions {
     };
   }
 
-  /**
-   * Generate combined notes
-   * @param {string} selection - Selected text
-   * @returns {Object} Combined notes result
-   */
+  
   async generateCombinedNotes(selection) {
     const response = await fetch(`${this.config.notesApi}/combined`, {
       method: 'POST',
@@ -597,11 +518,7 @@ export class ContextualActions {
     };
   }
 
-  /**
-   * Compare viewpoints
-   * @param {string} selection - Selected text
-   * @returns {Object} Viewpoint comparison result
-   */
+  
   async compareViewpoints(selection) {
     const response = await fetch(`${this.config.aiApi}/compare-viewpoints`, {
       method: 'POST',
@@ -626,11 +543,7 @@ export class ContextualActions {
     };
   }
 
-  /**
-   * Build revision sheet
-   * @param {string} selection - Selected text
-   * @returns {Object} Revision sheet result
-   */
+  
   async buildRevisionSheet(selection) {
     const response = await fetch(`${this.config.notesApi}/revision-sheet`, {
       method: 'POST',
@@ -655,12 +568,9 @@ export class ContextualActions {
     };
   }
 
-  /**
-   * Show action result notification
-   * @param {Object} result - Action result
-   */
+  
   showActionResult(result) {
-    // Create notification element
+
     const notification = document.createElement('div');
     notification.className = 'contextual-action-notification';
     notification.innerHTML = `
@@ -674,16 +584,13 @@ export class ContextualActions {
       <div class="notification-close" onclick="this.parentElement.remove()">×</div>
     `;
 
-    // Add to page
     document.body.appendChild(notification);
 
-    // Position notification
     notification.style.position = 'fixed';
     notification.style.top = '20px';
     notification.style.right = '20px';
     notification.style.zIndex = '999999';
 
-    // Auto-remove after 5 seconds
     setTimeout(() => {
       if (notification.parentNode) {
         notification.parentNode.removeChild(notification);
@@ -691,11 +598,7 @@ export class ContextualActions {
     }, 5000);
   }
 
-  /**
-   * Show action error notification
-   * @param {string} action - Action that failed
-   * @param {Error} error - Error object
-   */
+  
   showActionError(action, error) {
     const notification = document.createElement('div');
     notification.className = 'contextual-action-notification error';
@@ -723,12 +626,7 @@ export class ContextualActions {
     }, 5000);
   }
 
-  /**
-   * Log action for analytics
-   * @param {string} action - Action executed
-   * @param {string} selection - Text selection
-   * @param {Object} result - Action result
-   */
+  
   logAction(action, selection, result) {
     const logEntry = {
       action,
@@ -742,7 +640,6 @@ export class ContextualActions {
       userAgent: navigator.userAgent
     };
 
-    // Send to analytics service
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       chrome.runtime.sendMessage({
         type: 'CONTEXTUAL_ACTION_LOG',
@@ -753,10 +650,7 @@ export class ContextualActions {
     console.log('Contextual action executed:', logEntry);
   }
 
-  /**
-   * Add styles to action menu
-   * @param {HTMLElement} menu - Menu element
-   */
+  
   addMenuStyles(menu) {
     const style = document.createElement('style');
     style.textContent = `
@@ -953,22 +847,13 @@ export class ContextualActions {
     document.head.appendChild(style);
   }
 
-  /**
-   * Truncate text to specified length
-   * @param {string} text - Text to truncate
-   * @param {number} maxLength - Maximum length
-   * @returns {string} Truncated text
-   */
+  
   truncateText(text, maxLength) {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength - 3) + '...';
   }
 
-  /**
-   * Simple hash function
-   * @param {string} str - String to hash
-   * @returns {string} Hash
-   */
+  
   simpleHash(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -979,10 +864,7 @@ export class ContextualActions {
     return hash.toString(36);
   }
 
-  /**
-   * Get action statistics
-   * @returns {Object} Action statistics
-   */
+  
   getStats() {
     return {
       config: this.config,
@@ -1008,24 +890,17 @@ export class ContextualActions {
     };
   }
 
-  /**
-   * Update configuration
-   * @param {Object} newConfig - New configuration
-   */
+  
   updateConfig(newConfig) {
     this.config = { ...this.config, ...newConfig };
   }
 
-  /**
-   * Clear action cache
-   */
+  
   clearCache() {
     this.actionCache.clear();
   }
 
-  /**
-   * Reset contextual actions
-   */
+  
   reset() {
     this.actionHistory.clear();
     this.actionCache.clear();
@@ -1033,14 +908,13 @@ export class ContextualActions {
   }
 }
 
-// Export singleton instance
-export const contextualActions = new ContextualActions();
+// export const contextualActions = new ContextualActions();
+export const contextualActions = null;
 
-// Export utilities
-export const executeAction = contextualActions.executeAction.bind(contextualActions);
-export const getStats = contextualActions.getStats.bind(contextualActions);
-export const updateConfig = contextualActions.updateConfig.bind(contextualActions);
-export const clearCache = contextualActions.clearCache.bind(contextualActions);
-export const reset = contextualActions.reset.bind(contextualActions);
+// export const executeAction = contextualActions.executeAction.bind(contextualActions);
+// export const getStats = contextualActions.getStats.bind(contextualActions);
+// export const updateConfig = contextualActions.updateConfig.bind(contextualActions);
+// export const clearCache = contextualActions.clearCache.bind(contextualActions);
+// export const reset = contextualActions.reset.bind(contextualActions);
 
 export default contextualActions;

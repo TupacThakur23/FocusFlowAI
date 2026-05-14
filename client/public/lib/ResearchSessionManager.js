@@ -33,8 +33,6 @@ export class ResearchSessionManager {
 
     this.interruptedSessions = new Set();
     this.recoveryPrompts = new Map();
-    
-    this.initializeSessionManager();
   }
 
   
@@ -932,18 +930,19 @@ export class ResearchSessionManager {
   }
 }
 
-export const researchSessionManager = new ResearchSessionManager();
+// export const researchSessionManager = new ResearchSessionManager();
+export const researchSessionManager = null;
 
-export const startNewSession = researchSessionManager.startNewSession.bind(researchSessionManager);
-export const endSession = researchSessionManager.endSession.bind(researchSessionManager);
-export const trackTopic = researchSessionManager.trackTopic.bind(researchSessionManager);
-export const trackActivity = researchSessionManager.trackActivity.bind(researchSessionManager);
-export const getSessionSummary = researchSessionManager.getSessionSummary.bind(researchSessionManager);
-export const resumeSession = researchSessionManager.resumeSession.bind(researchSessionManager);
-export const getActiveTopics = researchSessionManager.getActiveTopics.bind(researchSessionManager);
-export const getRecentFocusAreas = researchSessionManager.getRecentFocusAreas.bind(researchSessionManager);
-export const getStats = researchSessionManager.getStats.bind(researchSessionManager);
-export const reset = researchSessionManager.reset.bind(researchSessionManager);
+// export const startNewSession = researchSessionManager.startNewSession.bind(researchSessionManager);
+// export const endSession = researchSessionManager.endSession.bind(researchSessionManager);
+// export const trackTopic = researchSessionManager.trackTopic.bind(researchSessionManager);
+// export const trackActivity = researchSessionManager.trackActivity.bind(researchSessionManager);
+// export const getSessionSummary = researchSessionManager.getSessionSummary.bind(researchSessionManager);
+// export const resumeSession = researchSessionManager.resumeSession.bind(researchSessionManager);
+// export const getActiveTopics = researchSessionManager.getActiveTopics.bind(researchSessionManager);
+// export const getRecentFocusAreas = researchSessionManager.getRecentFocusAreas.bind(researchSessionManager);
+// export const getStats = researchSessionManager.getStats.bind(researchSessionManager);
+// export const reset = researchSessionManager.reset.bind(researchSessionManager);
 
 export default researchSessionManager;
 

@@ -1,93 +1,154 @@
-// Content script - Entry point for FocusFlow AI
 (async function() {
   'use strict';
   
-  console.log('🔍 FocusFlow Content Script: Initializing...');
+  /**
+   * PHASE 1: Runtime Stabilization Layer
+   * Deterministic safe messaging utility
+   */
+  const safeSendMessage = (payload, callback = () => {}) => {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage(payload, (response) => {
+          if (chrome.runtime.lastError) return;
+          if (typeof callback === 'function') callback(response);
+        });
+      }
+    } catch (err) {}
+  };
+
+  /**
+   * PHASE 2: Page Context Manager
+   */
+  const PageContextManager = {
+    context: {
+      url: window.location.href,
+      title: document.title,
+      extractionId: null,
+      extractedAt: null,
+      isExtracting: false,
+      abortController: null
+    },
+
+    reset() {
+      if (this.context.abortController) {
+        this.context.abortController.abort();
+      }
+      this.context = {
+        url: window.location.href,
+        title: document.title,
+        extractionId: crypto.randomUUID(),
+        extractedAt: null,
+        isExtracting: false,
+        abortController: new AbortController()
+      };
+      
+      // Notify background that we are fresh and ready
+      safeSendMessage({ type: 'CONTENT_SCRIPT_READY' });
+    },
+
+    update(data) {
+      this.context = { ...this.context, ...data };
+    }
+  };
 
   try {
-    const buster = `?v=${Date.now()}`;
-    const { sidebarManager } = await import(chrome.runtime.getURL(`lib/SidebarManager.js${buster}`));
-    const { messageBus }     = await import(chrome.runtime.getURL(`lib/MessageBus.js${buster}`));
-    const { stateManager }   = await import(chrome.runtime.getURL(`lib/StateManager.js${buster}`));
-    const { errorHandler }   = await import(chrome.runtime.getURL(`lib/ErrorHandler.js${buster}`));
+    const { sidebarManager } = await import(chrome.runtime.getURL('lib/SidebarManager.js'));
+    const { stateManager }   = await import(chrome.runtime.getURL('lib/StateManager.js'));
+    const { contentExtractor } = await import(chrome.runtime.getURL('lib/ContentExtractor.js'));
 
-    // Attach to window for easy access / debugging
     window.sidebarManager = sidebarManager;
-    window.messageBus     = messageBus;
     window.stateManager   = stateManager;
-    window.errorHandler   = errorHandler;
+    window.contentExtractor = contentExtractor;
 
-    console.log('✅ FocusFlow: Dependencies loaded');
+    PageContextManager.reset();
 
-    // ── Check if popup already asked to open before we loaded ──
-    chrome.storage.local.get(['ff_action'], (data) => {
-      if (data.ff_action === 'open_panel') {
-        console.log('🎯 FocusFlow: Pending open_panel action found, opening panel...');
-        sidebarManager.forceOpen();
-        // Clear so it doesn't re-trigger on next page load
-        chrome.storage.local.remove('ff_action');
+    /**
+     * PHASE 3: SPA Navigation Support
+     */
+    const handleUrlChange = () => {
+      if (window.location.href !== PageContextManager.context.url) {
+        PageContextManager.reset();
+        safeSendMessage({ type: 'PAGE_CONTEXT_RESET', url: window.location.href });
       }
-    });
+    };
 
-    // ── Listen for future storage-based triggers ──
-    chrome.storage.onChanged.addListener((changes, area) => {
-      if (area !== 'local') return;
-      if (changes.ff_action && changes.ff_action.newValue === 'open_panel') {
-        console.log('🎯 FocusFlow: Storage trigger -> open_panel');
-        sidebarManager.forceOpen();
-        chrome.storage.local.remove('ff_action');
-      }
-      if (changes.ff_action && changes.ff_action.newValue === 'close_panel') {
-        sidebarManager.forceClose();
-        chrome.storage.local.remove('ff_action');
-      }
-      if (changes.ff_action && changes.ff_action.newValue === 'toggle_panel') {
-        sidebarManager.toggleSidebar();
-        chrome.storage.local.remove('ff_action');
-      }
-    });
+    const originalPush = history.pushState;
+    history.pushState = function(...args) {
+      originalPush.apply(this, args);
+      handleUrlChange();
+    };
 
-    // ── Also keep the legacy runtime message listener for backward compat ──
+    const originalReplace = history.replaceState;
+    history.replaceState = function(...args) {
+      originalReplace.apply(this, args);
+      handleUrlChange();
+    };
+
+    window.addEventListener('popstate', handleUrlChange);
+
+    // Single Runtime Listener
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-      if (request.action === 'OPEN_AIDE_SIDEBAR') {
-        console.log('🎯 FocusFlow: Runtime message -> open panel');
-        sidebarManager.forceOpen();
-        sendResponse({ success: true });
-      } else if (request.action === 'DESTROY_AIDE_SIDEBAR') {
-        sidebarManager.cleanup();
-        sendResponse({ success: true });
+      const type = request.type || request.action;
+      
+      switch (type) {
+        case 'OPEN_SIDEBAR':
+        case 'OPEN_AIDE_SIDEBAR':
+          sidebarManager.forceOpen();
+          sendResponse({ success: true });
+          break;
+
+        case 'CLOSE_SIDEBAR':
+          sidebarManager.forceClose();
+          sendResponse({ success: true });
+          break;
+
+        case 'TOGGLE_SIDEBAR':
+          sidebarManager.toggleSidebar();
+          sendResponse({ success: true, visible: sidebarManager.isOpen });
+          break;
+
+        case 'EXTRACT_CONTENT':
+          if (PageContextManager.context.isExtracting) {
+            PageContextManager.context.abortController.abort();
+            PageContextManager.reset();
+          }
+
+          PageContextManager.update({ isExtracting: true });
+
+          (async () => {
+            try {
+              const result = await window.contentExtractor.extractWithTimeout(5000); // 5s timeout
+              
+              PageContextManager.update({ 
+                isExtracting: false, 
+                extractedAt: new Date().toISOString() 
+              });
+
+              sendResponse({ 
+                success: true, 
+                content: {
+                  ...result,
+                  url: window.location.href,
+                  extractionId: PageContextManager.context.extractionId
+                } 
+              });
+            } catch (err) {
+              PageContextManager.update({ isExtracting: false });
+              sendResponse({ success: false, error: err.message });
+            }
+          })();
+          return true;
       }
       return false;
     });
 
-    // ── Text selection capture ──
-    document.addEventListener('mouseup', () => {
-      const text = window.getSelection()?.toString().trim();
-      if (text && text.length > 0) {
-        messageBus.sendMessage('background', { type: 'TEXT_SELECTED', text }).catch(() => {});
-      }
-    });
-
-    // ── Content extraction handler ──
-    messageBus.onMessage('EXTRACT_CONTENT', () => {
-      const content = {
-        title: document.title,
-        url:   window.location.href,
-        text:  document.body.innerText.substring(0, 5000)
-      };
-      messageBus.sendMessage('background', { type: 'CONTENT_EXTRACTED', content }).catch(() => {});
-      return { success: true, content };
-    });
-
-    // ── Notify background we are ready ──
-    messageBus.sendMessage('background', {
+    safeSendMessage({
       type: 'CONTENT_SCRIPT_READY',
-      url:  window.location.href,
+      url: window.location.href,
       timestamp: Date.now()
-    }).catch(() => {});
+    });
 
-    console.log('✅ FocusFlow Content Script: Fully initialized');
   } catch (error) {
-    console.error('❌ FocusFlow Content Script: Failed to load dependencies', error);
+    // Silent failure as per directive
   }
 })();

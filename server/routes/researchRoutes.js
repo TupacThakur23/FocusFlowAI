@@ -1,8 +1,22 @@
 import express from "express";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import Research from "../models/Research.js";
+import Workbook from "../models/Workbook.js";
 
 const router = express.Router();
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
+const keywordFilter = (items, query) => {
+  const q = String(query || "").toLowerCase();
+  if (!q) return items;
+  return items.filter((item) =>
+    [item.topic, item.summary, item.notes, item.workbook, ...(item.tags || []), ...(item.saveOptions || [])]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(q)
+  );
+};
 
 router.get("/", async (req, res) => {
   try {
@@ -14,29 +28,38 @@ router.get("/", async (req, res) => {
   }
 });
 
-
 router.post("/", async (req, res) => {
   try {
     if (!req.body.topic) {
       return res.status(400).json({ error: "Topic is required" });
     }
 
+    const outputs = req.body.outputs || {};
+    const workbookName = req.body.workbook || "Research Workbook";
+    await Workbook.findOneAndUpdate(
+      { name: workbookName },
+      { name: workbookName, description: "Research workspace.", updatedAt: new Date() },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
     const newResearch = new Research({
       topic: req.body.topic,
       notes: req.body.notes || "",
       link: req.body.link || "",
-      workbook: req.body.workbook || "Research Workbook",
+      workbook: workbookName,
       summary: req.body.summary || "",
-      outputs: req.body.outputs || {},
+      tags: Array.isArray(req.body.tags) ? req.body.tags : outputs.tags || [],
+      saveOptions: Array.isArray(req.body.saveOptions) ? req.body.saveOptions : outputs.saveOptions || [],
+      outputs,
     });
 
     const savedResearch = await newResearch.save();
     res.json(savedResearch);
   } catch (error) {
+    console.error("SAVE RESEARCH ERROR:", error);
     res.status(500).json({ error: "Failed to save research" });
   }
 });
-
 
 router.delete("/:id", async (req, res) => {
   try {
@@ -47,19 +70,37 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-
 router.get("/workbooks", async (req, res) => {
   try {
-    const workbooks = await Research.distinct("workbook");
-    res.json(workbooks.length ? workbooks : ["Research Workbook"]);
+    const savedWorkbooks = await Workbook.find({}).sort({ updatedAt: -1 });
+    const researchWorkbooks = await Research.distinct("workbook");
+    const names = [...new Set([
+      ...savedWorkbooks.map((workbook) => workbook.name),
+      ...researchWorkbooks,
+      "Research Workbook",
+    ].filter(Boolean))];
+    res.json(names);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch workbooks" });
   }
 });
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+router.post("/workbooks", async (req, res) => {
+  try {
+    const name = String(req.body.name || "").trim();
+    if (!name) return res.status(400).json({ error: "Workbook name is required" });
 
+    const workbook = await Workbook.findOneAndUpdate(
+      { name },
+      { name, description: req.body.description || "Research workspace.", updatedAt: new Date() },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    res.json(workbook);
+  } catch (error) {
+    console.error("CREATE WORKBOOK ERROR:", error);
+    res.status(500).json({ error: "Failed to create workbook" });
+  }
+});
 
 router.post("/semantic-search", async (req, res) => {
   try {
@@ -67,35 +108,34 @@ router.post("/semantic-search", async (req, res) => {
     if (!query) return res.json([]);
 
     const allResearch = await Research.find({}).sort({ date: -1 });
-    
+    const localResults = keywordFilter(allResearch, query);
 
-
+    if (!process.env.GEMINI_API_KEY || allResearch.length === 0) {
+      return res.json(localResults);
+    }
 
     let contextString = "Documents:\n";
     allResearch.forEach(item => {
-      contextString += `ID: ${item._id}\nTopic: ${item.topic}\nSummary: ${item.summary}\nNotes: ${item.notes}\n\n`;
+      contextString += `ID: ${item._id}\nTopic: ${item.topic}\nSummary: ${item.summary}\nNotes: ${item.notes}\nTags: ${(item.tags || []).join(", ")}\n\n`;
     });
 
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
-      systemInstruction: "You are a semantic search engine. Given a list of documents and a user query, identify the documents that are semantically relevant to the query (even if they don't share exact keywords). Return a JSON array containing ONLY the string IDs of the relevant documents. Format: { \"relevantIds\": [\"id1\", \"id2\"] }"
+      systemInstruction: "You are a semantic search engine. Given documents and a query, return JSON only: { \"relevantIds\": [\"id1\"] }."
     });
 
-    const prompt = `${contextString}\n\nQuery: ${query}`;
-    const result = await model.generateContent(prompt);
+    const result = await model.generateContent(`${contextString}\n\nQuery: ${query}`);
     const responseText = await result.response.text();
-    
+
     let parsedResponse;
     try {
-      const jsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-      parsedResponse = JSON.parse(jsonStr);
-    } catch (e) {
+      parsedResponse = JSON.parse(responseText.replace(/```json/g, "").replace(/```/g, "").trim());
+    } catch {
       parsedResponse = { relevantIds: [] };
     }
 
-    const filteredResearch = allResearch.filter(item => parsedResponse.relevantIds.includes(item._id.toString()));
-    
-    res.json(filteredResearch.length > 0 ? filteredResearch : allResearch.filter(item => item.topic.toLowerCase().includes(query.toLowerCase()))); // Fallback to keyword if LLM fails
+    const semanticResults = allResearch.filter(item => parsedResponse.relevantIds?.includes(item._id.toString()));
+    res.json(semanticResults.length > 0 ? semanticResults : localResults);
   } catch (error) {
     console.error("SEMANTIC SEARCH ERROR:", error);
     res.status(500).json({ error: "Search failed" });

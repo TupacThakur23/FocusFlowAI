@@ -1,14 +1,4 @@
-/**
- * ErrorHandler - Global Error Handling for FocusFlow AI Extension
- * 
- * Provides centralized error handling, logging, and recovery mechanisms:
- * - Global error capture for unhandled exceptions
- * - Structured logging with context information
- * - Extension-safe error reporting
- * - Async error handling for promises
- * - Recovery strategies for common errors
- * - Optional user-facing notifications
- */
+
 
 export class ErrorHandler {
   constructor(options = {}) {
@@ -19,11 +9,9 @@ export class ErrorHandler {
     this.setupGlobalHandlers();
   }
 
-  /**
-   * Setup global error handlers
-   */
+  
   setupGlobalHandlers() {
-    // Handle unhandled promise rejections
+
     if (typeof window !== 'undefined') {
       window.addEventListener('unhandledrejection', (event) => {
         this.log(event.reason, 'Unhandled Promise Rejection', {
@@ -32,7 +20,6 @@ export class ErrorHandler {
         });
       });
 
-      // Handle global errors
       window.addEventListener('error', (event) => {
         this.log(event.error || new Error(event.message), 'Global Error', {
           type: 'globalError',
@@ -43,7 +30,6 @@ export class ErrorHandler {
       });
     }
 
-    // Handle Chrome runtime errors
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       chrome.runtime.onSuspend?.addListener(() => {
         this.log(null, 'Extension suspending', { type: 'suspend' });
@@ -51,12 +37,7 @@ export class ErrorHandler {
     }
   }
 
-  /**
-   * Log error with context information
-   * @param {Error|string} error - Error object or message
-   * @param {string} context - Context where error occurred
-   * @param {Object} metadata - Additional metadata
-   */
+  
   log(error, context = 'Unknown', metadata = {}) {
     const errorEntry = {
       timestamp: new Date().toISOString(),
@@ -68,31 +49,22 @@ export class ErrorHandler {
       level: this.determineLogLevel(error)
     };
 
-    // Add to log
     this.errorLog.push(errorEntry);
 
-    // Trim log if too long
     if (this.errorLog.length > this.maxLogEntries) {
       this.errorLog = this.errorLog.slice(-this.maxLogEntries);
     }
 
-    // Log to console based on level
     this.logToConsole(errorEntry);
 
-    // Store in extension storage for persistence
     this.persistError(errorEntry);
 
-    // Show user notification if enabled and error is critical
     if (this.enableUserNotifications && this.isCriticalError(errorEntry)) {
       this.showUserNotification(errorEntry);
     }
   }
 
-  /**
-   * Determine log level based on error
-   * @param {Error|string} error - Error to evaluate
-   * @returns {string} Log level
-   */
+  
   determineLogLevel(error) {
     if (error?.name === 'CriticalError') return 'error';
     if (error?.name === 'WarningError') return 'warn';
@@ -100,10 +72,7 @@ export class ErrorHandler {
     return 'error';
   }
 
-  /**
-   * Log to console with appropriate level
-   * @param {Object} errorEntry - Error entry to log
-   */
+  
   logToConsole(errorEntry) {
     const { level, context, message, stack, metadata } = errorEntry;
     const logMessage = `[${context}] ${message}`;
@@ -131,10 +100,7 @@ export class ErrorHandler {
     }
   }
 
-  /**
-   * Persist error to Chrome storage
-   * @param {Object} errorEntry - Error entry to persist
-   */
+  
   async persistError(errorEntry) {
     try {
       const storage = typeof chrome !== 'undefined' && chrome.storage 
@@ -146,27 +112,22 @@ export class ErrorHandler {
         const result = await storage.get([key]);
         const existingLog = result[key] || [];
         
-        // Add new error and trim
+
         existingLog.push(errorEntry);
         const trimmedLog = existingLog.slice(-this.maxLogEntries);
         
         await storage.set({ [key]: trimmedLog });
       }
     } catch (persistError) {
-      // Avoid infinite recursion if storage fails
+
       console.error('Failed to persist error:', persistError);
     }
   }
 
-  /**
-   * Check if error is critical and needs user notification
-   * @param {Object} errorEntry - Error entry to evaluate
-   * @returns {boolean} Whether error is critical
-   */
+  
   isCriticalError(errorEntry) {
     const criticalContexts = [
       'SidebarManager',
-      'MessageBus',
       'StateManager'
     ];
 
@@ -181,10 +142,7 @@ export class ErrorHandler {
            criticalMessages.some(msg => errorEntry.message.toLowerCase().includes(msg));
   }
 
-  /**
-   * Show user notification for critical errors
-   * @param {Object} errorEntry - Error entry to display
-   */
+  
   showUserNotification(errorEntry) {
     if (typeof chrome !== 'undefined' && chrome.notifications) {
       chrome.notifications.create({
@@ -196,13 +154,7 @@ export class ErrorHandler {
     }
   }
 
-  /**
-   * Create recoverable error
-   * @param {string} message - Error message
-   * @param {Function} recovery - Recovery function
-   * @param {Object} metadata - Additional metadata
-   * @returns {Error} Recoverable error
-   */
+  
   createRecoverableError(message, recovery = null, metadata = {}) {
     const error = new Error(message);
     error.name = 'RecoverableError';
@@ -211,11 +163,7 @@ export class ErrorHandler {
     return error;
   }
 
-  /**
-   * Handle recoverable error with automatic recovery
-   * @param {Error} error - Recoverable error
-   * @param {string} context - Error context
-   */
+  
   async handleRecoverableError(error, context = 'Unknown') {
     this.log(error, context, { recoverable: true });
 
@@ -236,10 +184,7 @@ export class ErrorHandler {
     return false;
   }
 
-  /**
-   * Get error statistics
-   * @returns {Object} Error statistics
-   */
+  
   getErrorStats() {
     const stats = {
       total: this.errorLog.length,
@@ -249,41 +194,32 @@ export class ErrorHandler {
     };
 
     this.errorLog.forEach(entry => {
-      // Count by level
+
       stats.byLevel[entry.level] = (stats.byLevel[entry.level] || 0) + 1;
       
-      // Count by context
+
       stats.byContext[entry.context] = (stats.byContext[entry.context] || 0) + 1;
     });
 
     return stats;
   }
 
-  /**
-   * Clear error log
-   */
+  
   clearLog() {
     this.errorLog = [];
     
-    // Also clear persisted log
+
     if (typeof chrome !== 'undefined' && chrome.storage) {
       chrome.storage.local.remove('focusflow_error_log');
     }
   }
 
-  /**
-   * Get recent errors
-   * @param {number} limit - Number of recent errors to return
-   * @returns {Array} Recent errors
-   */
+  
   getRecentErrors(limit = 10) {
     return this.errorLog.slice(-limit);
   }
 
-  /**
-   * Export error log for debugging
-   * @returns {Object} Complete error log
-   */
+  
   exportLog() {
     return {
       timestamp: new Date().toISOString(),
@@ -293,10 +229,7 @@ export class ErrorHandler {
     };
   }
 
-  /**
-   * Get environment information for debugging
-   * @returns {Object} Environment info
-   */
+  
   getEnvironmentInfo() {
     const info = {
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'background',
@@ -312,13 +245,11 @@ export class ErrorHandler {
     return info;
   }
 
-  /**
-   * Cleanup resources
-   */
+  
   cleanup() {
     this.clearLog();
     
-    // Remove global event listeners
+
     if (typeof window !== 'undefined') {
       window.removeEventListener('unhandledrejection', this.handleUnhandledRejection);
       window.removeEventListener('error', this.handleGlobalError);
@@ -326,8 +257,6 @@ export class ErrorHandler {
   }
 }
 
-// Export singleton instance for easy usage
 export const errorHandler = new ErrorHandler();
 
-// Export default
 export default ErrorHandler;
