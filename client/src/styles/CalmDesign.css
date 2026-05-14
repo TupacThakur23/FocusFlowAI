@@ -1,35 +1,29 @@
 
 
 :root {
-  
+
   --calm-primary: #1e293b;
   --calm-primary-light: #334155;
   --calm-primary-lighter: #475569;
   --calm-primary-dark: #0f172a;
-  
-  
+
   --calm-secondary: #64748b;
   --calm-secondary-light: #94a3b8;
   --calm-secondary-lighter: #cbd5e1;
-  
-  
+
   --calm-accent: #3b82f6;
   --calm-accent-light: #60a5fa;
   --calm-accent-dark: #2563eb;
-  
-  
+
   --calm-success: #10b981;
   --calm-success-light: #34d399;
-  
-  
+
   --calm-warning: #f59e0b;
   --calm-warning-light: #fbbf24;
-  
-  
+
   --calm-error: #ef4444;
   --calm-error-light: #f87171;
-  
-  
+
   --calm-neutral-50: #f8fafc;
   --calm-neutral-100: #f1f5f9;
   --calm-neutral-200: #e2e8f0;
@@ -40,8 +34,7 @@
   --calm-neutral-700: #334155;
   --calm-neutral-800: #1e293b;
   --calm-neutral-900: #0f172a;
-  
-  
+
   --calm-background: #ffffff;
   --calm-surface: #f8fafc;
   --calm-border: #e2e8f0;
@@ -49,45 +42,39 @@
   --calm-text-secondary: #64748b;
   --calm-text-tertiary: #94a3b8;
   --calm-text-inverse: #ffffff;
-  
-  
+
   --calm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --calm-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   --calm-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --calm-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   --calm-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  
-  
+
   --calm-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --calm-font-mono: 'SF Mono', Monaco, Inconsolata, 'Roboto Mono', monospace;
-  
-  
-  --calm-space-1: 0.25rem;   
-  --calm-space-2: 0.5rem;    
-  --calm-space-3: 0.75rem;   
-  --calm-space-4: 1rem;      
-  --calm-space-5: 1.25rem;   
-  --calm-space-6: 1.5rem;    
-  --calm-space-8: 2rem;      
-  --calm-space-10: 2.5rem;   
-  --calm-space-12: 3rem;     
-  --calm-space-16: 4rem;     
-  --calm-space-20: 5rem;     
-  
-  
+
+  --calm-space-1: 0.25rem;
+  --calm-space-2: 0.5rem;
+  --calm-space-3: 0.75rem;
+  --calm-space-4: 1rem;
+  --calm-space-5: 1.25rem;
+  --calm-space-6: 1.5rem;
+  --calm-space-8: 2rem;
+  --calm-space-10: 2.5rem;
+  --calm-space-12: 3rem;
+  --calm-space-16: 4rem;
+  --calm-space-20: 5rem;
+
   --calm-radius-sm: 0.25rem;
   --calm-radius: 0.375rem;
   --calm-radius-md: 0.5rem;
   --calm-radius-lg: 0.75rem;
   --calm-radius-xl: 1rem;
   --calm-radius-2xl: 1.5rem;
-  
-  
+
   --calm-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --calm-transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
   --calm-transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
-  
-  
+
   --calm-z-dropdown: 1000;
   --calm-z-sticky: 1020;
   --calm-z-fixed: 1030;
@@ -119,42 +106,42 @@ body {
 }
 
 .calm-text-xs {
-  font-size: 0.75rem;    
+  font-size: 0.75rem;
   line-height: 1rem;
 }
 
 .calm-text-sm {
-  font-size: 0.875rem;   
+  font-size: 0.875rem;
   line-height: 1.25rem;
 }
 
 .calm-text-base {
-  font-size: 1rem;      
+  font-size: 1rem;
   line-height: 1.5rem;
 }
 
 .calm-text-lg {
-  font-size: 1.125rem;   
+  font-size: 1.125rem;
   line-height: 1.75rem;
 }
 
 .calm-text-xl {
-  font-size: 1.25rem;    
+  font-size: 1.25rem;
   line-height: 1.75rem;
 }
 
 .calm-text-2xl {
-  font-size: 1.5rem;     
+  font-size: 1.5rem;
   line-height: 2rem;
 }
 
 .calm-text-3xl {
-  font-size: 1.875rem;   
+  font-size: 1.875rem;
   line-height: 2.25rem;
 }
 
 .calm-text-4xl {
-  font-size: 2.25rem;    
+  font-size: 2.25rem;
   line-height: 2.5rem;
 }
 
@@ -593,7 +580,7 @@ body {
   .calm-container {
     padding: 0 var(--calm-space-3);
   }
-  
+
   .calm-sidebar {
     width: 100%;
     position: fixed;
@@ -605,16 +592,16 @@ body {
     transform: translateY(100%);
     transition: transform var(--calm-transition);
   }
-  
+
   .calm-sidebar.open {
     transform: translateY(0);
   }
-  
+
   .calm-modal {
     margin: var(--calm-space-4);
     max-height: calc(100vh - 2rem);
   }
-  
+
   .calm-toast {
     left: var(--calm-space-4);
     right: var(--calm-space-4);
@@ -626,12 +613,12 @@ body {
   .calm-card {
     padding: var(--calm-space-4);
   }
-  
+
   .calm-btn {
     padding: var(--calm-space-3);
     font-size: 0.875rem;
   }
-  
+
   .calm-section {
     padding: var(--calm-space-6) 0;
   }
@@ -647,35 +634,35 @@ body {
     --calm-text-tertiary: #94a3b8;
     --calm-text-inverse: #0f172a;
   }
-  
+
   .calm-card {
     background-color: var(--calm-surface);
     border-color: var(--calm-border);
   }
-  
+
   .calm-input {
     background-color: var(--calm-surface);
     border-color: var(--calm-border);
     color: var(--calm-text-primary);
   }
-  
+
   .calm-sidebar {
     background-color: var(--calm-surface);
     border-color: var(--calm-border);
   }
-  
+
   .calm-btn-secondary:hover:not(:disabled) {
     background-color: var(--calm-neutral-800);
   }
-  
+
   .calm-btn-ghost:hover:not(:disabled) {
     background-color: var(--calm-neutral-800);
   }
-  
+
   .calm-nav-link:hover {
     background-color: var(--calm-neutral-800);
   }
-  
+
   .calm-sidebar-item:hover {
     background-color: var(--calm-neutral-800);
   }
@@ -688,12 +675,12 @@ body {
   .calm-toast {
     display: none !important;
   }
-  
+
   .calm-card {
     box-shadow: none;
     border: 1px solid #ccc;
   }
-  
+
   body {
     color: #000;
     background: #fff;
@@ -731,12 +718,13 @@ body {
     --calm-text-primary: #000000;
     --calm-text-secondary: #000000;
   }
-  
+
   .calm-card {
     border-width: 2px;
   }
-  
+
   .calm-btn {
     border-width: 2px;
   }
 }
+

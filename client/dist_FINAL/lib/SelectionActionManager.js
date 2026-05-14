@@ -1,5 +1,3 @@
-
-
 export class SelectionActionManager {
   constructor() {
     this.isInitialized = false;
@@ -8,43 +6,32 @@ export class SelectionActionManager {
     this.contextMenu = null;
     this.actionHandlers = new Map();
     this.keyboardShortcuts = new Map();
-    
     this.config = {
       enableToolbar: true,
       enableContextMenu: true,
       toolbarDelay: 500,
       minSelectionLength: 3,
       maxSelectionLength: 1000,
-      toolbarPosition: 'top-right', // top-right, top-left, bottom-right, bottom-left
+      toolbarPosition: 'top-right',
       animationDuration: 200
     };
-
     this.setupActionHandlers();
   }
-
-  
   initialize() {
     if (this.isInitialized) return;
-
     this.setupTextSelection();
     this.setupContextMenu();
     this.setupKeyboardShortcuts();
     this.setupMessageListener();
-    
     this.isInitialized = true;
     console.log('SelectionActionManager initialized');
   }
-
-  
   setupTextSelection() {
     let selectionTimeout;
-
-    document.addEventListener('mouseup', (event) => {
+    document.addEventListener('mouseup', event => {
       clearTimeout(selectionTimeout);
-      
       selectionTimeout = setTimeout(() => {
         const selection = window.getSelection().toString().trim();
-        
         if (this.isValidSelection(selection)) {
           this.currentSelection = selection;
           this.showToolbar(event);
@@ -54,71 +41,55 @@ export class SelectionActionManager {
         }
       }, 100);
     });
-
     document.addEventListener('selectionchange', () => {
       const selection = window.getSelection().toString().trim();
-      
       if (!this.isValidSelection(selection)) {
         this.hideToolbar();
       }
     });
-
-    document.addEventListener('click', (event) => {
+    document.addEventListener('click', event => {
       if (!this.toolbar || this.toolbar.contains(event.target)) {
         this.hideToolbar();
       }
     });
   }
-
-  
   setupContextMenu() {
     if (!this.config.enableContextMenu) return;
-
-    document.addEventListener('contextmenu', (event) => {
+    document.addEventListener('contextmenu', event => {
       const selection = window.getSelection().toString().trim();
-      
       if (this.isValidSelection(selection)) {
         event.preventDefault();
         this.showContextMenu(event.pageX, event.pageY, selection);
       }
     });
-
     document.addEventListener('click', () => {
       this.hideContextMenu();
     });
   }
-
-  
   setupKeyboardShortcuts() {
     this.keyboardShortcuts.set('explain', {
       keys: ['ctrl', 'shift', 'e'],
       action: 'explain',
       description: 'Explain selected text'
     });
-
     this.keyboardShortcuts.set('summarize', {
       keys: ['ctrl', 'shift', 's'],
       action: 'summarize',
       description: 'Summarize selected text'
     });
-
     this.keyboardShortcuts.set('save', {
       keys: ['ctrl', 'shift', 'r'],
       action: 'save',
       description: 'Save to research'
     });
-
     this.keyboardShortcuts.set('flashcard', {
       keys: ['ctrl', 'shift', 'f'],
       action: 'flashcard',
       description: 'Create flashcard'
     });
-
-    document.addEventListener('keydown', (event) => {
+    document.addEventListener('keydown', event => {
       const selection = window.getSelection().toString().trim();
-      
       if (!this.isValidSelection(selection)) return;
-
       for (const [name, shortcut] of this.keyboardShortcuts.entries()) {
         if (this.matchesShortcut(event, shortcut.keys)) {
           event.preventDefault();
@@ -128,82 +99,75 @@ export class SelectionActionManager {
       }
     });
   }
-
-  
   setupMessageListener() {
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.type === 'SELECTION_ACTION') {
           this.executeAction(message.action, message.selection);
-          sendResponse({ success: true });
+          sendResponse({
+            success: true
+          });
         }
       });
     }
   }
-
-  
   setupActionHandlers() {
-    this.actionHandlers.set('explain', (selection) => {
-      this.sendActionToExtension('explainSelection', { selection });
+    this.actionHandlers.set('explain', selection => {
+      this.sendActionToExtension('explainSelection', {
+        selection
+      });
     });
-
-    this.actionHandlers.set('summarize', (selection) => {
-      this.sendActionToExtension('summarizeSelection', { selection });
+    this.actionHandlers.set('summarize', selection => {
+      this.sendActionToExtension('summarizeSelection', {
+        selection
+      });
     });
-
-    this.actionHandlers.set('save', (selection) => {
-      this.sendActionToExtension('saveToResearch', { selection, url: window.location.href });
+    this.actionHandlers.set('save', selection => {
+      this.sendActionToExtension('saveToResearch', {
+        selection,
+        url: window.location.href
+      });
     });
-
-    this.actionHandlers.set('flashcard', (selection) => {
-      this.sendActionToExtension('createFlashcard', { selection });
+    this.actionHandlers.set('flashcard', selection => {
+      this.sendActionToExtension('createFlashcard', {
+        selection
+      });
     });
-
-    this.actionHandlers.set('simplify', (selection) => {
-      this.sendActionToExtension('simplifyContent', { selection });
+    this.actionHandlers.set('simplify', selection => {
+      this.sendActionToExtension('simplifyContent', {
+        selection
+      });
     });
-
-    this.actionHandlers.set('translate', (selection) => {
-      this.sendActionToExtension('translateContent', { selection });
+    this.actionHandlers.set('translate', selection => {
+      this.sendActionToExtension('translateContent', {
+        selection
+      });
     });
-
-    this.actionHandlers.set('citation', (selection) => {
-      this.sendActionToExtension('generateCitation', { selection });
+    this.actionHandlers.set('citation', selection => {
+      this.sendActionToExtension('generateCitation', {
+        selection
+      });
     });
   }
-
-  
   isValidSelection(selection) {
     if (!selection || typeof selection !== 'string') return false;
-    
     const length = selection.length;
-    return length >= this.config.minSelectionLength && 
-           length <= this.config.maxSelectionLength &&
-           !selection.match(/^\s+$/); // Not just whitespace
+    return length >= this.config.minSelectionLength && length <= this.config.maxSelectionLength && !selection.match(/^\s+$/);
   }
-
-  
   showToolbar(event) {
     if (!this.config.enableToolbar) return;
-
-    this.hideToolbar(); // Hide existing toolbar first
-
+    this.hideToolbar();
     this.toolbar = this.createToolbar();
     document.body.appendChild(this.toolbar);
-
     this.positionToolbar(event);
-
     setTimeout(() => {
       this.toolbar.classList.add('focusflow-toolbar-visible');
     }, 50);
   }
-
-  
   createToolbar() {
     const toolbar = document.createElement('div');
     toolbar.id = 'focusflow-selection-toolbar';
     toolbar.className = 'focusflow-toolbar';
-
     toolbar.innerHTML = `
       <div class="focusflow-toolbar-content">
         <div class="focusflow-toolbar-actions">
@@ -248,8 +212,7 @@ export class SelectionActionManager {
         </div>
       </div>
     `;
-
-    toolbar.addEventListener('click', (event) => {
+    toolbar.addEventListener('click', event => {
       const action = event.target.closest('[data-action]')?.dataset.action;
       if (action) {
         event.preventDefault();
@@ -257,30 +220,22 @@ export class SelectionActionManager {
         this.hideToolbar();
       }
     });
-
     const moreBtn = toolbar.querySelector('.focusflow-action-more');
     if (moreBtn) {
-      moreBtn.addEventListener('click', (event) => {
+      moreBtn.addEventListener('click', event => {
         event.preventDefault();
         this.showMoreActions(event.target);
       });
     }
-
     return toolbar;
   }
-
-  
   positionToolbar(event) {
     if (!this.toolbar) return;
-
     const selection = window.getSelection();
     if (!selection.rangeCount) return;
-
     const range = selection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
-
     let left, top;
-    
     switch (this.config.toolbarPosition) {
       case 'top-right':
         left = rect.right + window.scrollX;
@@ -299,29 +254,21 @@ export class SelectionActionManager {
         top = rect.bottom + window.scrollY + 10;
         break;
     }
-
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    
     if (left < 0) left = 10;
     if (left + this.toolbar.offsetWidth > viewportWidth) {
       left = viewportWidth - this.toolbar.offsetWidth - 10;
     }
-    
     if (top < 0) top = 10;
     if (top + this.toolbar.offsetHeight > viewportHeight) {
       top = viewportHeight - this.toolbar.offsetHeight - 10;
     }
-
     this.toolbar.style.left = `${left}px`;
     this.toolbar.style.top = `${top}px`;
   }
-
-  
   showMoreActions(button) {
-
     this.hideMoreActions();
-
     const dropdown = document.createElement('div');
     dropdown.className = 'focusflow-more-dropdown';
     dropdown.innerHTML = `
@@ -346,14 +293,11 @@ export class SelectionActionManager {
         </button>
       </div>
     `;
-
     const buttonRect = button.getBoundingClientRect();
     dropdown.style.left = `${buttonRect.left}px`;
     dropdown.style.top = `${buttonRect.bottom + 5}px`;
-
     document.body.appendChild(dropdown);
-
-    dropdown.addEventListener('click', (event) => {
+    dropdown.addEventListener('click', event => {
       const action = event.target.closest('[data-action]')?.dataset.action;
       if (action) {
         event.preventDefault();
@@ -362,49 +306,38 @@ export class SelectionActionManager {
         this.hideToolbar();
       }
     });
-
     setTimeout(() => {
       this.hideMoreActions();
     }, 3000);
-
     setTimeout(() => {
-      document.addEventListener('click', this.hideMoreActions, { once: true });
+      document.addEventListener('click', this.hideMoreActions, {
+        once: true
+      });
     }, 100);
   }
-
-  
   showContextMenu(x, y, selection) {
-    this.hideContextMenu(); // Hide existing menu first
-
+    this.hideContextMenu();
     this.contextMenu = this.createContextMenu(selection);
     document.body.appendChild(this.contextMenu);
-
     this.contextMenu.style.left = `${x}px`;
     this.contextMenu.style.top = `${y}px`;
-
     const rect = this.contextMenu.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-
     if (rect.right > viewportWidth) {
       this.contextMenu.style.left = `${viewportWidth - rect.width - 10}px`;
     }
-    
     if (rect.bottom > viewportHeight) {
       this.contextMenu.style.top = `${viewportHeight - rect.height - 10}px`;
     }
-
     setTimeout(() => {
       this.contextMenu.classList.add('focusflow-context-menu-visible');
     }, 50);
   }
-
-  
   createContextMenu(selection) {
     const menu = document.createElement('div');
     menu.id = 'focusflow-context-menu';
     menu.className = 'focusflow-context-menu';
-
     menu.innerHTML = `
       <div class="focusflow-context-menu-content">
         <div class="focusflow-context-header">
@@ -451,8 +384,7 @@ export class SelectionActionManager {
         </div>
       </div>
     `;
-
-    menu.addEventListener('click', (event) => {
+    menu.addEventListener('click', event => {
       const action = event.target.closest('[data-action]')?.dataset.action;
       if (action) {
         event.preventDefault();
@@ -460,18 +392,13 @@ export class SelectionActionManager {
         this.hideContextMenu();
       }
     });
-
     return menu;
   }
-
-  
   executeAction(action, selection) {
     const handler = this.actionHandlers.get(action);
     if (handler) {
       try {
         handler(selection);
-        
-
         this.sendAnalyticsEvent('action_executed', {
           action,
           selectionLength: selection.length,
@@ -479,8 +406,6 @@ export class SelectionActionManager {
         });
       } catch (error) {
         console.error(`Error executing action ${action}:`, error);
-        
-
         this.sendAnalyticsEvent('action_error', {
           action,
           error: error.message
@@ -488,8 +413,6 @@ export class SelectionActionManager {
       }
     }
   }
-
-  
   hideToolbar() {
     if (this.toolbar) {
       this.toolbar.classList.remove('focusflow-toolbar-visible');
@@ -501,8 +424,6 @@ export class SelectionActionManager {
       }, this.config.animationDuration);
     }
   }
-
-  
   hideContextMenu() {
     if (this.contextMenu) {
       this.contextMenu.classList.remove('focusflow-context-menu-visible');
@@ -514,29 +435,28 @@ export class SelectionActionManager {
       }, this.config.animationDuration);
     }
   }
-
-  
   hideMoreActions() {
     const dropdown = document.querySelector('.focusflow-more-dropdown');
     if (dropdown && dropdown.parentNode) {
       dropdown.parentNode.removeChild(dropdown);
     }
   }
-
-  
   matchesShortcut(event, keys) {
     return keys.every(key => {
       switch (key) {
-        case 'ctrl': return event.ctrlKey;
-        case 'shift': return event.shiftKey;
-        case 'alt': return event.altKey;
-        case 'meta': return event.metaKey;
-        default: return event.key.toLowerCase() === key.toLowerCase();
+        case 'ctrl':
+          return event.ctrlKey;
+        case 'shift':
+          return event.shiftKey;
+        case 'alt':
+          return event.altKey;
+        case 'meta':
+          return event.metaKey;
+        default:
+          return event.key.toLowerCase() === key.toLowerCase();
       }
     });
   }
-
-  
   sendActionToExtension(type, data) {
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       chrome.runtime.sendMessage({
@@ -548,8 +468,6 @@ export class SelectionActionManager {
       });
     }
   }
-
-  
   sendAnalyticsEvent(event, data) {
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       chrome.runtime.sendMessage({
@@ -560,8 +478,6 @@ export class SelectionActionManager {
       });
     }
   }
-
-  
   notifySelectionChange(selection) {
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       chrome.runtime.sendMessage({
@@ -573,53 +489,36 @@ export class SelectionActionManager {
       });
     }
   }
-
-  
   escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
   }
-
-  
   updateConfig(newConfig) {
-    this.config = { ...this.config, ...newConfig };
-    
-
+    this.config = {
+      ...this.config,
+      ...newConfig
+    };
     if (newConfig.enableToolbar !== undefined || newConfig.enableContextMenu !== undefined) {
       this.cleanup();
       this.initialize();
     }
   }
-
-  
   getConfig() {
-    return { ...this.config };
+    return {
+      ...this.config
+    };
   }
-
-  
   getCurrentSelection() {
     return this.currentSelection;
   }
-
-  
   cleanup() {
     this.hideToolbar();
     this.hideContextMenu();
     this.hideMoreActions();
-    
     this.isInitialized = false;
     console.log('SelectionActionManager cleaned up');
   }
 }
-
-// export const selectionActionManager = new SelectionActionManager();
 export const selectionActionManager = null;
-
-// export const initialize = selectionActionManager.initialize.bind(selectionActionManager);
-// export const cleanup = selectionActionManager.cleanup.bind(selectionActionManager);
-// export const updateConfig = selectionActionManager.updateConfig.bind(selectionActionManager);
-// export const getConfig = selectionActionManager.getConfig.bind(selectionActionManager);
-// export const getCurrentSelection = selectionActionManager.getCurrentSelection.bind(selectionActionManager);
-
 export default selectionActionManager;

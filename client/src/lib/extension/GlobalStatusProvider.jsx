@@ -1,9 +1,5 @@
-
-
 import React, { createContext, useContext, useReducer, useCallback } from 'react';
-
 const initialState = {
-
   loading: {
     extracting: false,
     summarizing: false,
@@ -13,8 +9,6 @@ const initialState = {
     syncing: false,
     sidebar: false
   },
-  
-
   errors: {
     extracting: null,
     summarizing: null,
@@ -25,11 +19,7 @@ const initialState = {
     sidebar: null,
     global: null
   },
-  
-
   toasts: [],
-  
-
   progress: {
     extracting: 0,
     summarizing: 0,
@@ -37,51 +27,34 @@ const initialState = {
     saving: 0,
     embedding: 0
   },
-  
-
   connection: {
     online: navigator.onLine,
     api: true,
     extension: true
   },
-  
-
   performance: {
     lastActivity: null,
     operationCount: 0,
     errorCount: 0
   }
 };
-
 const actionTypes = {
-
   SET_LOADING: 'SET_LOADING',
   CLEAR_LOADING: 'CLEAR_LOADING',
   CLEAR_ALL_LOADING: 'CLEAR_ALL_LOADING',
-  
-
   SET_ERROR: 'SET_ERROR',
   CLEAR_ERROR: 'CLEAR_ERROR',
   CLEAR_ALL_ERRORS: 'CLEAR_ALL_ERRORS',
-  
-
   ADD_TOAST: 'ADD_TOAST',
   REMOVE_TOAST: 'REMOVE_TOAST',
   CLEAR_TOASTS: 'CLEAR_TOASTS',
-  
-
   SET_PROGRESS: 'SET_PROGRESS',
   CLEAR_PROGRESS: 'CLEAR_PROGRESS',
-  
-
   SET_CONNECTION: 'SET_CONNECTION',
-  
-
   UPDATE_ACTIVITY: 'UPDATE_ACTIVITY',
   INCREMENT_OPERATION: 'INCREMENT_OPERATION',
   INCREMENT_ERROR: 'INCREMENT_ERROR'
 };
-
 function globalStatusReducer(state, action) {
   switch (action.type) {
     case actionTypes.SET_LOADING:
@@ -92,7 +65,6 @@ function globalStatusReducer(state, action) {
           [action.payload.operation]: action.payload.loading
         }
       };
-      
     case actionTypes.CLEAR_LOADING:
       return {
         ...state,
@@ -101,7 +73,6 @@ function globalStatusReducer(state, action) {
           [action.payload]: false
         }
       };
-      
     case actionTypes.CLEAR_ALL_LOADING:
       return {
         ...state,
@@ -110,7 +81,6 @@ function globalStatusReducer(state, action) {
           [key]: false
         }), {})
       };
-      
     case actionTypes.SET_ERROR:
       return {
         ...state,
@@ -123,7 +93,6 @@ function globalStatusReducer(state, action) {
           errorCount: state.performance.errorCount + 1
         }
       };
-      
     case actionTypes.CLEAR_ERROR:
       return {
         ...state,
@@ -132,7 +101,6 @@ function globalStatusReducer(state, action) {
           [action.payload]: null
         }
       };
-      
     case actionTypes.CLEAR_ALL_ERRORS:
       return {
         ...state,
@@ -141,25 +109,21 @@ function globalStatusReducer(state, action) {
           [key]: null
         }), {})
       };
-      
     case actionTypes.ADD_TOAST:
       return {
         ...state,
         toasts: [...state.toasts, action.payload]
       };
-      
     case actionTypes.REMOVE_TOAST:
       return {
         ...state,
         toasts: state.toasts.filter(toast => toast.id !== action.payload)
       };
-      
     case actionTypes.CLEAR_TOASTS:
       return {
         ...state,
         toasts: []
       };
-      
     case actionTypes.SET_PROGRESS:
       return {
         ...state,
@@ -168,7 +132,6 @@ function globalStatusReducer(state, action) {
           [action.payload.operation]: action.payload.value
         }
       };
-      
     case actionTypes.CLEAR_PROGRESS:
       return {
         ...state,
@@ -177,7 +140,6 @@ function globalStatusReducer(state, action) {
           [action.payload]: 0
         }
       };
-      
     case actionTypes.SET_CONNECTION:
       return {
         ...state,
@@ -186,7 +148,6 @@ function globalStatusReducer(state, action) {
           ...action.payload
         }
       };
-      
     case actionTypes.UPDATE_ACTIVITY:
       return {
         ...state,
@@ -195,7 +156,6 @@ function globalStatusReducer(state, action) {
           lastActivity: action.payload
         }
       };
-      
     case actionTypes.INCREMENT_OPERATION:
       return {
         ...state,
@@ -204,7 +164,6 @@ function globalStatusReducer(state, action) {
           operationCount: state.performance.operationCount + 1
         }
       };
-      
     case actionTypes.INCREMENT_ERROR:
       return {
         ...state,
@@ -213,31 +172,31 @@ function globalStatusReducer(state, action) {
           errorCount: state.performance.errorCount + 1
         }
       };
-      
     default:
       return state;
   }
 }
-
 const GlobalStatusContext = createContext();
-
-export const GlobalStatusProvider = ({ children }) => {
+export const GlobalStatusProvider = ({
+  children
+}) => {
   const [state, dispatch] = useReducer(globalStatusReducer, initialState);
-
   React.useEffect(() => {
     const handleOnline = () => {
       dispatch({
         type: actionTypes.SET_CONNECTION,
-        payload: { online: true }
+        payload: {
+          online: true
+        }
       });
     };
-
     const handleOffline = () => {
       dispatch({
         type: actionTypes.SET_CONNECTION,
-        payload: { online: false }
+        payload: {
+          online: false
+        }
       });
-      
       dispatch({
         type: actionTypes.ADD_TOAST,
         payload: {
@@ -249,16 +208,13 @@ export const GlobalStatusProvider = ({ children }) => {
         }
       });
     };
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-
   React.useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
@@ -271,51 +227,46 @@ export const GlobalStatusProvider = ({ children }) => {
         }
       });
     }, 1000);
-
     return () => clearInterval(interval);
   }, [state.toasts]);
-
   const actions = {
-
     setLoading: (operation, loading) => {
       dispatch({
         type: actionTypes.SET_LOADING,
-        payload: { operation, loading }
+        payload: {
+          operation,
+          loading
+        }
       });
-      
       if (loading) {
         dispatch({
           type: actionTypes.UPDATE_ACTIVITY,
           payload: Date.now()
         });
-        
         dispatch({
           type: actionTypes.INCREMENT_OPERATION
         });
       }
     },
-    
-    clearLoading: (operation) => {
+    clearLoading: operation => {
       dispatch({
         type: actionTypes.CLEAR_LOADING,
         payload: operation
       });
     },
-    
     clearAllLoading: () => {
       dispatch({
         type: actionTypes.CLEAR_ALL_LOADING
       });
     },
-    
-
     setError: (operation, error, options = {}) => {
       dispatch({
         type: actionTypes.SET_ERROR,
-        payload: { operation, error }
+        payload: {
+          operation,
+          error
+        }
       });
-      
-
       if (options.showToast !== false) {
         dispatch({
           type: actionTypes.ADD_TOAST,
@@ -330,80 +281,67 @@ export const GlobalStatusProvider = ({ children }) => {
         });
       }
     },
-    
-    clearError: (operation) => {
+    clearError: operation => {
       dispatch({
         type: actionTypes.CLEAR_ERROR,
         payload: operation
       });
     },
-    
     clearAllErrors: () => {
       dispatch({
         type: actionTypes.CLEAR_ALL_ERRORS
       });
     },
-    
-
-    addToast: (toast) => {
+    addToast: toast => {
       const newToast = {
         id: Date.now(),
         timestamp: Date.now(),
         duration: 4000,
         ...toast
       };
-      
       dispatch({
         type: actionTypes.ADD_TOAST,
         payload: newToast
       });
     },
-    
-    removeToast: (id) => {
+    removeToast: id => {
       dispatch({
         type: actionTypes.REMOVE_TOAST,
         payload: id
       });
     },
-    
     clearToasts: () => {
       dispatch({
         type: actionTypes.CLEAR_TOASTS
       });
     },
-    
-
     setProgress: (operation, value) => {
       dispatch({
         type: actionTypes.SET_PROGRESS,
-        payload: { operation, value }
+        payload: {
+          operation,
+          value
+        }
       });
     },
-    
-    clearProgress: (operation) => {
+    clearProgress: operation => {
       dispatch({
         type: actionTypes.CLEAR_PROGRESS,
         payload: operation
       });
     },
-    
-
-    setConnection: (connection) => {
+    setConnection: connection => {
       dispatch({
         type: actionTypes.SET_CONNECTION,
         payload: connection
       });
     },
-    
-
     updateActivity: () => {
       dispatch({
         type: actionTypes.UPDATE_ACTIVITY,
         payload: Date.now()
       });
     },
-    
-
     startOperation: (operation, options = {}) => {
       actions.setLoading(operation, true);
       actions.clearError(operation);
@@ -411,12 +349,10 @@ export const GlobalStatusProvider = ({ children }) => {
         actions.setProgress(operation, options.progress);
       }
     },
-    
     completeOperation: (operation, options = {}) => {
       actions.setLoading(operation, false);
       actions.clearError(operation);
       actions.clearProgress(operation);
-      
       if (options.success && options.message) {
         actions.addToast({
           type: 'success',
@@ -426,68 +362,62 @@ export const GlobalStatusProvider = ({ children }) => {
         });
       }
     },
-    
     failOperation: (operation, error, options = {}) => {
       actions.setLoading(operation, false);
       actions.setError(operation, error, options);
       actions.clearProgress(operation);
     }
   };
-
   const contextValue = {
     ...state,
     actions,
-
     isLoadingAny: Object.values(state.loading).some(Boolean),
     hasAnyErrors: Object.values(state.errors).some(Boolean),
     isOnline: state.connection.online,
     hasActiveOperations: Object.values(state.loading).some(Boolean)
   };
-
-  return (
-    <GlobalStatusContext.Provider value={contextValue}>
+  return <GlobalStatusContext.Provider value={contextValue}>
       {children}
-    </GlobalStatusContext.Provider>
-  );
+    </GlobalStatusContext.Provider>;
 };
-
 export const useGlobalStatus = () => {
   const context = useContext(GlobalStatusContext);
-  
   if (!context) {
     throw new Error('useGlobalStatus must be used within a GlobalStatusProvider');
   }
-  
   return context;
 };
-
 export const useLoadingStates = () => {
-  const { loading, actions } = useGlobalStatus();
-  
+  const {
+    loading,
+    actions
+  } = useGlobalStatus();
   return {
     loading,
-    isLoading: (operation) => loading[operation] || false,
+    isLoading: operation => loading[operation] || false,
     setLoading: actions.setLoading,
     clearLoading: actions.clearLoading,
     clearAllLoading: actions.clearAllLoading
   };
 };
-
 export const useErrorStates = () => {
-  const { errors, actions } = useGlobalStatus();
-  
+  const {
+    errors,
+    actions
+  } = useGlobalStatus();
   return {
     errors,
-    hasError: (operation) => errors[operation] || null,
+    hasError: operation => errors[operation] || null,
     setError: actions.setError,
     clearError: actions.clearError,
     clearAllErrors: actions.clearAllErrors
   };
 };
-
 export const useToasts = () => {
-  const { toasts, actions } = useGlobalStatus();
-  
+  const {
+    toasts,
+    actions
+  } = useGlobalStatus();
   return {
     toasts,
     addToast: actions.addToast,
@@ -495,26 +425,27 @@ export const useToasts = () => {
     clearToasts: actions.clearToasts
   };
 };
-
 export const useProgress = () => {
-  const { progress, actions } = useGlobalStatus();
-  
+  const {
+    progress,
+    actions
+  } = useGlobalStatus();
   return {
     progress,
-    getProgress: (operation) => progress[operation] || 0,
+    getProgress: operation => progress[operation] || 0,
     setProgress: actions.setProgress,
     clearProgress: actions.clearProgress
   };
 };
-
 export const useConnection = () => {
-  const { connection, actions } = useGlobalStatus();
-  
+  const {
+    connection,
+    actions
+  } = useGlobalStatus();
   return {
     connection,
     isOnline: connection.online,
     setConnection: actions.setConnection
   };
 };
-
 export default GlobalStatusProvider;

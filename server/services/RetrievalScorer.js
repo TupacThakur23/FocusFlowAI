@@ -1,9 +1,6 @@
-
-
 class RetrievalScorer {
   constructor(options = {}) {
     this.config = {
-
       weights: {
         semanticSimilarity: options.weights?.semanticSimilarity || 0.35,
         recency: options.weights?.recency || 0.20,
@@ -12,35 +9,27 @@ class RetrievalScorer {
         sourceQuality: options.weights?.sourceQuality || 0.10,
         chunkImportance: options.weights?.chunkImportance || 0.05
       },
-      
-
-      recencyDecay: options.recencyDecay || 30, // days
+      recencyDecay: options.recencyDecay || 30,
       minInteractionThreshold: options.minInteractionThreshold || 1,
       diversityPenalty: options.diversityPenalty || 0.1,
       relevanceBoost: options.relevanceBoost || 0.2,
-      
-
       enableNormalization: options.enableNormalization !== false,
-      scoreRange: options.scoreRange || { min: 0, max: 1 }
+      scoreRange: options.scoreRange || {
+        min: 0,
+        max: 1
+      }
     };
-
     this.scoringHistory = [];
     this.userPreferences = new Map();
     this.sourceReputation = new Map();
-    
     this.initializeSourceReputation();
   }
-
-  
   scoreResults(results, query, context = {}) {
     const startTime = Date.now();
-    
     try {
-
       const scoredResults = results.map(result => {
         const scores = this.calculateIndividualScores(result, query, context);
         const totalScore = this.calculateTotalScore(scores);
-        
         return {
           ...result,
           scores,
@@ -48,19 +37,10 @@ class RetrievalScorer {
           scoreBreakdown: this.generateScoreBreakdown(scores, totalScore)
         };
       });
-
       const diversityAdjusted = this.applyDiversityAdjustments(scoredResults);
-      
-
-      const normalized = this.config.enableNormalization 
-        ? this.normalizeScores(diversityAdjusted)
-        : diversityAdjusted;
-
+      const normalized = this.config.enableNormalization ? this.normalizeScores(diversityAdjusted) : diversityAdjusted;
       const sorted = normalized.sort((a, b) => b.finalScore - a.finalScore);
-      
       const scoringTime = Date.now() - startTime;
-      
-
       this.scoringHistory.push({
         timestamp: Date.now(),
         query: query.text,
@@ -68,7 +48,6 @@ class RetrievalScorer {
         scoringTime,
         weights: this.config.weights
       });
-
       return {
         results: sorted,
         metadata: {
@@ -79,17 +58,13 @@ class RetrievalScorer {
           scoreDistribution: this.calculateScoreDistribution(sorted)
         }
       };
-      
     } catch (error) {
       console.error('Scoring failed:', error);
       throw new Error(`Scoring failed: ${error.message}`);
     }
   }
-
-  
   calculateIndividualScores(result, query, context) {
     const weights = this.config.weights;
-    
     return {
       semanticSimilarity: this.calculateSemanticSimilarityScore(result, query),
       recency: this.calculateRecencyScore(result),
@@ -101,341 +76,206 @@ class RetrievalScorer {
       contextAlignment: this.calculateContextAlignmentScore(result, context)
     };
   }
-
-  
   calculateSemanticSimilarityScore(result, query) {
     if (!result.similarity || !query.embedding) return 0;
-    
-
     const normalizedSimilarity = Math.max(0, Math.min(1, result.similarity));
-    
-
     let adjustedScore = normalizedSimilarity;
-    
-
     if (query.keywords && result.metadata.content) {
       const content = result.metadata.content.toLowerCase();
-      const keywordMatches = query.keywords.filter(keyword => 
-        content.includes(keyword.toLowerCase())
-      );
-      
+      const keywordMatches = query.keywords.filter(keyword => content.includes(keyword.toLowerCase()));
       if (keywordMatches.length > 0) {
-        adjustedScore += (keywordMatches.length / query.keywords.length) * 0.1;
+        adjustedScore += keywordMatches.length / query.keywords.length * 0.1;
       }
     }
-    
     return Math.min(1, adjustedScore);
   }
-
-  
   calculateRecencyScore(result) {
     const timestamp = result.metadata.timestamp || result.metadata.createdAt || 0;
-    if (!timestamp) return 0.5; // Neutral score for unknown timestamps
-    
+    if (!timestamp) return 0.5;
     const now = Date.now();
     const daysSinceCreation = (now - timestamp) / (1000 * 60 * 60 * 24);
-    
-
     const decayRate = 1 / this.config.recencyDecay;
     const recencyScore = Math.exp(-decayRate * daysSinceCreation);
-    
     return Math.max(0, Math.min(1, recencyScore));
   }
-
-  
   calculateWorkbookRelevanceScore(result, context) {
     const resultWorkbookId = result.metadata.workbookId;
     const activeWorkbooks = context.activeWorkbooks || [];
     const currentWorkbook = context.currentWorkbook;
-    
-    let score = 0.3; // Base score
-    
-
+    let score = 0.3;
     if (activeWorkbooks.includes(resultWorkbookId)) {
       score += this.config.relevanceBoost;
     }
-    
-
     if (currentWorkbook && resultWorkbookId === currentWorkbook) {
       score += this.config.relevanceBoost * 0.5;
     }
-    
-
     if (context.workbookTypes && result.metadata.workbookType) {
-      const typeRelevance = this.calculateTypeRelevance(
-        result.metadata.workbookType, 
-        context.workbookTypes
-      );
+      const typeRelevance = this.calculateTypeRelevance(result.metadata.workbookType, context.workbookTypes);
       score += typeRelevance * 0.2;
     }
-    
     return Math.min(1, score);
   }
-
-  
   calculateUserInteractionScore(result) {
     const chunkId = result.chunkId || result.id;
     const interactions = this.userPreferences.get(chunkId);
-    
-    if (!interactions) return 0.1; // Small score for unseen content
-    
-
-    const totalInteractions = (interactions.views || 0) + 
-                           (interactions.selections || 0) + 
-                           (interactions.copies || 0);
-    
-    const daysSinceLastInteraction = interactions.lastInteraction 
-      ? (Date.now() - interactions.lastInteraction) / (1000 * 60 * 60 * 24)
-      : 365; // Long time ago
-    
-
+    if (!interactions) return 0.1;
+    const totalInteractions = (interactions.views || 0) + (interactions.selections || 0) + (interactions.copies || 0);
+    const daysSinceLastInteraction = interactions.lastInteraction ? (Date.now() - interactions.lastInteraction) / (1000 * 60 * 60 * 24) : 365;
     const frequencyScore = Math.min(1, totalInteractions / this.config.minInteractionThreshold);
-    
-
     const recencyScore = Math.max(0, 1 - daysSinceLastInteraction / 30);
-    
-
-    const combinedScore = (frequencyScore * 0.6) + (recencyScore * 0.4);
-    
+    const combinedScore = frequencyScore * 0.6 + recencyScore * 0.4;
     return Math.min(1, combinedScore);
   }
-
-  
   calculateSourceQualityScore(result) {
     const url = result.metadata.url;
-    if (!url) return 0.5; // Neutral for unknown sources
-    
-    let score = 0.5; // Base score
-    
-
+    if (!url) return 0.5;
+    let score = 0.5;
     const domain = new URL(url).hostname;
     const reputation = this.sourceReputation.get(domain);
-    
     if (reputation) {
       score += reputation.score * 0.3;
     }
-    
-
     if (url.includes('edu') || url.includes('ac.uk')) {
-      score += 0.2; // Academic sources
+      score += 0.2;
     }
-    
     if (url.includes('gov')) {
-      score += 0.25; // Government sources
+      score += 0.25;
     }
-    
-
-    const reputablePatterns = [
-      'wikipedia.org', 'arxiv.org', 'pubmed.ncbi.nlm.nih.gov',
-      'nature.com', 'science.org', 'ieee.org'
-    ];
-    
+    const reputablePatterns = ['wikipedia.org', 'arxiv.org', 'pubmed.ncbi.nlm.nih.gov', 'nature.com', 'science.org', 'ieee.org'];
     for (const pattern of reputablePatterns) {
       if (url.includes(pattern)) {
         score += 0.15;
-        break; // Only apply once
+        break;
       }
     }
-    
     return Math.min(1, score);
   }
-
-  
   calculateChunkImportanceScore(result) {
     const metadata = result.metadata;
-    
-    let score = 0.3; // Base score
-    
-
+    let score = 0.3;
     if (metadata.importance) {
       score += Math.min(0.4, metadata.importance / 10);
     }
-    
-
     if (metadata.headingLevel) {
       const headingScore = Math.max(0, 1 - (metadata.headingLevel - 1) * 0.1);
       score += headingScore * 0.3;
     }
-    
-
     const contentLength = metadata.contentLength || metadata.charCount || 0;
     if (contentLength > 50 && contentLength < 500) {
-      score += 0.2; // Good length
+      score += 0.2;
     } else if (contentLength >= 500 && contentLength < 1000) {
-      score += 0.1; // Acceptable length
+      score += 0.1;
     }
-    
-
     if (metadata.semanticTags && metadata.semanticTags.length > 0) {
       score += Math.min(0.2, metadata.semanticTags.length * 0.05);
     }
-    
     return Math.min(1, score);
   }
-
-  
   calculateQueryRelevanceScore(result, query) {
     if (!query.text || !result.metadata.content) return 0.5;
-    
     const queryWords = query.text.toLowerCase().split(/\s+/);
     const content = result.metadata.content.toLowerCase();
-    
-
     const overlapWords = queryWords.filter(word => content.includes(word));
     const overlapRatio = overlapWords.length / queryWords.length;
-    
-
     const phraseMatches = this.findPhraseMatches(query.text, content);
     const phraseScore = Math.min(0.3, phraseMatches * 0.1);
-    
-
     const wordScore = overlapRatio * 0.7;
     const totalScore = wordScore + phraseScore;
-    
     return Math.min(1, totalScore);
   }
-
-  
   calculateContextAlignmentScore(result, context) {
     if (!context.previousQueries || !context.userIntent) return 0.5;
-    
-    let score = 0.5; // Base score
-    
-
+    let score = 0.5;
     if (context.previousQueries && context.previousQueries.length > 0) {
-      const alignmentScore = this.calculateQueryAlignment(
-        result.metadata.content,
-        context.previousQueries
-      );
+      const alignmentScore = this.calculateQueryAlignment(result.metadata.content, context.previousQueries);
       score += alignmentScore * 0.3;
     }
-    
-
     if (context.userIntent && result.metadata.semanticTags) {
-      const intentAlignment = this.calculateIntentAlignment(
-        result.metadata.semanticTags,
-        context.userIntent
-      );
+      const intentAlignment = this.calculateIntentAlignment(result.metadata.semanticTags, context.userIntent);
       score += intentAlignment * 0.2;
     }
-    
     return Math.min(1, score);
   }
-
-  
   calculateTotalScore(scores) {
     const weights = this.config.weights;
-    
-    return (
-      scores.semanticSimilarity * weights.semanticSimilarity +
-      scores.recency * weights.recency +
-      scores.workbookRelevance * weights.workbookRelevance +
-      scores.userInteraction * weights.userInteraction +
-      scores.sourceQuality * weights.sourceQuality +
-      scores.chunkImportance * weights.chunkImportance +
-      scores.queryRelevance * 0.05 + // Small weight for query relevance
-      scores.contextAlignment * 0.05   // Small weight for context alignment
-    );
+    return scores.semanticSimilarity * weights.semanticSimilarity + scores.recency * weights.recency + scores.workbookRelevance * weights.workbookRelevance + scores.userInteraction * weights.userInteraction + scores.sourceQuality * weights.sourceQuality + scores.chunkImportance * weights.chunkImportance + scores.queryRelevance * 0.05 + scores.contextAlignment * 0.05;
   }
-
-  
   applyDiversityAdjustments(scoredResults) {
     const adjusted = [...scoredResults];
-    
     for (let i = 0; i < adjusted.length; i++) {
       const current = adjusted[i];
       let diversityPenalty = 0;
-      
-
       for (let j = 0; j < i; j++) {
         const previous = adjusted[j];
         const similarity = this.calculateResultSimilarity(current, previous);
-        
         if (similarity > 0.8) {
           diversityPenalty += this.config.diversityPenalty * similarity;
         }
       }
-      
       adjusted[i] = {
         ...current,
         diversityPenalty,
         finalScore: Math.max(0, current.totalScore - diversityPenalty)
       };
     }
-    
     return adjusted;
   }
-
-  
   normalizeScores(results) {
     if (results.length === 0) return results;
-    
-
     const scores = results.map(r => r.finalScore);
     const minScore = Math.min(...scores);
     const maxScore = Math.max(...scores);
     const range = maxScore - minScore;
-    
-    if (range === 0) return results; // All scores are the same
-    
-
+    if (range === 0) return results;
     return results.map(result => ({
       ...result,
-      finalScore: ((result.finalScore - minScore) / range) * 
-        (this.config.scoreRange.max - this.config.scoreRange.min) + this.config.scoreRange.min
+      finalScore: (result.finalScore - minScore) / range * (this.config.scoreRange.max - this.config.scoreRange.min) + this.config.scoreRange.min
     }));
   }
-
-  
   generateScoreBreakdown(scores, totalScore) {
     const weights = this.config.weights;
-    
     return {
       semanticSimilarity: {
         score: scores.semanticSimilarity,
         weight: weights.semanticSimilarity,
         contribution: scores.semanticSimilarity * weights.semanticSimilarity,
-        percentage: ((scores.semanticSimilarity * weights.semanticSimilarity) / totalScore * 100).toFixed(1) + '%'
+        percentage: (scores.semanticSimilarity * weights.semanticSimilarity / totalScore * 100).toFixed(1) + '%'
       },
       recency: {
         score: scores.recency,
         weight: weights.recency,
         contribution: scores.recency * weights.recency,
-        percentage: ((scores.recency * weights.recency) / totalScore * 100).toFixed(1) + '%'
+        percentage: (scores.recency * weights.recency / totalScore * 100).toFixed(1) + '%'
       },
       workbookRelevance: {
         score: scores.workbookRelevance,
         weight: weights.workbookRelevance,
         contribution: scores.workbookRelevance * weights.workbookRelevance,
-        percentage: ((scores.workbookRelevance * weights.workbookRelevance) / totalScore * 100).toFixed(1) + '%'
+        percentage: (scores.workbookRelevance * weights.workbookRelevance / totalScore * 100).toFixed(1) + '%'
       },
       userInteraction: {
         score: scores.userInteraction,
         weight: weights.userInteraction,
         contribution: scores.userInteraction * weights.userInteraction,
-        percentage: ((scores.userInteraction * weights.userInteraction) / totalScore * 100).toFixed(1) + '%'
+        percentage: (scores.userInteraction * weights.userInteraction / totalScore * 100).toFixed(1) + '%'
       },
       sourceQuality: {
         score: scores.sourceQuality,
         weight: weights.sourceQuality,
         contribution: scores.sourceQuality * weights.sourceQuality,
-        percentage: ((scores.sourceQuality * weights.sourceQuality) / totalScore * 100).toFixed(1) + '%'
+        percentage: (scores.sourceQuality * weights.sourceQuality / totalScore * 100).toFixed(1) + '%'
       },
       chunkImportance: {
         score: scores.chunkImportance,
         weight: weights.chunkImportance,
         contribution: scores.chunkImportance * weights.chunkImportance,
-        percentage: ((scores.chunkImportance * weights.chunkImportance) / totalScore * 100).toFixed(1) + '%'
+        percentage: (scores.chunkImportance * weights.chunkImportance / totalScore * 100).toFixed(1) + '%'
       }
     };
   }
-
-  
   calculateScoreDistribution(results) {
     if (results.length === 0) return {};
-    
     const scores = results.map(r => r.finalScore);
-    
     return {
       mean: scores.reduce((sum, score) => sum + score, 0) / scores.length,
       median: this.calculateMedian(scores),
@@ -445,67 +285,68 @@ class RetrievalScorer {
       quartiles: this.calculateQuartiles(scores)
     };
   }
-
-  
   initializeSourceReputation() {
-
-    const reputableSources = [
-      { domain: 'wikipedia.org', score: 0.8 },
-      { domain: 'arxiv.org', score: 0.9 },
-      { domain: 'pubmed.ncbi.nlm.nih.gov', score: 0.9 },
-      { domain: 'nature.com', score: 0.85 },
-      { domain: 'science.org', score: 0.8 },
-      { domain: 'ieee.org', score: 0.85 },
-      { domain: 'scholar.google.com', score: 0.7 },
-      { domain: 'edu', score: 0.75 },
-      { domain: 'gov', score: 0.8 }
-    ];
-    
+    const reputableSources = [{
+      domain: 'wikipedia.org',
+      score: 0.8
+    }, {
+      domain: 'arxiv.org',
+      score: 0.9
+    }, {
+      domain: 'pubmed.ncbi.nlm.nih.gov',
+      score: 0.9
+    }, {
+      domain: 'nature.com',
+      score: 0.85
+    }, {
+      domain: 'science.org',
+      score: 0.8
+    }, {
+      domain: 'ieee.org',
+      score: 0.85
+    }, {
+      domain: 'scholar.google.com',
+      score: 0.7
+    }, {
+      domain: 'edu',
+      score: 0.75
+    }, {
+      domain: 'gov',
+      score: 0.8
+    }];
     reputableSources.forEach(source => {
-      this.sourceReputation.set(source.domain, { score: source.score });
+      this.sourceReputation.set(source.domain, {
+        score: source.score
+      });
     });
   }
-
-  
   calculateTypeRelevance(workbookType, preferredTypes) {
     if (!preferredTypes || !Array.isArray(preferredTypes)) return 0.5;
-    
     return preferredTypes.includes(workbookType) ? 0.3 : 0.1;
   }
-
-  
   findPhraseMatches(query, content) {
     const queryPhrases = query.match(/"[^"]+"/g) || [];
     let matches = 0;
-    
     for (const phrase of queryPhrases) {
       const cleanPhrase = phrase.replace(/"/g, '');
       if (content.includes(cleanPhrase)) {
         matches++;
       }
     }
-    
     return matches;
   }
-
-  
   calculateQueryAlignment(content, previousQueries) {
     if (previousQueries.length === 0) return 0.5;
-    
     const contentWords = new Set(content.toLowerCase().split(/\s+/));
     let totalAlignment = 0;
-    
     for (const query of previousQueries) {
       const queryWords = query.toLowerCase().split(/\s+/);
       const commonWords = queryWords.filter(word => contentWords.has(word));
       const alignment = commonWords.length / queryWords.length;
       totalAlignment += alignment;
     }
-    
     return totalAlignment / previousQueries.length;
   }
-
-  
   calculateIntentAlignment(semanticTags, userIntent) {
     const intentKeywords = {
       'research': ['methodology', 'results', 'analysis', 'findings'],
@@ -513,85 +354,59 @@ class RetrievalScorer {
       'summary': ['summary', 'conclusion', 'key points', 'takeaways'],
       'comparison': ['comparison', 'difference', 'similarity', 'versus']
     };
-    
     const intentTagSet = new Set(intentKeywords[userIntent] || []);
     const alignmentScore = semanticTags.filter(tag => intentTagSet.has(tag)).length;
-    
     return Math.min(1, alignmentScore / Math.max(1, semanticTags.length));
   }
-
-  
   calculateResultSimilarity(result1, result2) {
-
     if (result1.metadata.url === result2.metadata.url) return 1.0;
     if (result1.metadata.workbookId === result2.metadata.workbookId) return 0.8;
-    
-
     const content1 = (result1.metadata.content || '').toLowerCase();
     const content2 = (result2.metadata.content || '').toLowerCase();
-    
     const words1 = new Set(content1.split(/\s+/));
     const words2 = new Set(content2.split(/\s+/));
-    
     const intersection = new Set([...words1].filter(word => words2.has(word)));
     const union = new Set([...words1, ...words2]);
-    
     return union.size > 0 ? intersection.size / union.size : 0;
   }
-
-  
   calculateMedian(values) {
     const sorted = [...values].sort((a, b) => a - b);
     const mid = Math.floor(sorted.length / 2);
-    
-    return sorted.length % 2 === 0
-      ? (sorted[mid - 1] + sorted[mid]) / 2
-      : sorted[mid];
+    return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
   }
-
-  
   calculateStandardDeviation(values) {
     const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
     const squaredDiffs = values.map(val => Math.pow(val - mean, 2));
     const avgSquaredDiff = squaredDiffs.reduce((sum, diff) => sum + diff, 0) / values.length;
-    
     return Math.sqrt(avgSquaredDiff);
   }
-
-  
   calculateQuartiles(values) {
     const sorted = [...values].sort((a, b) => a - b);
     const n = sorted.length;
-    
     return {
       q1: sorted[Math.floor(n * 0.25)],
       q2: sorted[Math.floor(n * 0.5)],
       q3: sorted[Math.floor(n * 0.75)]
     };
   }
-
-  
   updateConfig(newConfig) {
-    this.config = { ...this.config, ...newConfig };
-    
-
+    this.config = {
+      ...this.config,
+      ...newConfig
+    };
     const totalWeight = Object.values(this.config.weights).reduce((sum, weight) => sum + weight, 0);
     if (Math.abs(totalWeight - 1.0) > 0.01) {
       console.warn('Scoring weights do not sum to 1.0:', totalWeight);
     }
   }
-
-  
   getStats() {
     return {
       config: this.config,
-      scoringHistory: this.scoringHistory.slice(-100), // Last 100 scoring operations
+      scoringHistory: this.scoringHistory.slice(-100),
       sourceReputationSize: this.sourceReputation.size,
       userPreferencesSize: this.userPreferences.size
     };
   }
-
-  
   reset() {
     this.scoringHistory = [];
     this.userPreferences.clear();
@@ -599,12 +414,9 @@ class RetrievalScorer {
     this.initializeSourceReputation();
   }
 }
-
 export const retrievalScorer = new RetrievalScorer();
-
 export const scoreResults = retrievalScorer.scoreResults.bind(retrievalScorer);
 export const updateConfig = retrievalScorer.updateConfig.bind(retrievalScorer);
 export const getStats = retrievalScorer.getStats.bind(retrievalScorer);
 export const reset = retrievalScorer.reset.bind(retrievalScorer);
-
 export default retrievalScorer;

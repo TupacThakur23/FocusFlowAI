@@ -773,12 +773,12 @@
     min-height: 44px;
     padding: 0.75rem 1rem;
   }
-  
+
   .card:hover {
     transform: none;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
-  
+
   .dropdown-menu {
     left: 0;
     right: 0;
@@ -790,21 +790,21 @@
   .skeleton {
     background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
   }
-  
+
   .card {
     background: #1f2937;
     border-color: #374151;
   }
-  
+
   .card:hover {
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
   }
-  
+
   .modal {
     background: #1f2937;
     color: #f9fafb;
   }
-  
+
   .notification {
     background: #1f2937;
     color: #f9fafb;
@@ -817,39 +817,36 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-  
+
   .btn-primary:hover,
   .btn-secondary:hover,
   .btn-ghost:hover {
     transform: none;
   }
-  
+
   .card:hover {
     transform: none;
   }
-  
+
   .hover-lift:hover {
     transform: none;
   }
 }
 
 :root {
-  
+
   --transition-fast: 0.15s;
   --transition-normal: 0.2s;
   --transition-slow: 0.3s;
-  
-  
+
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-  
-  
+
   --lift: translateY(-2px);
   --scale-up: scale(1.05);
   --scale-down: scale(0.95);
-  
-  
+
   --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.15);
   --shadow-focus: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
@@ -941,3 +938,4 @@
 .semantic-link:hover::after {
   width: 100%;
 }
+

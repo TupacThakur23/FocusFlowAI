@@ -1,9 +1,6 @@
-
-
 export class ContextualActions {
   constructor(options = {}) {
     this.config = {
-
       enableComparison: options.enableComparison !== false,
       enableRelatedResearch: options.enableRelatedResearch !== false,
       enableContinuation: options.enableContinuation !== false,
@@ -11,130 +8,97 @@ export class ContextualActions {
       enableCombinedNotes: options.enableCombinedNotes !== false,
       enableViewpointComparison: options.enableViewpointComparison !== false,
       enableRevisionSheets: options.enableRevisionSheets !== false,
-      
-
       showActionPreviews: options.showActionPreviews !== false,
       enableKeyboardShortcuts: options.enableKeyboardShortcuts !== false,
-      actionTimeout: options.actionTimeout || 30000, // 30 seconds
+      actionTimeout: options.actionTimeout || 30000,
       maxResultsPerAction: options.maxResultsPerAction || 5,
-      
-
       researchApi: options.researchApi || '/api/research',
       notesApi: options.notesApi || '/api/notes',
       aiApi: options.aiApi || '/api/ai/actions'
     };
-
     this.actionHistory = new Map();
     this.actionCache = new Map();
     this.shortcuts = new Map();
-    
     this.initializeShortcuts();
     this.setupEventListeners();
   }
-
-  
   initializeShortcuts() {
     if (!this.config.enableKeyboardShortcuts) return;
-
     this.shortcuts.set('compare_research', {
       keys: ['ctrl', 'shift', 'c'],
       description: 'Compare with saved research',
       action: 'compareWithResearch'
     });
-
     this.shortcuts.set('find_related', {
       keys: ['ctrl', 'shift', 'r'],
       description: 'Find related research',
       action: 'findRelatedResearch'
     });
-
     this.shortcuts.set('continue_topic', {
       keys: ['ctrl', 'shift', 't'],
       description: 'Continue topic research',
       action: 'continueTopicResearch'
     });
-
     this.shortcuts.set('cross_source_summary', {
       keys: ['ctrl', 'shift', 's'],
       description: 'Summarize across sources',
       action: 'crossSourceSummary'
     });
-
     this.shortcuts.set('combined_notes', {
       keys: ['ctrl', 'shift', 'n'],
       description: 'Generate combined notes',
       action: 'generateCombinedNotes'
     });
-
     this.shortcuts.set('compare_viewpoints', {
       keys: ['ctrl', 'shift', 'v'],
       description: 'Compare viewpoints',
       action: 'compareViewpoints'
     });
-
     this.shortcuts.set('revision_sheet', {
       keys: ['ctrl', 'shift', 'e'],
       description: 'Build revision sheet',
       action: 'buildRevisionSheet'
     });
   }
-
-  
   setupEventListeners() {
-
     document.addEventListener('mouseup', this.handleTextSelection.bind(this));
     document.addEventListener('selectionchange', this.handleSelectionChange.bind(this));
-    
-
     document.addEventListener('keydown', this.handleKeyboardShortcut.bind(this));
-    
-
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       chrome.runtime.onMessage.addListener(this.handleChromeMessage.bind(this));
     }
   }
-
-  
   handleTextSelection(event) {
     setTimeout(() => {
       const selection = window.getSelection().toString().trim();
-      
       if (selection.length > 10 && selection.length < 1000) {
         this.showContextualActions(selection, event);
       }
     }, 100);
   }
-
-  
   handleSelectionChange(event) {
     const selection = window.getSelection().toString().trim();
-    
-
     if (selection.length === 0) {
       this.hideContextualActions();
     }
   }
-
-  
   handleKeyboardShortcut(event) {
-    const pressedKeys = [
-      event.ctrlKey && 'ctrl',
-      event.shiftKey && 'shift',
-      event.altKey && 'alt',
-      event.metaKey && 'meta'
-    ].filter(Boolean);
-
+    const pressedKeys = [event.ctrlKey && 'ctrl', event.shiftKey && 'shift', event.altKey && 'alt', event.metaKey && 'meta'].filter(Boolean);
     for (const [shortcut, config] of this.shortcuts.entries()) {
       const keysMatch = config.keys.every(key => {
         switch (key) {
-          case 'ctrl': return event.ctrlKey;
-          case 'shift': return event.shiftKey;
-          case 'alt': return event.altKey;
-          case 'meta': return event.metaKey;
-          default: return event.key.toLowerCase() === key;
+          case 'ctrl':
+            return event.ctrlKey;
+          case 'shift':
+            return event.shiftKey;
+          case 'alt':
+            return event.altKey;
+          case 'meta':
+            return event.metaKey;
+          default:
+            return event.key.toLowerCase() === key;
         }
       });
-
       if (keysMatch && pressedKeys.length === config.keys.length) {
         event.preventDefault();
         this.executeAction(config.action, window.getSelection().toString().trim());
@@ -142,8 +106,6 @@ export class ContextualActions {
       }
     }
   }
-
-  
   handleChromeMessage(message, sender, sendResponse) {
     switch (message.type) {
       case 'SELECTION_CONTEXT_ACTIONS':
@@ -157,28 +119,18 @@ export class ContextualActions {
         break;
     }
   }
-
-  
   showContextualActions(selection, event) {
-
     this.hideContextualActions();
-
     const actionMenu = this.createActionMenu(selection);
     document.body.appendChild(actionMenu);
-
     this.positionActionMenu(actionMenu, event);
-    
-
     setTimeout(() => {
       actionMenu.classList.add('contextual-actions-visible');
     }, 50);
-
     setTimeout(() => {
       this.hideContextualActions();
     }, this.config.actionTimeout);
   }
-
-  
   hideContextualActions() {
     const existingMenu = document.querySelector('.contextual-actions-menu');
     if (existingMenu) {
@@ -190,8 +142,6 @@ export class ContextualActions {
       }, 200);
     }
   }
-
-  
   createActionMenu(selection) {
     const menu = document.createElement('div');
     menu.className = 'contextual-actions-menu';
@@ -208,16 +158,11 @@ export class ContextualActions {
         <button class="contextual-actions-close" onclick="this.parentElement.remove()">×</button>
       </div>
     `;
-
     this.addMenuStyles(menu);
-
     return menu;
   }
-
-  
   generateActionItems(selection) {
     const actions = [];
-
     if (this.config.enableComparison) {
       actions.push({
         id: 'compare_research',
@@ -227,7 +172,6 @@ export class ContextualActions {
         shortcut: 'Ctrl+Shift+C'
       });
     }
-
     if (this.config.enableRelatedResearch) {
       actions.push({
         id: 'find_related',
@@ -237,7 +181,6 @@ export class ContextualActions {
         shortcut: 'Ctrl+Shift+R'
       });
     }
-
     if (this.config.enableContinuation) {
       actions.push({
         id: 'continue_topic',
@@ -247,7 +190,6 @@ export class ContextualActions {
         shortcut: 'Ctrl+Shift+T'
       });
     }
-
     if (this.config.enableCrossSourceSummary) {
       actions.push({
         id: 'cross_source_summary',
@@ -257,7 +199,6 @@ export class ContextualActions {
         shortcut: 'Ctrl+Shift+S'
       });
     }
-
     if (this.config.enableCombinedNotes) {
       actions.push({
         id: 'combined_notes',
@@ -267,7 +208,6 @@ export class ContextualActions {
         shortcut: 'Ctrl+Shift+N'
       });
     }
-
     if (this.config.enableViewpointComparison) {
       actions.push({
         id: 'compare_viewpoints',
@@ -277,7 +217,6 @@ export class ContextualActions {
         shortcut: 'Ctrl+Shift+V'
       });
     }
-
     if (this.config.enableRevisionSheets) {
       actions.push({
         id: 'revision_sheet',
@@ -287,7 +226,6 @@ export class ContextualActions {
         shortcut: 'Ctrl+Shift+E'
       });
     }
-
     return actions.map(action => `
       <div class="contextual-action-item" data-action="${action.id}">
         <div class="action-icon">${action.icon}</div>
@@ -299,58 +237,42 @@ export class ContextualActions {
       </div>
     `).join('');
   }
-
-  
   positionActionMenu(menu, event) {
     const selection = window.getSelection();
     const range = selection.getRangeAt(0);
-    
     if (range) {
       const rect = range.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
-      
-
       let left = rect.left + rect.width / 2;
       let top = rect.bottom + 10;
-      
-
       const menuRect = menu.getBoundingClientRect();
-      
       if (left + menuRect.width > viewportWidth) {
         left = viewportWidth - menuRect.width - 20;
       }
-      
       if (top + menuRect.height > viewportHeight) {
         top = rect.top - menuRect.height - 10;
       }
-      
       menu.style.left = `${left}px`;
       menu.style.top = `${top}px`;
     } else {
-
       menu.style.left = '50%';
       menu.style.top = '50%';
       menu.style.transform = 'translate(-50%, -50%)';
     }
   }
-
-  
   async executeAction(action, selection) {
     try {
-
       const cacheKey = `${action}:${this.simpleHash(selection)}`;
       if (this.actionCache.has(cacheKey)) {
         console.log('Action already in progress:', action);
         return;
       }
-
       this.actionCache.set(cacheKey, {
         action,
         selection,
         timestamp: Date.now()
       });
-
       let result;
       switch (action) {
         case 'compare_research':
@@ -377,24 +299,15 @@ export class ContextualActions {
         default:
           throw new Error(`Unknown action: ${action}`);
       }
-
       this.actionCache.delete(cacheKey);
-
       this.showActionResult(result);
-      
-
       this.logAction(action, selection, result);
-
     } catch (error) {
       console.error(`Failed to execute action ${action}:`, error);
       this.showActionError(action, error);
-      
-
       this.actionCache.delete(cacheKey);
     }
   }
-
-  
   async compareWithResearch(selection) {
     const response = await fetch(`${this.config.researchApi}/compare`, {
       method: 'POST',
@@ -407,9 +320,7 @@ export class ContextualActions {
         pageTitle: document.title
       })
     });
-
     const result = await response.json();
-    
     return {
       action: 'compare_research',
       success: result.success,
@@ -417,8 +328,6 @@ export class ContextualActions {
       message: result.message
     };
   }
-
-  
   async findRelatedResearch(selection) {
     const response = await fetch(`${this.config.researchApi}/related`, {
       method: 'POST',
@@ -432,9 +341,7 @@ export class ContextualActions {
         maxResults: this.config.maxResultsPerAction
       })
     });
-
     const result = await response.json();
-    
     return {
       action: 'find_related',
       success: result.success,
@@ -442,8 +349,6 @@ export class ContextualActions {
       message: result.message
     };
   }
-
-  
   async continueTopicResearch(selection) {
     const response = await fetch(`${this.config.aiApi}/continue`, {
       method: 'POST',
@@ -457,9 +362,7 @@ export class ContextualActions {
         depth: 'deep'
       })
     });
-
     const result = await response.json();
-    
     return {
       action: 'continue_topic',
       success: result.success,
@@ -467,8 +370,6 @@ export class ContextualActions {
       message: result.message
     };
   }
-
-  
   async crossSourceSummary(selection) {
     const response = await fetch(`${this.config.aiApi}/summary`, {
       method: 'POST',
@@ -482,9 +383,7 @@ export class ContextualActions {
         sources: 'cross_page'
       })
     });
-
     const result = await response.json();
-    
     return {
       action: 'cross_source_summary',
       success: result.success,
@@ -492,8 +391,6 @@ export class ContextualActions {
       message: result.message
     };
   }
-
-  
   async generateCombinedNotes(selection) {
     const response = await fetch(`${this.config.notesApi}/combined`, {
       method: 'POST',
@@ -507,9 +404,7 @@ export class ContextualActions {
         format: 'structured'
       })
     });
-
     const result = await response.json();
-    
     return {
       action: 'combined_notes',
       success: result.success,
@@ -517,8 +412,6 @@ export class ContextualActions {
       message: result.message
     };
   }
-
-  
   async compareViewpoints(selection) {
     const response = await fetch(`${this.config.aiApi}/compare-viewpoints`, {
       method: 'POST',
@@ -532,9 +425,7 @@ export class ContextualActions {
         analysisType: 'viewpoint'
       })
     });
-
     const result = await response.json();
-    
     return {
       action: 'compare_viewpoints',
       success: result.success,
@@ -542,8 +433,6 @@ export class ContextualActions {
       message: result.message
     };
   }
-
-  
   async buildRevisionSheet(selection) {
     const response = await fetch(`${this.config.notesApi}/revision-sheet`, {
       method: 'POST',
@@ -557,9 +446,7 @@ export class ContextualActions {
         format: 'exam'
       })
     });
-
     const result = await response.json();
-    
     return {
       action: 'revision_sheet',
       success: result.success,
@@ -567,10 +454,7 @@ export class ContextualActions {
       message: result.message
     };
   }
-
-  
   showActionResult(result) {
-
     const notification = document.createElement('div');
     notification.className = 'contextual-action-notification';
     notification.innerHTML = `
@@ -583,22 +467,17 @@ export class ContextualActions {
       </div>
       <div class="notification-close" onclick="this.parentElement.remove()">×</div>
     `;
-
     document.body.appendChild(notification);
-
     notification.style.position = 'fixed';
     notification.style.top = '20px';
     notification.style.right = '20px';
     notification.style.zIndex = '999999';
-
     setTimeout(() => {
       if (notification.parentNode) {
         notification.parentNode.removeChild(notification);
       }
     }, 5000);
   }
-
-  
   showActionError(action, error) {
     const notification = document.createElement('div');
     notification.className = 'contextual-action-notification error';
@@ -612,21 +491,17 @@ export class ContextualActions {
       </div>
       <div class="notification-close" onclick="this.parentElement.remove()">×</div>
     `;
-
     document.body.appendChild(notification);
     notification.style.position = 'fixed';
     notification.style.top = '20px';
     notification.style.right = '20px';
     notification.style.zIndex = '999999';
-
     setTimeout(() => {
       if (notification.parentNode) {
         notification.parentNode.removeChild(notification);
       }
     }, 5000);
   }
-
-  
   logAction(action, selection, result) {
     const logEntry = {
       action,
@@ -639,18 +514,14 @@ export class ContextualActions {
       duration: result.duration || 0,
       userAgent: navigator.userAgent
     };
-
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       chrome.runtime.sendMessage({
         type: 'CONTEXTUAL_ACTION_LOG',
         data: logEntry
       });
     }
-
     console.log('Contextual action executed:', logEntry);
   }
-
-  
   addMenuStyles(menu) {
     const style = document.createElement('style');
     style.textContent = `
@@ -843,28 +714,21 @@ export class ContextualActions {
         color: white;
       }
     `;
-
     document.head.appendChild(style);
   }
-
-  
   truncateText(text, maxLength) {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength - 3) + '...';
   }
-
-  
   simpleHash(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash;
     }
     return hash.toString(36);
   }
-
-  
   getStats() {
     return {
       config: this.config,
@@ -875,46 +739,23 @@ export class ContextualActions {
       })),
       actionHistory: Array.from(this.actionHistory.entries()),
       cacheSize: this.actionCache.size,
-      capabilities: [
-        'text selection detection',
-        'contextual action menu',
-        'keyboard shortcuts',
-        'cross-page research comparison',
-        'related topic discovery',
-        'research continuation',
-        'cross-source summarization',
-        'combined note generation',
-        'viewpoint comparison',
-        'revision sheet creation'
-      ]
+      capabilities: ['text selection detection', 'contextual action menu', 'keyboard shortcuts', 'cross-page research comparison', 'related topic discovery', 'research continuation', 'cross-source summarization', 'combined note generation', 'viewpoint comparison', 'revision sheet creation']
     };
   }
-
-  
   updateConfig(newConfig) {
-    this.config = { ...this.config, ...newConfig };
+    this.config = {
+      ...this.config,
+      ...newConfig
+    };
   }
-
-  
   clearCache() {
     this.actionCache.clear();
   }
-
-  
   reset() {
     this.actionHistory.clear();
     this.actionCache.clear();
     this.hideContextualActions();
   }
 }
-
-// export const contextualActions = new ContextualActions();
 export const contextualActions = null;
-
-// export const executeAction = contextualActions.executeAction.bind(contextualActions);
-// export const getStats = contextualActions.getStats.bind(contextualActions);
-// export const updateConfig = contextualActions.updateConfig.bind(contextualActions);
-// export const clearCache = contextualActions.clearCache.bind(contextualActions);
-// export const reset = contextualActions.reset.bind(contextualActions);
-
 export default contextualActions;

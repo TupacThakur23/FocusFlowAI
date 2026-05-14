@@ -1,5 +1,3 @@
-
-
 class PromptEngine {
   constructor() {
     this.modes = {
@@ -52,7 +50,6 @@ class PromptEngine {
         maxTokens: 700
       }
     };
-
     this.templates = {
       research: {
         summary: 'Create a comprehensive summary of the following research content:\n\n{content}\n\nFocus on key insights, methodology, and implications.',
@@ -74,13 +71,11 @@ class PromptEngine {
         createNote: 'Create structured notes from this content:\n\n{content}\n\nUse headings, bullet points, and key takeaways.'
       }
     };
-
     this.contextWindow = {
       maxTokens: 4000,
       overlapTokens: 200,
       prioritySections: ['title', 'headings', 'summary', 'conclusion']
     };
-
     this.outputFormats = {
       summary: {
         structure: 'executive_summary',
@@ -104,14 +99,11 @@ class PromptEngine {
       }
     };
   }
-
-  
   generatePrompt(mode, content, options = {}) {
     const modeConfig = this.modes[mode];
     if (!modeConfig) {
       throw new Error(`Unknown mode: ${mode}`);
     }
-
     const {
       context = '',
       question = '',
@@ -122,16 +114,9 @@ class PromptEngine {
       language = 'en',
       customInstructions = ''
     } = options;
-
     const contextWindow = this.buildContextWindow(content, sources);
-    
-
     const template = this.selectTemplate(mode, content.type);
-    
-
     const systemPrompt = this.buildSystemPrompt(mode, userLevel, language, customInstructions);
-    
-
     const userPrompt = this.buildUserPrompt(template, {
       context: contextWindow,
       question,
@@ -140,7 +125,6 @@ class PromptEngine {
       sources: this.formatSources(sources),
       ...content
     });
-
     return {
       systemPrompt,
       userPrompt,
@@ -158,43 +142,31 @@ class PromptEngine {
       }
     };
   }
-
-  
   buildContextWindow(content, sources = []) {
     let context = '';
-
     if (content.title) {
       context += `Title: ${content.title}\n\n`;
     }
-
     if (content.headings && content.headings.length > 0) {
       context += `Main Headings:\n${content.headings.map(h => `- ${h.text}`).join('\n')}\n\n`;
     }
-
     if (content.summary) {
       context += `Summary: ${content.summary}\n\n`;
     }
-
     const mainContent = content.text || content.content || '';
     const maxContentTokens = this.contextWindow.maxTokens - this.estimateTokens(context);
     const truncatedContent = this.truncateToTokens(mainContent, maxContentTokens);
-    
     context += `Content:\n${truncatedContent}\n\n`;
-
     if (sources.length > 0) {
       context += `Sources:\n${this.formatSources(sources)}\n\n`;
     }
-
     return context;
   }
-
-  
   selectTemplate(mode, contentType) {
     const templates = this.templates[contentType];
     if (!templates) {
-      return this.templates.research.summary; // Fallback
+      return this.templates.research.summary;
     }
-
     switch (mode) {
       case 'summarize':
         return templates.summary || templates.research?.summary;
@@ -216,32 +188,22 @@ class PromptEngine {
         return templates.summary || templates.research?.summary;
     }
   }
-
-  
   buildSystemPrompt(mode, userLevel, language, customInstructions) {
     const modeConfig = this.modes[mode];
     let systemPrompt = modeConfig.systemPrompt;
-
     if (userLevel) {
       systemPrompt += this.getUserLevelInstructions(userLevel);
     }
-
     if (language && language !== 'en') {
       systemPrompt += `\n\nRespond in ${language}.`;
     }
-
     systemPrompt += this.getResponseFormatInstructions(mode);
-
     if (customInstructions) {
       systemPrompt += `\n\nAdditional instructions: ${customInstructions}`;
     }
-
     systemPrompt += this.getQualityGuidelines(mode);
-
     return systemPrompt;
   }
-
-  
   getUserLevelInstructions(level) {
     const instructions = {
       beginner: '\n\nUse simple language, avoid jargon, provide examples, and explain step-by-step.',
@@ -249,17 +211,12 @@ class PromptEngine {
       advanced: '\n\nUse appropriate technical terminology. Assume deep understanding of fundamentals.',
       expert: '\n\nUse expert-level terminology and concepts. Focus on nuance and advanced implications.'
     };
-
     return instructions[level] || instructions.intermediate;
   }
-
-  
   getResponseFormatInstructions(mode) {
     const formatConfig = this.outputFormats[mode];
     if (!formatConfig) return '';
-
     let instructions = '\n\nResponse format:';
-
     switch (formatConfig.structure) {
       case 'executive_summary':
         instructions += `
@@ -268,7 +225,6 @@ class PromptEngine {
 - Implications: 1-2 practical takeaways
 - Maximum length: ${formatConfig.maxLength} words`;
         break;
-
       case 'hierarchical':
         instructions += `
 - Overview: Brief introduction
@@ -277,7 +233,6 @@ class PromptEngine {
 - Key Terms: 3-5 important concepts
 - Maximum length: ${formatConfig.maxLength} words`;
         break;
-
       case 'qa_pairs':
         instructions += `
 - Format: Front: [question] Back: [answer]
@@ -285,7 +240,6 @@ class PromptEngine {
 - Questions should test understanding
 - Answers should be concise but complete`;
         break;
-
       case 'outline':
         instructions += `
 - Main Topic: Clear heading
@@ -294,15 +248,11 @@ class PromptEngine {
 - Examples: 1-2 illustrative examples
 - Maximum length: ${formatConfig.maxLength} words`;
         break;
-
       default:
         instructions += `Provide clear, structured response appropriate for ${mode}.`;
     }
-
     return instructions;
   }
-
-  
   getQualityGuidelines(mode) {
     const baseGuidelines = `
 - Be accurate and factual
@@ -310,7 +260,6 @@ class PromptEngine {
 - Avoid speculation beyond the given context
 - Maintain consistent tone and style
 - Ensure responses are helpful and actionable`;
-
     const modeSpecific = {
       summarize: '\n- Focus on key information and insights\n- Preserve important details\n- Use clear, concise language',
       explain: '\n- Break down complex concepts\n- Use analogies and examples\n- Check for understanding before proceeding',
@@ -320,14 +269,10 @@ class PromptEngine {
       expert: '\n- Use appropriate technical terminology\n- Address nuanced aspects\n- Consider advanced implications',
       quickNotes: '\n- Extract most important information\n- Use structured formatting\n- Include key definitions'
     };
-
     return baseGuidelines + (modeSpecific[mode] || '');
   }
-
-  
   buildUserPrompt(template, variables) {
     let prompt = template;
-
     Object.entries(variables).forEach(([key, value]) => {
       const placeholder = `{${key}}`;
       if (typeof value === 'string') {
@@ -338,18 +283,13 @@ class PromptEngine {
         prompt = prompt.replace(new RegExp(placeholder, 'g'), JSON.stringify(value, null, 2));
       }
     });
-
     return prompt;
   }
-
-  
   formatSources(sources) {
     if (!sources || sources.length === 0) return '';
-
     return sources.map((source, index) => {
       const citation = `[${index + 1}]`;
       let sourceText = '';
-
       if (typeof source === 'string') {
         sourceText = source;
       } else if (source.title) {
@@ -357,57 +297,39 @@ class PromptEngine {
       } else if (source.url) {
         sourceText = source.url;
       }
-
       return `${citation} ${sourceText}`;
     }).join('\n');
   }
-
-  
   estimateTokens(text) {
-
     return Math.ceil(text.length / 4);
   }
-
-  
   truncateToTokens(text, maxTokens) {
     const maxChars = maxTokens * 4;
     if (text.length <= maxChars) return text;
-
     const truncated = text.substring(0, maxChars);
-    const lastSentenceEnd = Math.max(
-      truncated.lastIndexOf('.'),
-      truncated.lastIndexOf('!'),
-      truncated.lastIndexOf('?')
-    );
-
+    const lastSentenceEnd = Math.max(truncated.lastIndexOf('.'), truncated.lastIndexOf('!'), truncated.lastIndexOf('?'));
     if (lastSentenceEnd > maxChars * 0.8) {
       return truncated.substring(0, lastSentenceEnd + 1);
     }
-
     return truncated + '...';
   }
-
-  
   generateStreamingPrompt(mode, content, options = {}) {
     const basePrompt = this.generatePrompt(mode, content, options);
-    
     return {
       ...basePrompt,
       streaming: {
         enabled: true,
         chunkSize: options.chunkSize || 100,
         overlap: options.overlap || 20,
-        onChunk: options.onChunk || ((chunk) => {
+        onChunk: options.onChunk || (chunk => {
           console.log('Streaming chunk:', chunk);
         }),
-        onComplete: options.onComplete || ((fullResponse) => {
+        onComplete: options.onComplete || (fullResponse => {
           console.log('Streaming complete:', fullResponse);
         })
       }
     };
   }
-
-  
   generateActionPrompt(action, context) {
     const actionPrompts = {
       explainSelection: {
@@ -431,12 +353,10 @@ class PromptEngine {
         userPrompt: `Create structured notes from: "${context.content}"\n\nUse headings, bullet points, and key takeaways.`
       }
     };
-
     const promptConfig = actionPrompts[action];
     if (!promptConfig) {
       throw new Error(`Unknown action: ${action}`);
     }
-
     return {
       systemPrompt: promptConfig.systemPrompt,
       userPrompt: promptConfig.userPrompt,
@@ -445,8 +365,6 @@ class PromptEngine {
       maxTokens: 300
     };
   }
-
-  
   getAvailableModes() {
     return Object.keys(this.modes).map(key => ({
       id: key,
@@ -455,28 +373,23 @@ class PromptEngine {
       maxTokens: this.modes[key].maxTokens
     }));
   }
-
-  
   getModeConfig(mode) {
     return this.modes[mode];
   }
-
-  
   updateModeConfig(mode, config) {
     if (this.modes[mode]) {
-      this.modes[mode] = { ...this.modes[mode], ...config };
+      this.modes[mode] = {
+        ...this.modes[mode],
+        ...config
+      };
     }
   }
-
-  
   addTemplate(category, name, template) {
     if (!this.templates[category]) {
       this.templates[category] = {};
     }
     this.templates[category][name] = template;
   }
-
-  
   getStats() {
     return {
       modesCount: Object.keys(this.modes).length,
@@ -487,9 +400,7 @@ class PromptEngine {
     };
   }
 }
-
 export const promptEngine = new PromptEngine();
-
 export const generatePrompt = promptEngine.generatePrompt.bind(promptEngine);
 export const generateStreamingPrompt = promptEngine.generateStreamingPrompt.bind(promptEngine);
 export const generateActionPrompt = promptEngine.generateActionPrompt.bind(promptEngine);
@@ -498,5 +409,4 @@ export const getModeConfig = promptEngine.getModeConfig.bind(promptEngine);
 export const updateModeConfig = promptEngine.updateModeConfig.bind(promptEngine);
 export const addTemplate = promptEngine.addTemplate.bind(promptEngine);
 export const getStats = promptEngine.getStats.bind(promptEngine);
-
 export default promptEngine;

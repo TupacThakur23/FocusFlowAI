@@ -1,7 +1,3 @@
-// FocusFlow PrivacyFirstAnalytics — Production-safe stub
-// Analytics are temporarily disabled during stabilization phase.
-// All exports are no-ops and do not use localStorage or chrome.storage.session.
-
 export class PrivacyFirstAnalytics {
   constructor() {
     this.isConsented = false;
@@ -18,11 +14,13 @@ export class PrivacyFirstAnalytics {
   trackUserFriction() {}
   updateConsent() {}
   clearAllData() {}
-  getAnalyticsSummary() { return { message: 'Analytics disabled' }; }
+  getAnalyticsSummary() {
+    return {
+      message: 'Analytics disabled'
+    };
+  }
 }
-
 export const privacyFirstAnalytics = new PrivacyFirstAnalytics();
-
 export const analyticsTrackEvent = () => {};
 export const analyticsTrackWorkflow = () => {};
 export const analyticsTrackFeatureUsage = () => {};
@@ -33,5 +31,4 @@ export const analyticsTrackUserFriction = () => {};
 export const analyticsUpdateConsent = () => {};
 export const analyticsGetSummary = () => ({});
 export const analyticsClearAllData = () => {};
-
 export default privacyFirstAnalytics;

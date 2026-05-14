@@ -1,1 +1,6 @@
-import mongoose from 'mongoose'; mongoose.connect('mongodb+srv://philanthrapist06_db_user:Lakshya@cluster0.picom8p.mongodb.net/ojtDB').then(async () => { await mongoose.connection.db.collection('researches').deleteMany({}); console.log('deleted'); process.exit(0); });
+import mongoose from 'mongoose';
+mongoose.connect('mongodb+srv://philanthrapist06_db_user:Lakshya@cluster0.picom8p.mongodb.net/ojtDB').then(async () => {
+  await mongoose.connection.db.collection('researches').deleteMany({});
+  console.log('deleted');
+  process.exit(0);
+});

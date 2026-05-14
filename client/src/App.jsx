@@ -3,17 +3,13 @@ import Dashboard from "./pages/Dashboard";
 import ResearchHub from "./pages/ResearchHub";
 import Launcher from "./pages/Launcher";
 import { ExtensionProvider } from "./lib/extension/ExtensionProvider";
-
 console.log('🎯 APP: Loading with mode detection');
-
 function AppContent() {
   const [view, setView] = useState("launcher");
   const [mode, setMode] = useState("popup");
-
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const hash = window.location.hash.slice(1);
-    
     if (urlParams.get('mode') === 'sidebar') {
       setMode("sidebar");
       setView("aide");
@@ -28,19 +24,15 @@ function AppContent() {
       document.body.className = "popup-mode";
     }
   }, []);
-
   if (mode === "sidebar") {
     return <Dashboard />;
   }
-
   if (mode === "workspace") {
     return <ResearchHub />;
   }
-
   if (mode === "popup") {
     return <Launcher />;
   }
-
   return <div className="w-full h-full bg-[#050816] text-white flex items-center justify-center">
     <div className="text-center">
       <h1 className="text-2xl font-bold mb-2">FocusFlow AI</h1>
@@ -48,11 +40,8 @@ function AppContent() {
     </div>
   </div>;
 }
-
 export default function App() {
-  return (
-    <ExtensionProvider>
+  return <ExtensionProvider>
       <AppContent />
-    </ExtensionProvider>
-  );
+    </ExtensionProvider>;
 }

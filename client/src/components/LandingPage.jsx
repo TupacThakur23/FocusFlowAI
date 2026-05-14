@@ -1,78 +1,51 @@
-
-
 import React, { useState, useEffect } from 'react';
-import { 
-  Brain, 
-  BookOpen, 
-  Target, 
-  Zap, 
-  Shield, 
-  ArrowRight, 
-  Play, 
-  ChevronDown,
-  Globe,
-  Layers,
-  Lightbulb,
-  CheckCircle,
-  Star,
-  Users,
-  Clock,
-  Award,
-  Sparkles,
-  Search,
-  FileText,
-  Link2,
-  Eye,
-  Lock,
-  Download
-} from 'lucide-react';
-
-const LandingPage = ({ className = '' }) => {
+import { Brain, BookOpen, Target, Zap, Shield, ArrowRight, Play, ChevronDown, Globe, Layers, Lightbulb, CheckCircle, Star, Users, Clock, Award, Sparkles, Search, FileText, Link2, Eye, Lock, Download } from 'lucide-react';
+const LandingPage = ({
+  className = ''
+}) => {
   const [scrollY, setScrollY] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeFeature, setActiveFeature] = useState(0);
-
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveFeature(prev => (prev + 1) % 4);
     }, 4000);
     return () => clearInterval(interval);
   }, []);
-
   const handleInstall = () => {
-
     if (typeof chrome !== 'undefined' && chrome.webstore) {
       chrome.webstore.install();
     } else {
       window.open('https://chrome.google.com/webstore', '_blank');
     }
   };
-
   const handlePlayDemo = () => {
     setIsPlaying(true);
-
   };
+  return <div className={`landing-page ${className}`}>
 
-  return (
-    <div className={`landing-page ${className}`}>
-      
       <section className="hero">
         <div className="hero-background">
           <div className="gradient-overlay" />
           <div className="floating-elements">
-            <div className="element element-1" style={{ transform: `translateY(${scrollY * 0.1}px)` }}>
+            <div className="element element-1" style={{
+            transform: `translateY(${scrollY * 0.1}px)`
+          }}>
               <Brain className="w-12 h-12 text-blue-200" />
             </div>
-            <div className="element element-2" style={{ transform: `translateY(${scrollY * 0.15}px)` }}>
+            <div className="element element-2" style={{
+            transform: `translateY(${scrollY * 0.15}px)`
+          }}>
               <BookOpen className="w-10 h-10 text-purple-200" />
             </div>
-            <div className="element element-3" style={{ transform: `translateY(${scrollY * 0.05}px)` }}>
+            <div className="element element-3" style={{
+            transform: `translateY(${scrollY * 0.05}px)`
+          }}>
               <Target className="w-8 h-8 text-green-200" />
             </div>
           </div>
@@ -84,30 +57,30 @@ const LandingPage = ({ className = '' }) => {
               <Sparkles className="w-4 h-4" />
               <span>AI-Powered Research Workspace</span>
             </div>
-            
+
             <h1 className="hero-title">
               Contextual Intelligence
               <span className="title-accent"> for Research</span>
             </h1>
-            
+
             <p className="hero-subtitle">
-              Transform your browsing into a connected research experience with AI that understands your context, 
+              Transform your browsing into a connected research experience with AI that understands your context,
               maintains continuity across sessions, and provides intelligent assistance without distraction.
             </p>
-            
+
             <div className="hero-actions">
               <button onClick={handleInstall} className="btn-primary">
                 <Download className="w-5 h-5" />
                 Install Extension
                 <ArrowRight className="w-5 h-5" />
               </button>
-              
+
               <button onClick={handlePlayDemo} className="btn-secondary">
                 <Play className="w-5 h-5" />
                 Watch Demo
               </button>
             </div>
-            
+
             <div className="hero-stats">
               <div className="stat">
                 <div className="stat-number">10K+</div>
@@ -123,7 +96,7 @@ const LandingPage = ({ className = '' }) => {
               </div>
             </div>
           </div>
-          
+
           <div className="hero-visual">
             <div className="browser-mockup">
               <div className="browser-header">
@@ -137,7 +110,7 @@ const LandingPage = ({ className = '' }) => {
                   <span>research-article.example.com</span>
                 </div>
               </div>
-              
+
               <div className="browser-content">
                 <div className="content-page">
                   <div className="ai-assistant">
@@ -146,7 +119,7 @@ const LandingPage = ({ className = '' }) => {
                       <span>FocusFlow AI</span>
                     </div>
                     <div className="ai-message">
-                      I've analyzed this research paper and identified 3 key concepts 
+                      I've analyzed this research paper and identified 3 key concepts
                       related to your current study on machine learning.
                     </div>
                     <div className="ai-suggestions">
@@ -165,13 +138,12 @@ const LandingPage = ({ className = '' }) => {
             </div>
           </div>
         </div>
-        
+
         <div className="scroll-indicator">
           <ChevronDown className="w-6 h-6 animate-bounce" />
         </div>
       </section>
 
-      
       <section className="value-proposition">
         <div className="container">
           <div className="section-header">
@@ -182,7 +154,7 @@ const LandingPage = ({ className = '' }) => {
               and helpful rather than intrusive.
             </p>
           </div>
-          
+
           <div className="value-grid">
             <div className="value-card">
               <div className="value-icon">
@@ -190,29 +162,29 @@ const LandingPage = ({ className = '' }) => {
               </div>
               <h3>Contextual Intelligence</h3>
               <p>
-                AI that understands your current research context and provides relevant assistance 
+                AI that understands your current research context and provides relevant assistance
                 based on what you're studying, not generic responses.
               </p>
             </div>
-            
+
             <div className="value-card">
               <div className="value-icon">
                 <Layers className="w-8 h-8" />
               </div>
               <h3>Semantic Continuity</h3>
               <p>
-                Your research flows naturally across sessions with intelligent continuity that 
+                Your research flows naturally across sessions with intelligent continuity that
                 remembers context and suggests relevant connections.
               </p>
             </div>
-            
+
             <div className="value-card">
               <div className="value-icon">
                 <Shield className="w-8 h-8" />
               </div>
               <h3>Privacy-First Design</h3>
               <p>
-                All processing happens locally on your device. Your research data never leaves 
+                All processing happens locally on your device. Your research data never leaves
                 your browser, ensuring complete privacy and security.
               </p>
             </div>
@@ -220,59 +192,47 @@ const LandingPage = ({ className = '' }) => {
         </div>
       </section>
 
-      
       <section className="features">
         <div className="container">
           <div className="section-header">
             <h2>Research-First Features</h2>
             <p>
-              Designed specifically for researchers, students, and knowledge workers who need 
+              Designed specifically for researchers, students, and knowledge workers who need
               intelligent assistance that enhances rather than interrupts their workflow.
             </p>
           </div>
-          
+
           <div className="features-showcase">
             <div className="features-visual">
               <div className="feature-demo">
-                {activeFeature === 0 && (
-                  <div className="demo-content semantic-search">
+                {activeFeature === 0 && <div className="demo-content semantic-search">
                     <Search className="w-6 h-6 text-blue-500" />
                     <h4>Semantic Search</h4>
                     <p>Find relevant information across all your research with intelligent understanding of meaning and context.</p>
-                  </div>
-                )}
-                
-                {activeFeature === 1 && (
-                  <div className="demo-content ai-notes">
+                  </div>}
+
+                {activeFeature === 1 && <div className="demo-content ai-notes">
                     <FileText className="w-6 h-6 text-purple-500" />
                     <h4>AI-Enhanced Notes</h4>
                     <p>Take smart notes with automatic highlighting, concept extraction, and intelligent summarization.</p>
-                  </div>
-                )}
-                
-                {activeFeature === 2 && (
-                  <div className="demo-content research-continuity">
+                  </div>}
+
+                {activeFeature === 2 && <div className="demo-content research-continuity">
                     <Link2 className="w-6 h-6 text-green-500" />
                     <h4>Research Continuity</h4>
                     <p>Maintain context across sessions with intelligent suggestions that connect your research journey.</p>
-                  </div>
-                )}
-                
-                {activeFeature === 3 && (
-                  <div className="demo-content citation-management">
+                  </div>}
+
+                {activeFeature === 3 && <div className="demo-content citation-management">
                     <Eye className="w-6 h-6 text-orange-500" />
                     <h4>Citation Management</h4>
                     <p>Automatically extract and manage citations with transparent source attribution.</p>
-                  </div>
-                )}
+                  </div>}
               </div>
             </div>
-            
+
             <div className="features-list">
-              <div 
-                className={`feature-item ${activeFeature === 0 ? 'active' : ''}`}
-                onMouseEnter={() => setActiveFeature(0)}
-              >
+              <div className={`feature-item ${activeFeature === 0 ? 'active' : ''}`} onMouseEnter={() => setActiveFeature(0)}>
                 <div className="feature-icon">
                   <Search className="w-6 h-6" />
                 </div>
@@ -286,11 +246,8 @@ const LandingPage = ({ className = '' }) => {
                   </ul>
                 </div>
               </div>
-              
-              <div 
-                className={`feature-item ${activeFeature === 1 ? 'active' : ''}`}
-                onMouseEnter={() => setActiveFeature(1)}
-              >
+
+              <div className={`feature-item ${activeFeature === 1 ? 'active' : ''}`} onMouseEnter={() => setActiveFeature(1)}>
                 <div className="feature-icon">
                   <FileText className="w-6 h-6" />
                 </div>
@@ -304,11 +261,8 @@ const LandingPage = ({ className = '' }) => {
                   </ul>
                 </div>
               </div>
-              
-              <div 
-                className={`feature-item ${activeFeature === 2 ? 'active' : ''}`}
-                onMouseEnter={() => setActiveFeature(2)}
-              >
+
+              <div className={`feature-item ${activeFeature === 2 ? 'active' : ''}`} onMouseEnter={() => setActiveFeature(2)}>
                 <div className="feature-icon">
                   <Link2 className="w-6 h-6" />
                 </div>
@@ -322,11 +276,8 @@ const LandingPage = ({ className = '' }) => {
                   </ul>
                 </div>
               </div>
-              
-              <div 
-                className={`feature-item ${activeFeature === 3 ? 'active' : ''}`}
-                onMouseEnter={() => setActiveFeature(3)}
-              >
+
+              <div className={`feature-item ${activeFeature === 3 ? 'active' : ''}`} onMouseEnter={() => setActiveFeature(3)}>
                 <div className="feature-icon">
                   <Eye className="w-6 h-6" />
                 </div>
@@ -345,17 +296,16 @@ const LandingPage = ({ className = '' }) => {
         </div>
       </section>
 
-      
       <section className="workflow">
         <div className="container">
           <div className="section-header">
             <h2>Designed for Research Workflows</h2>
             <p>
-              From initial exploration to synthesis and publication, FocusFlow AI adapts to your 
+              From initial exploration to synthesis and publication, FocusFlow AI adapts to your
               research process and enhances every stage with intelligent assistance.
             </p>
           </div>
-          
+
           <div className="workflow-steps">
             <div className="workflow-step">
               <div className="step-number">1</div>
@@ -364,7 +314,7 @@ const LandingPage = ({ className = '' }) => {
                 <p>Discover relevant information with semantic search and intelligent filtering.</p>
               </div>
             </div>
-            
+
             <div className="workflow-step">
               <div className="step-number">2</div>
               <div className="step-content">
@@ -372,7 +322,7 @@ const LandingPage = ({ className = '' }) => {
                 <p>Gather and organize information with AI-enhanced note-taking and automatic highlighting.</p>
               </div>
             </div>
-            
+
             <div className="workflow-step">
               <div className="step-number">3</div>
               <div className="step-content">
@@ -380,7 +330,7 @@ const LandingPage = ({ className = '' }) => {
                 <p>Build knowledge networks with intelligent linking and relationship detection.</p>
               </div>
             </div>
-            
+
             <div className="workflow-step">
               <div className="step-number">4</div>
               <div className="step-content">
@@ -392,17 +342,16 @@ const LandingPage = ({ className = '' }) => {
         </div>
       </section>
 
-      
       <section className="trust">
         <div className="container">
           <div className="trust-content">
             <div className="trust-text">
               <h2>Trustworthy AI Assistance</h2>
               <p>
-                Your privacy and data security are fundamental. FocusFlow AI processes everything 
+                Your privacy and data security are fundamental. FocusFlow AI processes everything
                 locally on your device, ensuring your research remains private and secure.
               </p>
-              
+
               <div className="trust-features">
                 <div className="trust-feature">
                   <Lock className="w-6 h-6" />
@@ -411,7 +360,7 @@ const LandingPage = ({ className = '' }) => {
                     <p>All AI processing happens on your device</p>
                   </div>
                 </div>
-                
+
                 <div className="trust-feature">
                   <Shield className="w-6 h-6" />
                   <div>
@@ -419,7 +368,7 @@ const LandingPage = ({ className = '' }) => {
                     <p>We don't collect or store your research data</p>
                   </div>
                 </div>
-                
+
                 <div className="trust-feature">
                   <Eye className="w-6 h-6" />
                   <div>
@@ -429,7 +378,7 @@ const LandingPage = ({ className = '' }) => {
                 </div>
               </div>
             </div>
-            
+
             <div className="trust-visual">
               <div className="security-badges">
                 <div className="badge">
@@ -450,7 +399,6 @@ const LandingPage = ({ className = '' }) => {
         </div>
       </section>
 
-      
       <section className="testimonials">
         <div className="container">
           <div className="section-header">
@@ -459,13 +407,13 @@ const LandingPage = ({ className = '' }) => {
               Join thousands of researchers who have transformed their workflow with FocusFlow AI.
             </p>
           </div>
-          
+
           <div className="testimonials-grid">
             <div className="testimonial">
               <div className="testimonial-content">
                 <p>
-                  "FocusFlow AI has completely changed how I research. The contextual understanding 
-                  is incredible - it knows exactly what I'm working on and provides relevant suggestions 
+                  "FocusFlow AI has completely changed how I research. The contextual understanding
+                  is incredible - it knows exactly what I'm working on and provides relevant suggestions
                   without being intrusive."
                 </p>
               </div>
@@ -479,16 +427,14 @@ const LandingPage = ({ className = '' }) => {
                 </div>
               </div>
               <div className="testimonial-rating">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-current text-yellow-400" />
-                ))}
+                {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-current text-yellow-400" />)}
               </div>
             </div>
-            
+
             <div className="testimonial">
               <div className="testimonial-content">
                 <p>
-                  "The semantic continuity feature is amazing. I can pick up my research days later 
+                  "The semantic continuity feature is amazing. I can pick up my research days later
                   and FocusFlow AI remembers exactly where I left off and suggests relevant connections."
                 </p>
               </div>
@@ -502,16 +448,14 @@ const LandingPage = ({ className = '' }) => {
                 </div>
               </div>
               <div className="testimonial-rating">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-current text-yellow-400" />
-                ))}
+                {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-current text-yellow-400" />)}
               </div>
             </div>
-            
+
             <div className="testimonial">
               <div className="testimonial-content">
                 <p>
-                  "Finally an AI tool that respects privacy! Everything runs locally and the suggestions 
+                  "Finally an AI tool that respects privacy! Everything runs locally and the suggestions
                   are actually helpful for my research workflow. It's like having a research assistant."
                 </p>
               </div>
@@ -525,33 +469,30 @@ const LandingPage = ({ className = '' }) => {
                 </div>
               </div>
               <div className="testimonial-rating">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-current text-yellow-400" />
-                ))}
+                {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-current text-yellow-400" />)}
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      
       <section className="cta">
         <div className="container">
           <div className="cta-content">
             <div className="cta-text">
               <h2>Transform Your Research Today</h2>
               <p>
-                Join thousands of researchers who have discovered the power of contextual AI assistance. 
+                Join thousands of researchers who have discovered the power of contextual AI assistance.
                 Install FocusFlow AI and experience research that flows intelligently.
               </p>
-              
+
               <div className="cta-actions">
                 <button onClick={handleInstall} className="btn-primary large">
                   <Download className="w-5 h-5" />
                   Install FocusFlow AI
                   <ArrowRight className="w-5 h-5" />
                 </button>
-                
+
                 <div className="cta-benefits">
                   <div className="benefit">
                     <CheckCircle className="w-4 h-4" />
@@ -568,7 +509,7 @@ const LandingPage = ({ className = '' }) => {
                 </div>
               </div>
             </div>
-            
+
             <div className="cta-visual">
               <div className="extension-preview">
                 <div className="preview-header">
@@ -608,7 +549,6 @@ const LandingPage = ({ className = '' }) => {
         </div>
       </section>
 
-      
       <footer className="footer">
         <div className="container">
           <div className="footer-content">
@@ -619,7 +559,7 @@ const LandingPage = ({ className = '' }) => {
               </div>
               <p>Contextual research workspace for the modern researcher.</p>
             </div>
-            
+
             <div className="footer-links">
               <div className="link-group">
                 <h4>Product</h4>
@@ -628,7 +568,7 @@ const LandingPage = ({ className = '' }) => {
                 <a href="#security">Security</a>
                 <a href="#pricing">Pricing</a>
               </div>
-              
+
               <div className="link-group">
                 <h4>Resources</h4>
                 <a href="#docs">Documentation</a>
@@ -636,7 +576,7 @@ const LandingPage = ({ className = '' }) => {
                 <a href="#blog">Blog</a>
                 <a href="#support">Support</a>
               </div>
-              
+
               <div className="link-group">
                 <h4>Company</h4>
                 <a href="#about">About</a>
@@ -645,7 +585,7 @@ const LandingPage = ({ className = '' }) => {
                 <a href="#contact">Contact</a>
               </div>
             </div>
-            
+
             <div className="footer-cta">
               <h4>Get Started</h4>
               <p>Transform your research workflow today.</p>
@@ -655,7 +595,7 @@ const LandingPage = ({ className = '' }) => {
               </button>
             </div>
           </div>
-          
+
           <div className="footer-bottom">
             <p>&copy; 2024 FocusFlow AI. All rights reserved.</p>
             <div className="footer-legal">
@@ -665,8 +605,6 @@ const LandingPage = ({ className = '' }) => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default LandingPage;
