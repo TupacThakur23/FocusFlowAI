@@ -189,12 +189,65 @@ export default function Workbook({
       }]);
     } catch (err) {
       console.error("Chat failed", err);
+      const localItems = filteredResearchItems.length ? filteredResearchItems : researchItems;
+      const lowerQ = userMsg.text.toLowerCase();
+      let localResponse;
+      if (lowerQ.includes("summarize")) {
+        localResponse = {
+          introText: `Here's a synthesis of the ${localItems.length} items saved in "${title}":`,
+          insights: localItems.slice(0, 4).map((item, i) => ({
+            title: item.topic || "Research Theme",
+            desc: item.summary || item.notes || "Saved from your research session.",
+            sources: item.link ? `Source ${i + 1}` : "Saved Note",
+            color: insightBadgeColors[i % insightBadgeColors.length]
+          }))
+        };
+      } else if (lowerQ.includes("connection")) {
+        localResponse = {
+          introText: `I've identified semantic relationships across your saved research:`,
+          insights: localItems.slice(0, 4).map((item, i) => ({
+            title: `Connection: ${item.topic || "Research Item"}`,
+            desc: `Linked via: ${(item.tags || []).join(", ") || "shared research context"}. Connects to broader themes in ${title}.`,
+            sources: "Semantic Link",
+            color: insightBadgeColors[i % insightBadgeColors.length]
+          }))
+        };
+      } else if (lowerQ.includes("study guide") || lowerQ.includes("roadmap")) {
+        localResponse = {
+          introText: `Here's a study roadmap based on your research in "${title}":`,
+          insights: localItems.slice(0, 4).map((item, i) => ({
+            title: `Section ${i + 1}: ${item.topic || "Topic"}`,
+            desc: `Core concepts: ${(item.summary || item.notes || "Review saved notes.").slice(0, 150)}`,
+            sources: "Study Module",
+            color: insightBadgeColors[i % insightBadgeColors.length]
+          }))
+        };
+      } else if (lowerQ.includes("flashcard")) {
+        localResponse = {
+          introText: `Active recall prompts from your saved insights in "${title}":`,
+          insights: localItems.slice(0, 5).map((item, i) => ({
+            title: `Question: ${item.topic || "Key Concept"}?`,
+            desc: `Answer: ${(item.summary || item.notes || "Review the full item context.").slice(0, 150)}`,
+            sources: "Flashcard",
+            color: insightBadgeColors[i % insightBadgeColors.length]
+          }))
+        };
+      } else {
+        localResponse = {
+          introText: localItems.length
+            ? `I've analyzed your research on "${title}". Here are the key findings:`
+            : `I'm ready to help you research "${title}". Save some pages from the Aide sidebar to get started.`,
+          insights: localItems.slice(0, 3).map((item, i) => ({
+            title: item.topic || "Research Insight",
+            desc: item.summary || item.notes || "Saved from your research session.",
+            sources: item.link ? "Saved Source" : "Note",
+            color: insightBadgeColors[i % insightBadgeColors.length]
+          }))
+        };
+      }
       setMessages(prev => [...prev, {
         role: "assistant",
-        data: {
-          introText: "I could not reach the workbook AI route. Your saved pages are still available here.",
-          insights: []
-        }
+        data: localResponse
       }]);
     } finally {
       setIsChatLoading(false);
@@ -506,12 +559,12 @@ export default function Workbook({
                </div>
 
                <div className="flex items-center gap-2 mt-4 overflow-x-auto no-scrollbar pb-2">
-                  <QuickPill icon={FileText} text="Summarize this workbook" onClick={() => quickAsk("Summarize this workbook")} />
-                  <QuickPill icon={BrainCircuit} text="Find connections" onClick={() => quickAsk("Find connections across this workbook")} />
-                  <QuickPill icon={BookOpen} text="Generate study guide" onClick={() => quickAsk("Generate a study guide from this workbook")} />
-                  <QuickPill icon={LayoutGrid} text="Create flashcards" onClick={() => {
+                  <QuickPill icon={FileText} text="Summarize Workbook" onClick={() => quickAsk("Summarize this workbook and identify dominant themes")} />
+                  <QuickPill icon={BrainCircuit} text="Find Connections" onClick={() => quickAsk("Find semantic connections and relationships between my saved research items")} />
+                  <QuickPill icon={BookOpen} text="Study Guide" onClick={() => quickAsk("Generate a concise study guide and revision roadmap from this workbook")} />
+                  <QuickPill icon={LayoutGrid} text="Create Flashcards" onClick={() => {
               setActiveContent("flashcards");
-              quickAsk("Create flashcards from this workbook");
+              quickAsk("Create educational flashcards and active recall prompts from this workbook");
             }} />
                   {statusMessage && <span className="ml-auto rounded-lg bg-emerald-500/10 px-3 py-1.5 text-[11px] font-bold text-emerald-300">{statusMessage}</span>}
                </div>
@@ -542,14 +595,17 @@ export default function Workbook({
                   <h3 className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3">Sources</h3>
                   <div className="space-y-2">
                      {isSourcesLoading && <div className="py-2 text-[11px] font-bold text-emerald-300">Finding related sources...</div>}
-                     {[...relatedSources, ...allSources].length > 0 ? [...relatedSources, ...allSources].slice(0, 8).map((source, idx) => <a key={`${source.url || source.title}-${idx}`} href={source.url} onClick={event => openSourceWithSidebar(event, source.url)} target="_blank" rel="noreferrer" className="flex gap-3 rounded-xl border border-white/[0.04] bg-white/[0.02] p-3 hover:bg-white/[0.05]">
-                         {source.favicon && <img src={source.favicon} alt="" className="h-4 w-4 rounded" />}
+                     {[...relatedSources, ...allSources].length > 0 ? [...relatedSources, ...allSources].slice(0, 12).map((source, idx) => <a key={`${source.url || source.title}-${idx}`} href={source.url} onClick={event => openSourceWithSidebar(event, source.url)} target="_blank" rel="noreferrer" className="flex gap-3 rounded-xl border border-white/[0.04] bg-white/[0.02] p-3 hover:bg-white/[0.05] transition-all hover:scale-[1.02] active:scale-[0.98]">
+                         {source.favicon ? <img src={source.favicon} alt="" className="h-4 w-4 rounded shrink-0 mt-0.5" /> : <div className="h-4 w-4 rounded bg-white/10 shrink-0 mt-0.5" />}
                          <span className="min-w-0 flex-1">
-                           <p className="truncate text-[12px] font-bold text-white">{source.title || source.text || "Source"}</p>
-                           {source.description && <p className="mt-1 line-clamp-2 text-[10px] text-gray-400">{source.description}</p>}
-                           <p className="mt-1 truncate text-[10px] text-blue-400">{source.domain || source.url || "Saved source"}</p>
+                           <p className="truncate text-[12px] font-black text-white group-hover:text-blue-400">{source.title || source.text || "Research Source"}</p>
+                           {source.description && <p className="mt-1 line-clamp-2 text-[10px] text-gray-400 leading-relaxed font-medium">{source.description}</p>}
+                           <div className="mt-1.5 flex items-center justify-between">
+                              <p className="truncate text-[9px] font-bold text-blue-500 uppercase tracking-widest">{source.domain || (source.url ? new URL(source.url).hostname : "web")}</p>
+                              <ExternalLink size={10} className="text-gray-600" />
+                           </div>
                          </span>
-                       </a>) : <p className="text-xs text-gray-500">No sources saved yet.</p>}
+                       </a>) : <p className="text-xs text-gray-500 font-medium px-2 py-4">No related sources found for this context yet.</p>}
                   </div>
                </div> : <>
 

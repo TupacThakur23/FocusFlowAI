@@ -43,11 +43,13 @@
       };
     }
   };
-  const restoreSidebarFromPreference = async () => {
+  const restoreSidebarFromPreference = async (isNavigation = false) => {
     try {
       chrome.storage.local.get(['sidebarPreference'], data => {
         const pref = data.sidebarPreference || {};
-        if (!pref.hasUserOpenedSidebar || !pref.isSidebarEnabled || pref.sidebarMode === 'closed') return;
+        if (!pref.hasUserOpenedSidebar || !pref.isSidebarEnabled) return;
+        if (pref.sidebarMode === 'closed') return;
+        if (!isNavigation && !sidebarManager.isInjected) return;
         if (pref.sidebarMode === 'minimized') {
           sidebarManager.minimizeSidebar();
         } else {
@@ -77,7 +79,9 @@
           type: 'PAGE_CONTEXT_RESET',
           url: window.location.href
         });
-        restoreSidebarFromPreference();
+        if (sidebarManager.isInjected) {
+          restoreSidebarFromPreference(true);
+        }
       }
     };
     const originalPush = history.pushState;
@@ -157,7 +161,6 @@
       }
       return false;
     });
-    restoreSidebarFromPreference();
     safeSendMessage({
       type: 'CONTENT_SCRIPT_READY',
       url: window.location.href,

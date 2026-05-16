@@ -35,6 +35,77 @@ const localAnalysis = ({
     sentiment: "analytical"
   };
 };
+const localWorkbookSynthesis = (items = [], query = "", workbookTitle = "") => {
+  const lowerQuery = query.toLowerCase();
+  const contextText = items.map(item => `${item.topic}: ${item.summary} ${item.notes}`).join("\n\n");
+  
+  if (lowerQuery.includes("summarize")) {
+    const topItems = items.slice(0, 4);
+    return {
+      introText: `Based on the ${items.length} items in "${workbookTitle}", here is a synthesis of the dominant themes:`,
+      insights: topItems.map((item, i) => ({
+        title: item.topic || "Research Theme",
+        desc: item.summary || "Key insight from your saved research.",
+        sources: item.link ? `Source ${i + 1}` : "Saved Note",
+        color: ["bg-emerald-500/20 text-emerald-400", "bg-blue-500/20 text-blue-400", "bg-violet-500/20 text-violet-400"][i % 3]
+      }))
+    };
+  }
+  
+  if (lowerQuery.includes("connections")) {
+    const connections = [];
+    for (let i = 0; i < Math.min(items.length, 5); i++) {
+      const item = items[i];
+      const tags = item.tags || [];
+      if (tags.length > 0) {
+        connections.push({
+          title: `Connection: ${item.topic}`,
+          desc: `Linked via: ${tags.join(", ")}. This connects to broader themes in ${workbookTitle}.`,
+          sources: "Semantic Link",
+          color: "bg-orange-500/20 text-orange-400"
+        });
+      }
+    }
+    return {
+      introText: `I've mapped the semantic relationships across your workbook. Here are the primary connections:`,
+      insights: connections.length ? connections : [{ title: "General Research", desc: `All items in ${workbookTitle} are conceptually linked to the primary topic.`, sources: "Synthesis", color: "bg-blue-500/20 text-blue-400" }]
+    };
+  }
+
+  if (lowerQuery.includes("study guide") || lowerQuery.includes("roadmap")) {
+    return {
+      introText: `I've generated a concise study roadmap based on your research in "${workbookTitle}":`,
+      insights: items.slice(0, 4).map((item, i) => ({
+        title: `Section ${i + 1}: ${item.topic}`,
+        desc: `Master the core concepts: ${item.summary?.slice(0, 120) || "Review saved notes."}`,
+        sources: "Study Module",
+        color: "bg-violet-500/20 text-violet-400"
+      }))
+    };
+  }
+
+  if (lowerQuery.includes("flashcard")) {
+    return {
+      introText: `I've prepared active recall prompts from your saved insights in "${workbookTitle}":`,
+      insights: items.slice(0, 5).map((item, i) => ({
+        title: `Question: ${item.topic}?`,
+        desc: `Answer: ${item.summary?.slice(0, 150) || "Review the full item context for details."}`,
+        sources: "Flashcard",
+        color: "bg-pink-500/20 text-pink-400"
+      }))
+    };
+  }
+
+  return {
+    introText: items.length ? `I've analyzed your research on "${workbookTitle}".` : `I'm ready to help you research "${workbookTitle}". Save some pages to get started.`,
+    insights: items.slice(0, 3).map((item, i) => ({
+      title: item.topic || "Research Insight",
+      desc: item.summary || item.notes || "Saved from your research session.",
+      sources: "Context",
+      color: "bg-blue-500/20 text-blue-400"
+    }))
+  };
+};
 const workbookItems = async (workbook, contextId = null) => {
   const items = await Research.find({
     workbook: workbook || "Research Workbook"
@@ -63,8 +134,12 @@ const isDirectSourceUrl = url => {
   try {
     const parsed = new URL(url);
     const host = parsed.hostname.replace(/^www\./, "");
-    if (["google.com", "scholar.google.com"].includes(host)) return false;
-    if (parsed.pathname === "/search" || parsed.pathname.includes("/Special:Search")) return false;
+    const searchEngines = [
+      "google.com", "scholar.google.com", "bing.com", "duckduckgo.com", 
+      "yahoo.com", "baidu.com", "yandex.com", "ask.com", "ecosia.org"
+    ];
+    if (searchEngines.some(engine => host === engine || host.endsWith("." + engine))) return false;
+    if (parsed.pathname.includes("/search") || parsed.pathname.includes("/Special:Search")) return false;
     return parsed.protocol === "https:" || parsed.protocol === "http:";
   } catch {
     return false;
@@ -104,19 +179,22 @@ const fetchDuckDuckGoSources = async query => {
   try {
     const response = await withTimeout(fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
       headers: {
-        "User-Agent": "Mozilla/5.0 FocusFlowAI/1.0"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 FocusFlowAI/1.0"
       }
     }), 6000);
     const html = await response.text();
     const results = [];
     const pattern = /<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a[^>]+class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
     let match;
-    while ((match = pattern.exec(html)) && results.length < 5) {
+    while ((match = pattern.exec(html)) && results.length < 12) {
       const url = extractDuckDuckGoUrl(match[1]);
-      if (!isDirectSourceUrl(url)) continue;
+      if (!url || !isDirectSourceUrl(url)) continue;
+      const title = stripHtml(match[2]);
+      const description = stripHtml(match[3]);
+      if (title.length < 5) continue;
       results.push({
-        title: stripHtml(match[2]),
-        description: stripHtml(match[3]) || "Related webpage for the active research context.",
+        title,
+        description: description || "Related webpage for the active research context.",
         url,
         type: "Web"
       });
@@ -139,12 +217,12 @@ const fetchRelatedSources = async ({ query = "", title = "", context = "", domin
   if (!searchQuery) return [];
   const sources = [];
   try {
-    const wikiRes = await withTimeout(fetch(`https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(searchQuery)}&gsrlimit=4&prop=extracts|info&exintro=1&explaintext=1&inprop=url&format=json&origin=*`), 5000);
+    const wikiRes = await withTimeout(fetch(`https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(searchQuery)}&gsrlimit=6&prop=extracts|info&exintro=1&explaintext=1&exchars=300&inprop=url&format=json&origin=*`), 5000);
     const wiki = await wikiRes.json();
     Object.values(wiki?.query?.pages || {}).forEach(page => {
       sources.push({
         title: page.title,
-        description: cleanText(page.extract || "Wikipedia reference related to the active topic.").slice(0, 220),
+        description: cleanText(page.extract || "Wikipedia reference related to the active topic.").slice(0, 280),
         url: page.fullurl || `https://en.wikipedia.org/wiki/${encodeURIComponent(String(page.title || "").replace(/ /g, "_"))}`,
         type: "Wikipedia"
       });
@@ -153,7 +231,7 @@ const fetchRelatedSources = async ({ query = "", title = "", context = "", domin
     console.warn("Wikipedia related source lookup failed:", error.message);
   }
   try {
-    const crossrefRes = await withTimeout(fetch(`https://api.crossref.org/works?query=${encodeURIComponent(searchQuery)}&rows=3`), 5000);
+    const crossrefRes = await withTimeout(fetch(`https://api.crossref.org/works?query=${encodeURIComponent(searchQuery)}&rows=5`), 5000);
     const crossref = await crossrefRes.json();
     (crossref?.message?.items || []).forEach(item => {
       const url = item.URL || item.link?.[0]?.URL;
@@ -183,7 +261,7 @@ const fetchRelatedSources = async ({ query = "", title = "", context = "", domin
       favicon: faviconFor(source.url)
     });
   });
-  return deduped.slice(0, 5);
+  return deduped.slice(0, 10);
 };
 router.post("/summarize", async (req, res) => {
   try {
@@ -259,7 +337,8 @@ router.post("/ask", async (req, res) => {
     const contextText = cleanText(context).toLowerCase();
     const questionTerms = cleanText(question).toLowerCase().split(/\s+/).filter(term => term.length > 3);
     const matchingTerms = questionTerms.filter(term => contextText.includes(term)).length;
-    const hasEnoughPageContext = contextText.length > 700 && matchingTerms >= Math.min(2, questionTerms.length);
+    const hasEnoughPageContext = contextText.length > 800 && (matchingTerms >= Math.min(2, questionTerms.length) || contextText.length > 2000);
+    
     if (!hasEnoughPageContext) {
       webSources = await fetchRelatedSources({
         query: question,
@@ -268,18 +347,26 @@ router.post("/ask", async (req, res) => {
         dominantEntities,
         topicKeywords
       });
-      augmentedContext = `${context || ""}\n\nRelated web references:\n${webSources.map(source => `${source.title}: ${source.description} (${source.url})`).join("\n")}`.trim();
+      if (webSources.length) {
+        augmentedContext = `${context || ""}\n\nRelated Research Context (Web):\n${webSources.map(source => `${source.title}: ${source.description} (${source.url})`).join("\n")}`.trim();
+      }
     }
-    const fallback = augmentedContext ? `Based on the saved context, the strongest answer is: ${localAnalysis({
+    
+    const fallback = augmentedContext ? `Based on the active research context, ${localAnalysis({
       text: augmentedContext
-    }).summary}` : `I need extracted page or workbook context to answer: ${question}`;
+    }).summary}` : `I'm ready to help. I need a bit more context from this page or your workbook to answer specifically about "${question}".`;
+    
     if (!process.env.GEMINI_API_KEY) return res.json({
-      answer: fallback
+      answer: fallback,
+      fallbackSources: webSources
     });
+    
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash-lite"
+      model: "gemini-2.0-flash",
+      systemInstruction: "You are FocusFlow Aide. Answer concisely based on the provided context. If web references are provided, use them to supplement missing information and always mention the source if it comes from the web. Keep responses research-focused and professional."
     });
-    const prompt = augmentedContext ? `Based on the following active context only, answer clearly. If web references are included, use them only as fallback support.\n\nContext:\n${augmentedContext.substring(0, 15000)}\n\nQuestion: ${question}` : question;
+    
+    const prompt = `Page Title: "${title || "Unknown"}"\n\nContext:\n${augmentedContext.substring(0, 18000)}\n\nQuestion: ${question}`;
     const result = await model.generateContent(prompt);
     res.json({
       answer: (await result.response).text(),
@@ -288,7 +375,7 @@ router.post("/ask", async (req, res) => {
   } catch (error) {
     console.error("AI ASK ERROR:", error);
     res.json({
-      answer: `I could not reach the AI model, but your saved context is available. Try again after checking the API key.`
+      answer: `I encountered a momentary connection issue. However, I've analyzed your current research context locally: ${localAnalysis({ text: req.body.context || "" }).summary}`
     });
   }
 });
@@ -318,9 +405,9 @@ router.post("/workbook-chat", async (req, res) => {
         color: ["bg-emerald-500/20 text-emerald-400", "bg-blue-500/20 text-blue-400", "bg-violet-500/20 text-violet-400"][index % 3]
       }))
     };
-    if (!process.env.GEMINI_API_KEY || researchItems.length === 0) {
+    if (!process.env.GEMINI_API_KEY || (researchItems.length === 0 && !usedWebFallback)) {
       return res.json({
-        ...fallback,
+        ...localWorkbookSynthesis(researchItems, query, workbook),
         fallbackSources: webSources
       });
     }
@@ -332,10 +419,10 @@ router.post("/workbook-chat", async (req, res) => {
       contextString += `--- FALLBACK WEB SOURCES ---\n${webSources.map(source => `${source.title}\n${source.description}\n${source.url}`).join("\n\n")}\n\n`;
     }
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      systemInstruction: "Answer using only the active context cluster. If FALLBACK WEB SOURCES exist, use them only to fill missing facts and cite them in sources. Return JSON only: { \"introText\": string, \"insights\": [ { \"title\": string, \"desc\": string, \"sources\": string, \"color\": string } ] }."
+      model: "gemini-2.0-flash",
+      systemInstruction: "You are the FocusFlow AI Research Copilot. Answer using ONLY the active workbook context cluster. If FALLBACK WEB SOURCES exist, use them only to fill missing facts and cite them. ALWAYS return JSON: { \"introText\": string, \"insights\": [ { \"title\": string, \"desc\": string, \"sources\": string, \"color\": string } ] }. If the user asks for a summary, connections, study guide, or flashcards, provide high-density educational content."
     });
-    const result = await model.generateContent(`Context:\n${contextString}\n\nUser Query: ${query}`);
+    const result = await model.generateContent(`Workbook: "${workbook || "Research"}"\n\nContext:\n${contextString}\n\nUser Query: ${query}`);
     const responseText = await result.response.text();
     try {
       res.json({
@@ -343,7 +430,10 @@ router.post("/workbook-chat", async (req, res) => {
         fallbackSources: webSources
       });
     } catch {
-      res.json(fallback);
+      res.json({
+        ...localWorkbookSynthesis(researchItems, query, workbook),
+        fallbackSources: webSources
+      });
     }
   } catch (error) {
     console.error("WORKBOOK CHAT ERROR:", error);

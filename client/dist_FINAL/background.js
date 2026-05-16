@@ -114,15 +114,7 @@ const updateTabState = async tab => {
         reason: 'source_navigation',
         sidebarPreference
       });
-      return;
     }
-    const pref = data[SIDEBAR_PREF_KEY] || {};
-    if (!pref.hasUserOpenedSidebar || !pref.isSidebarEnabled || pref.sidebarMode === 'closed') return;
-    safeSendMessage(tab.id, {
-      type: pref.sidebarMode === 'minimized' ? 'MINIMIZE_SIDEBAR' : 'OPEN_SIDEBAR',
-      reason: 'restore_sidebar_preference',
-      sidebarPreference: pref
-    });
   });
 };
 async function safeSendMessage(tabId, message, retry = true) {
