@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { ChevronsLeft, ChevronsRight, Home, Library, Clock, Bookmark, Folder, LayoutGrid, Users, Sparkles, BrainCircuit, Zap, MoreHorizontal, Search, UserPlus, Star, Plus, FileText, Send, Paperclip, FileJson, GraduationCap, ThumbsUp, ThumbsDown, Copy, ExternalLink, ChevronDown, Activity, CheckCircle2, ChevronRight, BookOpen } from "lucide-react";
 import api from "../services/api";
+import { listLocalResearch, saveLocalResearchItem } from "../lib/localResearchStore";
+import { getSemanticSources } from "../lib/semanticSources";
+const stopWords = new Set(["the", "and", "for", "with", "that", "this", "from", "are", "was", "were", "page", "content", "research", "source", "article", "about"]);
+const extractContextTerms = text => String(text || "").toLowerCase().replace(/https?:\/\/\S+/g, " ").replace(/[^a-z0-9\s-]/g, " ").split(/\s+/).filter(word => word.length > 2 && !stopWords.has(word));
 const insightBadgeColors = ["bg-emerald-500/20 text-emerald-400", "bg-blue-500/20 text-blue-400", "bg-violet-500/20 text-violet-400", "bg-orange-500/20 text-orange-400"];
 const insightTextColors = ["text-emerald-400", "text-blue-400", "text-violet-400", "text-orange-400"];
 const normalizeBadgeColor = (color, index = 0) => String(color || "").startsWith("bg-") ? color : insightBadgeColors[index % insightBadgeColors.length];
@@ -24,6 +28,9 @@ export default function Workbook({
   const [selectedItem, setSelectedItem] = useState(null);
   const [workbookSearch, setWorkbookSearch] = useState("");
   const [contextTab, setContextTab] = useState("insights");
+  const [activeContextId, setActiveContextId] = useState(null);
+  const [relatedSources, setRelatedSources] = useState([]);
+  const [isSourcesLoading, setIsSourcesLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [isStarred, setIsStarred] = useState(false);
   const chatEndRef = useRef(null);
@@ -31,25 +38,41 @@ export default function Workbook({
   const refreshWorkbookData = async () => {
     try {
       const res = await api.get(`/api/research?workbook=${encodeURIComponent(title)}`);
-      const data = Array.isArray(res.data) ? res.data : [];
+      const remoteData = Array.isArray(res.data) ? res.data : [];
+      const localData = await listLocalResearch(title);
+      const data = [...localData, ...remoteData].filter((item, index, arr) => index === arr.findIndex(entry => String(entry._id || entry.link || entry.topic) === String(item._id || item.link || item.topic)));
       setResearchItems(data);
       setSelectedItem(current => current && data.some(item => item._id === current._id) ? current : data[0] || null);
     } catch (err) {
       console.error("Failed to fetch workbook items", err);
-      setResearchItems([]);
-      setSelectedItem(null);
+      const data = await listLocalResearch(title);
+      setResearchItems(data);
+      setSelectedItem(current => current && data.some(item => item._id === current._id) ? current : data[0] || null);
     }
   };
   const refreshInsights = async () => {
     setIsInsightsLoading(true);
     try {
-      const res = await api.get(`/api/ai/workbook-insights?workbook=${encodeURIComponent(title)}`);
+      const contextParam = activeContextId ? `&contextId=${encodeURIComponent(activeContextId)}` : "";
+      const res = await api.get(`/api/ai/workbook-insights?workbook=${encodeURIComponent(title)}${contextParam}`);
       setInsights(res.data || {
         keyInsights: [],
         topEntities: []
       });
     } catch (err) {
       console.error("Failed to fetch insights", err);
+      const items = await listLocalResearch(title);
+      const terms = [...new Set(items.flatMap(item => extractContextTerms(`${item.topic} ${item.summary} ${item.notes} ${(item.tags || []).join(" ")}`)))].slice(0, 6);
+      setInsights({
+        keyInsights: items.slice(0, 3).map((item, index) => ({
+          title: item.topic || `Saved item ${index + 1}`,
+          desc: item.summary || item.notes || "Saved locally in this workbook.",
+          type: "focus",
+          color: insightBadgeColors[index % insightBadgeColors.length],
+          chartColor: insightTextColors[index % insightTextColors.length]
+        })),
+        topEntities: terms.map((label, index) => ({ label, count: index + 1, color: insightTextColors[index % insightTextColors.length] }))
+      });
     } finally {
       setIsInsightsLoading(false);
     }
@@ -64,8 +87,18 @@ export default function Workbook({
   }, [title]);
   useEffect(() => {
     refreshInsights();
-  }, [title]);
-  const filteredResearchItems = researchItems.filter(item => {
+  }, [title, activeContextId]);
+  useEffect(() => {
+    if (typeof chrome === "undefined" || !chrome.storage) return;
+    chrome.storage.local.get(["activeContextId"], data => setActiveContextId(data.activeContextId || null));
+    const listener = (changes, area) => {
+      if (area === "local" && changes.activeContextId) setActiveContextId(changes.activeContextId.newValue || null);
+    };
+    chrome.storage.onChanged.addListener(listener);
+    return () => chrome.storage.onChanged.removeListener(listener);
+  }, []);
+  const contextResearchItems = activeContextId ? researchItems.filter(item => item.contextId === activeContextId) : researchItems;
+  const filteredResearchItems = contextResearchItems.filter(item => {
     const text = [item.topic, item.summary, item.notes, item.link, ...(item.tags || [])].filter(Boolean).join(" ").toLowerCase();
     return text.includes(workbookSearch.toLowerCase());
   });
@@ -79,6 +112,33 @@ export default function Workbook({
       text: item.summary || "Saved source"
     }] : []), ...related];
   });
+  useEffect(() => {
+    if (contextTab !== "sources") return undefined;
+    let cancelled = false;
+    const loadSources = async () => {
+      setIsSourcesLoading(true);
+      try {
+        const context = filteredResearchItems.map(item => `${item.topic} ${item.summary} ${item.notes} ${(item.outputs?.selectedText || "").slice(0, 1200)}`).join("\n");
+        const queryTerms = [...new Set(filteredResearchItems.flatMap(item => extractContextTerms(`${item.topic} ${item.summary} ${item.notes} ${(item.tags || []).join(" ")}`)))].slice(0, 12);
+        const sources = await getSemanticSources({
+          title,
+          query: queryTerms.join(" "),
+          context,
+          dominantEntities: queryTerms.slice(0, 6),
+          topicKeywords: queryTerms
+        });
+        if (!cancelled) setRelatedSources(sources);
+      } catch (err) {
+        console.warn("Workbook related sources unavailable", err?.message);
+      } finally {
+        if (!cancelled) setIsSourcesLoading(false);
+      }
+    };
+    loadSources();
+    return () => {
+      cancelled = true;
+    };
+  }, [contextTab, title, filteredResearchItems.length, activeContextId]);
   const connections = insights.topEntities?.length ? insights.topEntities : filteredResearchItems.flatMap(item => item.tags || []).slice(0, 5).map((label, index) => ({
     label,
     count: index + 1,
@@ -86,7 +146,7 @@ export default function Workbook({
   }));
   useEffect(() => {
     setSelectedItem(filteredResearchItems[0] || null);
-  }, [title, researchItems.length]);
+  }, [title, researchItems.length, activeContextId, workbookSearch]);
   useEffect(() => {
     if (!initialPrompt || initialPromptSent.current) return;
     initialPromptSent.current = true;
@@ -118,7 +178,8 @@ export default function Workbook({
         },
         body: JSON.stringify({
           workbook: title,
-          query: userMsg.text
+          query: userMsg.text,
+          contextId: activeContextId
         })
       });
       const data = await res.json();
@@ -149,7 +210,7 @@ export default function Workbook({
   };
   const handleSaveAssistantNote = async data => {
     try {
-      await api.post("/api/research", {
+      const payload = {
         topic: `Copilot note - ${title}`,
         workbook: title,
         summary: data?.introText || "Saved workbook copilot note.",
@@ -159,7 +220,13 @@ export default function Workbook({
           saveType: "copilot-note",
           tags: ["Copilot", "Synthesis"]
         }
-      });
+      };
+      await saveLocalResearchItem(payload);
+      try {
+        await api.post("/api/research", payload);
+      } catch (error) {
+        console.warn("Backend note save unavailable, kept local note", error?.message);
+      }
       showStatus("Saved as note");
     } catch (err) {
       console.error("Save assistant note failed", err);
@@ -170,7 +237,22 @@ export default function Workbook({
     setSelectedItem(item);
     setActiveContent(contentType);
   };
-  const quickAsk = text => handleSendMessage(text);
+  const openSourceWithSidebar = (event, url) => {
+    event.preventDefault();
+    if (!url) return;
+    try {
+      if (typeof chrome !== "undefined" && chrome.runtime?.sendMessage) {
+        chrome.runtime.sendMessage({
+          type: "OPEN_SOURCE_WITH_SIDEBAR",
+          url
+        }, () => {
+          if (chrome.runtime.lastError) window.open(url, "_blank", "noopener,noreferrer");
+        });
+        return;
+      }
+    } catch (err) {}
+    window.open(url, "_blank", "noopener,noreferrer");
+  };  const quickAsk = text => handleSendMessage(text);
   return <div className="w-full h-screen flex bg-[#0a0c14] text-white font-sans overflow-hidden">
 
       <div className={`${isCollapsed ? 'w-[72px]' : 'w-[260px]'} bg-[#05060b] border-r border-white/[0.05] flex flex-col shrink-0 z-20 transition-all duration-300 ease-in-out`}>
@@ -299,7 +381,7 @@ export default function Workbook({
                      {title} <ChevronDown size={14} className="text-gray-500" />
                   </h2>
                   <div className="flex items-center gap-2 text-[11px] text-gray-500 font-medium mt-0.5">
-                     <span>{researchItems.length} items</span> <span>-</span> <span>You</span>
+                     <span>{filteredResearchItems.length} active items</span> <span>-</span> <span>You</span>
                      <span className="px-1.5 py-[1px] bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded font-bold uppercase tracking-widest text-[8px]">Active</span>
                   </div>
                </div>
@@ -459,9 +541,14 @@ export default function Workbook({
                </div> : contextTab === "sources" ? <div>
                   <h3 className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3">Sources</h3>
                   <div className="space-y-2">
-                     {allSources.length > 0 ? allSources.slice(0, 8).map((source, idx) => <a key={`${source.url || source.title}-${idx}`} href={source.url} target="_blank" rel="noreferrer" className="block rounded-xl border border-white/[0.04] bg-white/[0.02] p-3 hover:bg-white/[0.05]">
-                         <p className="truncate text-[12px] font-bold text-white">{source.title || source.text || "Source"}</p>
-                         <p className="mt-1 truncate text-[10px] text-blue-400">{source.url || "Saved source"}</p>
+                     {isSourcesLoading && <div className="py-2 text-[11px] font-bold text-emerald-300">Finding related sources...</div>}
+                     {[...relatedSources, ...allSources].length > 0 ? [...relatedSources, ...allSources].slice(0, 8).map((source, idx) => <a key={`${source.url || source.title}-${idx}`} href={source.url} onClick={event => openSourceWithSidebar(event, source.url)} target="_blank" rel="noreferrer" className="flex gap-3 rounded-xl border border-white/[0.04] bg-white/[0.02] p-3 hover:bg-white/[0.05]">
+                         {source.favicon && <img src={source.favicon} alt="" className="h-4 w-4 rounded" />}
+                         <span className="min-w-0 flex-1">
+                           <p className="truncate text-[12px] font-bold text-white">{source.title || source.text || "Source"}</p>
+                           {source.description && <p className="mt-1 line-clamp-2 text-[10px] text-gray-400">{source.description}</p>}
+                           <p className="mt-1 truncate text-[10px] text-blue-400">{source.domain || source.url || "Saved source"}</p>
+                         </span>
                        </a>) : <p className="text-xs text-gray-500">No sources saved yet.</p>}
                   </div>
                </div> : <>
@@ -722,3 +809,11 @@ function SuggestedAction({
        <span className="text-[11px] font-bold text-gray-400 group-hover:text-white transition-colors leading-snug">{label}</span>
     </button>;
 }
+
+
+
+
+
+
+
+

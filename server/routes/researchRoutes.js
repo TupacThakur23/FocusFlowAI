@@ -1,9 +1,18 @@
 import express from "express";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import mongoose from "mongoose";
 import Research from "../models/Research.js";
 import Workbook from "../models/Workbook.js";
+import { assignContextCluster } from "../services/ContextIsolation.js";
 const router = express.Router();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const memoryResearch = [];
+const memoryWorkbooks = new Map([["Research Workbook", {
+  name: "Research Workbook",
+  description: "Research workspace.",
+  updatedAt: new Date()
+}]]);
+const isDatabaseReady = () => mongoose.connection.readyState === 1;
 const keywordFilter = (items, query) => {
   const q = String(query || "").toLowerCase();
   if (!q) return items;
@@ -11,6 +20,10 @@ const keywordFilter = (items, query) => {
 };
 router.get("/", async (req, res) => {
   try {
+    if (!isDatabaseReady()) {
+      const entries = req.query.workbook ? memoryResearch.filter(item => item.workbook === req.query.workbook) : memoryResearch;
+      return res.json([...entries].sort((a, b) => new Date(b.date) - new Date(a.date)));
+    }
     const filter = req.query.workbook ? {
       workbook: req.query.workbook
     } : {};
@@ -33,6 +46,42 @@ router.post("/", async (req, res) => {
     }
     const outputs = req.body.outputs || {};
     const workbookName = req.body.workbook || "Research Workbook";
+    const existingItems = isDatabaseReady() ? await Research.find({
+      workbook: workbookName
+    }).sort({
+      date: -1
+    }).limit(25) : memoryResearch.filter(item => item.workbook === workbookName).slice(0, 25);
+    const assignedContext = req.body.contextId ? {
+      contextId: req.body.contextId,
+      contextFingerprint: req.body.contextFingerprint || req.body.contextId,
+      contextTerms: req.body.contextTerms || [],
+      contextSimilarity: 1
+    } : assignContextCluster({
+      ...req.body,
+      outputs
+    }, existingItems);
+    if (!isDatabaseReady()) {
+      memoryWorkbooks.set(workbookName, {
+        name: workbookName,
+        description: "Research workspace.",
+        updatedAt: new Date()
+      });
+      const savedResearch = {
+        _id: `local_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        topic: req.body.topic,
+        notes: req.body.notes || "",
+        link: req.body.link || "",
+        workbook: workbookName,
+        summary: req.body.summary || "",
+        ...assignedContext,
+        tags: Array.isArray(req.body.tags) ? req.body.tags : outputs.tags || [],
+        saveOptions: Array.isArray(req.body.saveOptions) ? req.body.saveOptions : outputs.saveOptions || [],
+        outputs,
+        date: new Date()
+      };
+      memoryResearch.unshift(savedResearch);
+      return res.json(savedResearch);
+    }
     await Workbook.findOneAndUpdate({
       name: workbookName
     }, {
@@ -50,6 +99,7 @@ router.post("/", async (req, res) => {
       link: req.body.link || "",
       workbook: workbookName,
       summary: req.body.summary || "",
+      ...assignedContext,
       tags: Array.isArray(req.body.tags) ? req.body.tags : outputs.tags || [],
       saveOptions: Array.isArray(req.body.saveOptions) ? req.body.saveOptions : outputs.saveOptions || [],
       outputs
@@ -65,6 +115,13 @@ router.post("/", async (req, res) => {
 });
 router.delete("/:id", async (req, res) => {
   try {
+    if (!isDatabaseReady()) {
+      const index = memoryResearch.findIndex(item => String(item._id) === String(req.params.id));
+      if (index >= 0) memoryResearch.splice(index, 1);
+      return res.json({
+        success: true
+      });
+    }
     await Research.findByIdAndDelete(req.params.id);
     res.json({
       success: true
@@ -77,6 +134,10 @@ router.delete("/:id", async (req, res) => {
 });
 router.get("/workbooks", async (req, res) => {
   try {
+    if (!isDatabaseReady()) {
+      const names = [...memoryWorkbooks.values()].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)).map(workbook => workbook.name);
+      return res.json([...new Set([...names, ...memoryResearch.map(item => item.workbook), "Research Workbook"].filter(Boolean))]);
+    }
     const savedWorkbooks = await Workbook.find({}).sort({
       updatedAt: -1
     });
@@ -95,6 +156,16 @@ router.post("/workbooks", async (req, res) => {
     if (!name) return res.status(400).json({
       error: "Workbook name is required"
     });
+    if (!isDatabaseReady()) {
+      const workbook = {
+        _id: `local_workbook_${Date.now()}`,
+        name,
+        description: req.body.description || "Research workspace.",
+        updatedAt: new Date()
+      };
+      memoryWorkbooks.set(name, workbook);
+      return res.json(workbook);
+    }
     const workbook = await Workbook.findOneAndUpdate({
       name
     }, {
@@ -120,6 +191,9 @@ router.post("/semantic-search", async (req, res) => {
       query
     } = req.body;
     if (!query) return res.json([]);
+    if (!isDatabaseReady()) {
+      return res.json(keywordFilter(memoryResearch, query));
+    }
     const allResearch = await Research.find({}).sort({
       date: -1
     });

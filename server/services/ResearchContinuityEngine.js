@@ -324,28 +324,16 @@ class ResearchContinuityEngine {
   async persistToStorage() {
     if (!this.config.enablePersistence) return;
     try {
-      const data = {
-        topics: Array.from(this.researchMemory.entries()),
-        sessionHistory: this.sessionHistory,
-        conceptGraph: Array.from(this.conceptGraph.entries()),
-        workbookConnections: Array.from(this.workbookConnections.entries()),
-        lastSaved: new Date().toISOString()
-      };
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        await chrome.storage.local.set({
-          [this.config.storageKey]: data
-        });
-      }
+      // Server-side persistence implementation placeholder
+      // In production, this would save to a database or local file
     } catch (error) {
       console.error('Failed to persist research continuity data:', error);
     }
   }
   async loadFromStorage() {
     try {
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        const result = await chrome.storage.local.get(this.config.storageKey);
-        return result[this.config.storageKey] || null;
-      }
+      // Server-side load implementation placeholder
+      return null;
     } catch (error) {
       console.error('Failed to load research continuity data:', error);
       return null;

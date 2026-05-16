@@ -6,6 +6,7 @@ export class SidebarManager {
     this.isInjected = false;
     this.isVisible = false;
     this.isCollapsed = false;
+    this.sidebarMode = 'closed';
     this.savedPos = {
       x: null,
       y: 0
@@ -25,9 +26,9 @@ export class SidebarManager {
   async injectSidebar() {
     if (this.isInjected) return true;
     await this._waitForDOMReady();
-    this._loadSavedState();
     this._buildPanel();
     this._buildFAB();
+    this._loadSavedState();
     document.addEventListener('mousemove', this._onMouseMove);
     document.addEventListener('mouseup', this._onMouseUp);
     this.isInjected = true;
@@ -35,13 +36,28 @@ export class SidebarManager {
   }
   async forceOpen() {
     if (!this.isInjected) await this.injectSidebar();
-    this._show();
+    await this.openSidebar();
   }
   async forceClose() {
-    this._hide();
+    this._persistSidebarPreference('closed');
+    await this.cleanup();
+  }
+  async openSidebar() {
+    if (!this.isInjected) await this.injectSidebar();
+    this._show();
+    this._persistSidebarPreference('full');
+  }
+  async minimizeSidebar() {
+    if (!this.isInjected) await this.injectSidebar();
+    if (!this.host) return;
+    this.host.style.display = 'none';
+    if (this.toggleButton) this.toggleButton.style.display = 'flex';
+    this.isVisible = false;
+    this.sidebarMode = 'minimized';
+    this._persistSidebarPreference('minimized');
   }
   async toggleSidebar() {
-    if (this.isVisible) this._hide();else this._show();
+    if (this.isVisible) await this.minimizeSidebar();else await this.openSidebar();
   }
   async cleanup() {
     document.removeEventListener('mousemove', this._onMouseMove);
@@ -57,6 +73,7 @@ export class SidebarManager {
     this.iframe = null;
     this.isInjected = false;
     this.isVisible = false;
+  this.sidebarMode = 'closed';
   }
   _buildPanel() {
     const {
@@ -148,7 +165,7 @@ export class SidebarManager {
       transition: transform 0.2s ease, box-shadow 0.2s ease !important;
     `;
     fab.textContent = '⚡';
-    fab.addEventListener('click', () => this._show());
+    fab.addEventListener('click', () => this.openSidebar());
     fab.addEventListener('mouseenter', () => {
       fab.style.transform = 'scale(1.1) !important';
       fab.style.boxShadow = '0 6px 28px rgba(99,102,241,0.7) !important';
@@ -220,12 +237,14 @@ export class SidebarManager {
     this.host.style.display = 'flex';
     if (this.toggleButton) this.toggleButton.style.display = 'none';
     this.isVisible = true;
+  this.sidebarMode = 'full';
   }
   _hide() {
     if (!this.host) return;
     this.host.style.display = 'none';
-    if (this.toggleButton) this.toggleButton.style.display = 'flex';
+    if (this.toggleButton) this.toggleButton.style.display = 'none';
     this.isVisible = false;
+  this.sidebarMode = 'closed';
   }
   _toggleCollapse() {
     this.isCollapsed = !this.isCollapsed;
@@ -244,7 +263,7 @@ export class SidebarManager {
   }
   _loadSavedState() {
     try {
-      chrome.storage.local.get(['ff_panel_pos', 'ff_panel_size'], data => {
+      chrome.storage.local.get(['ff_panel_pos', 'ff_panel_size', 'sidebarPreference'], data => {
         if (data.ff_panel_pos && this.host) {
           this.host.style.left = data.ff_panel_pos.x + 'px';
           this.host.style.top = data.ff_panel_pos.y + 'px';
@@ -254,6 +273,46 @@ export class SidebarManager {
           this.host.style.height = data.ff_panel_size.h + 'px';
           this.savedSize = data.ff_panel_size;
         }
+        if (this.host) {
+          const pref = data.sidebarPreference || {};
+          if (pref.sidebarMode === 'full') {
+            this.host.style.display = 'flex';
+            if (this.toggleButton) this.toggleButton.style.display = 'none';
+            this.isVisible = true;
+          this.sidebarMode = 'full';
+          } else if (pref.sidebarMode === 'minimized') {
+            this.host.style.display = 'none';
+            if (this.toggleButton) this.toggleButton.style.display = 'flex';
+            this.isVisible = false;
+          this.sidebarMode = 'minimized';
+          } else {
+            this.host.style.display = 'none';
+            if (this.toggleButton) this.toggleButton.style.display = 'none';
+            this.isVisible = false;
+          this.sidebarMode = 'closed';
+          }
+        }
+      });
+    } catch (e) {}
+  }
+  _persistSidebarPreference(sidebarMode) {
+    try {
+      const sidebarPreference = {
+        hasUserOpenedSidebar: sidebarMode !== 'closed',
+        isSidebarEnabled: sidebarMode !== 'closed',
+        sidebarMode,
+        isMinimized: sidebarMode === 'minimized'
+      };
+      chrome.storage.local.set({
+        sidebarPreference,
+        activeSidebarState: this.getState()
+      });
+      chrome.runtime?.sendMessage?.({
+        type: 'SIDEBAR_STATE_CHANGED',
+        isOpen: sidebarMode === 'full',
+        sidebarMode,
+        sidebarPreference,
+        state: this.getState()
       });
     } catch (e) {}
   }
@@ -330,7 +389,9 @@ export class SidebarManager {
     return {
       isInjected: this.isInjected,
       isVisible: this.isVisible,
-      isCollapsed: this.isCollapsed
+      isCollapsed: this.isCollapsed,
+      sidebarMode: this.sidebarMode,
+      isMinimized: this.sidebarMode === 'minimized'
     };
   }
   isSidebarInjected() {
@@ -344,3 +405,5 @@ if (typeof window !== 'undefined') {
   window.sidebarManager = sidebarManager;
 }
 export default SidebarManager;
+
+

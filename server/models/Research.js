@@ -12,6 +12,15 @@ const researchSchema = new mongoose.Schema({
     index: true
   },
   summary: String,
+  contextId: {
+    type: String,
+    index: true
+  },
+  contextFingerprint: String,
+  contextTerms: [{
+    type: String
+  }],
+  contextSimilarity: Number,
   tags: [{
     type: String
   }],

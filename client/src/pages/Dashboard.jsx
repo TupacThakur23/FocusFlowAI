@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, BookmarkPlus, BookOpen, BrainCircuit, CheckCircle2, ChevronDown, Clock, Copy, ExternalLink, FileText, GraduationCap, Lightbulb, Link2, List, Loader2, Mic, Minus, Plus, RefreshCw, Save, Search, Send, Sparkles, Star, X, Zap } from "lucide-react";
 import { useExtension } from "../lib/extension/ExtensionProvider";
 import api from "../services/api";
+import { saveLocalResearchItem, saveLocalWorkbook, listLocalWorkbooks } from "../lib/localResearchStore";
+import { getSemanticSources } from "../lib/semanticSources";
 const tools = [{
   id: "SUMMARY",
   icon: FileText,
@@ -70,7 +72,39 @@ const defaultWorkbookOptions = [{
   color: "from-blue-500 to-violet-600"
 }];
 const cleanWords = (text = "") => text.replace(/\s+/g, " ").trim();
+const stopWords = new Set(["the", "and", "for", "with", "that", "this", "from", "are", "was", "were", "page", "content", "research", "source", "article", "about"]);
+const contextTerms = (text = "", title = "", topics = []) => {
+  const source = `${title} ${topics.join(" ")} ${text}`.toLowerCase().replace(/https?:\/\/\S+/g, " ").replace(/[^a-z0-9\s-]/g, " ");
+  const counts = new Map();
+  source.split(/\s+/).filter(word => word.length > 2 && !stopWords.has(word)).forEach(word => counts.set(word, (counts.get(word) || 0) + 1));
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 18).map(([term]) => term);
+};
+const contextFingerprint = analysis => {
+  const terms = contextTerms(analysis.text, analysis.title, analysis.topics);
+  const seed = (terms.slice(0, 2).join("_") || analysis.title || "context_general").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 48);
+  return {
+    contextFingerprint: `context_${seed}`,
+    contextTerms: terms
+  };
+};
+const entityMatches = (text = "") => String(text).match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3}\b/g) || [];
 const sentenceSplit = (text = "") => cleanWords(text).split(/(?<=[.!?])\s+/).filter(Boolean);
+const normalizeKeyPoints = (points = [], summary = "") => {
+  const candidates = points.length ? points : sentenceSplit(summary);
+  const seen = new Set();
+  const cleaned = candidates.map(point => cleanWords(String(point).replace(/^[-*•]\s*/, ""))).filter(point => point.length > 12).map(point => point.length > 220 ? `${point.slice(0, 217).trim()}...` : point).filter(point => {
+    const key = point.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return cleaned.length ? cleaned.slice(0, 7) : ["Extract this page to generate focused key points."];
+};
+const makeLocalSummary = (sentences = [], title = "this page") => {
+  const useful = sentences.filter(sentence => cleanWords(sentence).length > 40).slice(0, 4);
+  if (useful.length) return useful.join(" ");
+  return `${title} is ready for review.`;
+};
 const readingTime = (text = "") => Math.max(1, Math.ceil(cleanWords(text).split(/\s+/).filter(Boolean).length / 220));
 function hostnameFrom(url, fallback = "current page") {
   try {
@@ -86,55 +120,105 @@ function inferTopics(text = "", title = "") {
   return [...new Set(found), "Context", "Knowledge"].slice(0, 4);
 }
 function makeFlashcards(analysis) {
-  return analysis.topics.slice(0, 6).map((topic, index) => ({
-    q: index % 2 === 0 ? `What is ${topic}?` : `Why is ${topic} important?`,
-    a: analysis.keyPoints[index] || `${topic} is one of the main ideas detected in this page context.`
-  }));
+  const points = analysis.keyPoints.length ? analysis.keyPoints : [analysis.summary];
+  const topics = analysis.topicKeywords?.length ? analysis.topicKeywords : analysis.topics;
+  return points.slice(0, 6).map((point, index) => {
+    const topic = topics[index % Math.max(topics.length, 1)] || analysis.title;
+    return {
+      q: index % 2 === 0 ? `What should you remember about ${topic}?` : `How does this detail support ${analysis.title}?`,
+      a: point
+    };
+  });
 }
 function makeVivaQuestions(analysis) {
+  const topics = analysis.topicKeywords?.length ? analysis.topicKeywords : analysis.topics.length ? analysis.topics : ["the extracted page"];
+  const points = analysis.keyPoints.length ? analysis.keyPoints : [analysis.summary];
   return [{
     q: `What is the main idea of ${analysis.title}?`,
     a: analysis.summary
   }, {
     q: `Which topic is most important here?`,
-    a: analysis.topics[0] || "The extracted page context."
+    a: topics[0]
   }, {
-    q: "What practical insight can you take from this page?",
+    q: "What are the top supporting points?",
+    a: points.slice(0, 3).join(" ")
+  }, {
+    q: "How would you explain this page in simple words?",
     a: analysis.insight
   }, {
+    q: `Why does ${topics[0]} matter?`,
+    a: points[0] || analysis.summary
+  }, {
+    q: `How does ${topics[1] || topics[0]} connect to the main idea?`,
+    a: points[1] || analysis.insight
+  }, {
+    q: "What detail should you remember for revision?",
+    a: points[2] || points[0] || analysis.summary
+  }, {
+    q: "What question could a teacher ask from this page?",
+    a: `Explain ${topics.slice(0, 2).join(" and ")} using evidence from the page.`
+  }, {
+    q: "What is one practical takeaway?",
+    a: points[3] || analysis.insight
+  }, {
     q: "What would you research next?",
-    a: `Follow the connected ideas around ${analysis.topics.slice(0, 2).join(" and ")}.`
+    a: `Follow the connected ideas around ${topics.slice(0, 2).join(" and ")}.`
   }];
 }
 function buildLocalAnalysis(page, ai = null) {
-  const text = cleanWords(page?.text || page?.content || page?.summary || fallbackPage.text);
+  const hasPageContent = Boolean(page?.text || page?.content || page?.summary);
+  const rawText = hasPageContent ? (page?.text || page?.content || page?.summary || "") : page?.url ? "" : fallbackPage.text;
+  const text = cleanWords(rawText);
   const title = page?.title || fallbackPage.title;
   const url = page?.url || fallbackPage.url;
   const sentences = sentenceSplit(text);
   const topics = (ai?.topics?.length ? ai.topics : inferTopics(text, title)).slice(0, 5);
-  const keyPoints = (ai?.keyPoints?.length ? ai.keyPoints : sentences.slice(0, 5)).map(point => String(point).replace(/^[-*]\s*/, "").slice(0, 180));
-  const summary = ai?.summary || sentences.slice(0, 2).join(" ") || "This page is ready for focused AI research.";
+  const semanticTerms = contextTerms(text, title, topics);
+  const dominantEntities = [...new Set([...entityMatches(title), ...entityMatches(text)].map(item => item.trim()).filter(Boolean))].slice(0, 8);
+  const localSummary = makeLocalSummary(sentences, title);
+  const aiSummary = cleanWords(ai?.summary || "");
+  const summary = aiSummary.length >= 120 ? aiSummary : localSummary;
+  const keyPoints = normalizeKeyPoints(ai?.keyPoints?.length ? ai.keyPoints : sentences.slice(0, 6), summary);
   return {
     title,
     url,
     hostname: page?.hostname || hostnameFrom(url, fallbackPage.hostname),
     favicon: page?.favicon || page?.favIconUrl || "icon.png",
     text,
+    cleanedContent: text,
     topics,
+    topicKeywords: semanticTerms.slice(0, 8),
+    dominantEntities: dominantEntities.length ? dominantEntities : [title],
+    semanticFingerprint: contextFingerprint({
+      title,
+      text,
+      topics
+    }).contextFingerprint,
     keyPoints: keyPoints.length ? keyPoints : [summary],
     summary,
     insight: keyPoints[0] || `${title} connects ${topics.slice(0, 2).join(" and ").toLowerCase()} into a research thread.`,
     readingTime: page?.readingTime || readingTime(text),
     contentType: ai?.contentType || "webpage",
-    complexity: ai?.complexity || "intermediate"
+    complexity: ai?.complexity || "intermediate",
+    extractionTimestamp: page?.extractionTimestamp || new Date().toISOString()
   };
 }
 function sourceCards(analysis) {
-  return analysis.topics.slice(0, 4).map(topic => ({
-    title: `${topic} research path`,
-    desc: `Explore supporting references connected to ${topic.toLowerCase()} and this page.`,
-    url: `https://www.google.com/search?q=${encodeURIComponent(`${topic} ${analysis.title}`)}`
-  }));
+  const currentUrl = analysis?.url && /^https?:\/\//.test(analysis.url) ? analysis.url : null;
+  return currentUrl ? [{
+    title: analysis.title,
+    desc: analysis.summary || "Extracted source page.",
+    description: analysis.summary || "Extracted source page.",
+    url: currentUrl,
+    domain: hostnameFrom(currentUrl),
+    favicon: analysis.favicon
+  }] : [];
+}
+function activeClusterPages(session) {
+  const pages = session?.pages || session?.extractedPages || [];
+  const activeContextId = session?.activeContextId;
+  if (!activeContextId) return pages;
+  return pages.filter(page => page.contextId === activeContextId);
 }
 export default function Dashboard() {
   const {
@@ -156,13 +240,59 @@ export default function Dashboard() {
   const [isSaving, setIsSaving] = useState(false);
   const [isAsking, setIsAsking] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
+  const [semanticSources, setSemanticSources] = useState([]);
   const activePage = useMemo(() => {
-    const pages = researchSession?.pages || researchSession?.extractedPages || [];
-    return pageAnalysis || pages[pages.length - 1] || currentTab || fallbackPage;
+    const pages = activeClusterPages(researchSession);
+    if (pageAnalysis && currentTab?.url && pageAnalysis.url === currentTab.url) return pageAnalysis;
+    if (currentTab?.url) return currentTab;
+    return pageAnalysis || pages[pages.length - 1] || fallbackPage;
   }, [researchSession, currentTab, pageAnalysis]);
   const analysis = pageAnalysis || buildLocalAnalysis(activePage);
+  const activeContext = useMemo(() => ({
+    contextId: pageAnalysis?.contextId || activePage?.contextId || researchSession?.activeContextId || contextFingerprint(analysis).contextFingerprint,
+    pageTitle: analysis.title,
+    dominantEntities: analysis.dominantEntities || [analysis.title],
+    topicKeywords: analysis.topicKeywords || analysis.topics || [],
+    semanticFingerprint: analysis.semanticFingerprint || contextFingerprint(analysis).contextFingerprint,
+    cleanedContent: analysis.cleanedContent || analysis.text || "",
+    extractionTimestamp: analysis.extractionTimestamp || new Date().toISOString(),
+    ...contextFingerprint(analysis)
+  }), [analysis, activePage, pageAnalysis, researchSession]);
   const activeTool = tools.find(tool => tool.id === viewMode);
   const hasExtracted = extractionState === "COMPLETED" || Boolean(pageAnalysis);
+  const isSidebarMode = typeof document !== "undefined" && document.body.classList.contains("sidebar-mode");
+  useEffect(() => {
+    if (viewMode === "HOME") return undefined;
+    const handleKeyDown = event => {
+      if (event.key === "Escape") setViewMode("HOME");
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [viewMode]);
+  useEffect(() => {
+    if (!pageAnalysis?.url || !currentTab?.url) return;
+    if (pageAnalysis.url !== currentTab.url) {
+      setPageAnalysis(null);
+      setExtractionState("IDLE");
+      setShowSaveDrawer(false);
+    }
+  }, [currentTab?.url, pageAnalysis?.url]);
+  useEffect(() => {
+    try {
+      if (typeof chrome !== "undefined" && chrome.runtime?.sendMessage) {
+        chrome.runtime.sendMessage({
+          type: "SIDEBAR_STATE_CHANGED",
+          isOpen: true,
+          currentFeatureView: viewMode,
+          activeContextId: activeContext.contextId,
+          state: {
+            currentFeatureView: viewMode,
+            activeContextId: activeContext.contextId
+          }
+        });
+      }
+    } catch (err) {}
+  }, [viewMode, activeContext.contextId]);
   useEffect(() => {
     let cancelled = false;
     const fetchWorkbooks = async () => {
@@ -178,7 +308,15 @@ export default function Dashboard() {
         setWorkbookOptions(options);
         setWorkbook(current => options.some(option => option.name === current) ? current : options[0].name);
       } catch (err) {
-        console.warn("Workbook list unavailable, using local defaults", err?.message);
+        const names = await listLocalWorkbooks();
+        if (cancelled) return;
+        const options = (names.length ? names : defaultWorkbookOptions.map(item => item.name)).map((name, index) => ({
+          name,
+          meta: index === 0 ? "Primary research space" : "Saved workbook",
+          color: ["from-blue-500 to-violet-600", "from-emerald-400 to-teal-600", "from-orange-400 to-amber-600", "from-cyan-400 to-blue-700"][index % 4]
+        }));
+        setWorkbookOptions(options);
+        setWorkbook(current => options.some(option => option.name === current) ? current : options[0].name);
       }
     };
     fetchWorkbooks();
@@ -186,6 +324,27 @@ export default function Dashboard() {
       cancelled = true;
     };
   }, []);
+  useEffect(() => {
+    let cancelled = false;
+    const loadSemanticSources = async () => {
+      try {
+        const sources = await getSemanticSources({
+          title: analysis.title,
+          query: [...(analysis.topicKeywords || []), ...(analysis.dominantEntities || [])].join(" "),
+          context: analysis.cleanedContent || analysis.summary,
+          dominantEntities: analysis.dominantEntities || [],
+          topicKeywords: analysis.topicKeywords || analysis.topics || []
+        });
+        if (!cancelled) setSemanticSources(sources);
+      } catch (err) {
+        if (!cancelled) setSemanticSources([]);
+      }
+    };
+    loadSemanticSources();
+    return () => {
+      cancelled = true;
+    };
+  }, [analysis.title, analysis.cleanedContent, analysis.summary, analysis.semanticFingerprint]);
   const runDeepAnalysis = async page => {
     try {
       const res = await api.post("/api/ai/deep-analysis", {
@@ -203,6 +362,7 @@ export default function Dashboard() {
   const handleStartExtraction = async () => {
     setExtractionState("EXTRACTING");
     setSaveMessage("");
+    setPageAnalysis(null);
     try {
       let content = null;
       const response = await (actions.extractContent?.() || actions.sendMessage?.({
@@ -210,14 +370,28 @@ export default function Dashboard() {
       }));
       if (response?.success && response.content) {
         content = response.content;
-        await actions.sendMessage?.({
+        const saved = await actions.sendMessage?.({
           type: "SAVE_TO_SESSION",
           content
         });
+        const savedPage = saved?.session?.pages?.find(page => page.url === content.url);
+        if (savedPage) content = {
+          ...content,
+          ...savedPage
+        };
       }
       const page = content || activePage || fallbackPage;
       const ai = page.text || page.content ? await runDeepAnalysis(page) : null;
-      setPageAnalysis(buildLocalAnalysis(page, ai));
+      const nextAnalysis = buildLocalAnalysis(page, ai);
+      setPageAnalysis({
+        ...nextAnalysis,
+        contextId: page.contextId,
+        contextFingerprint: page.contextFingerprint,
+        contextTerms: page.contextTerms,
+        cleanedContent: nextAnalysis.cleanedContent,
+        semanticFingerprint: nextAnalysis.semanticFingerprint
+      });
+      setSelectedTags(nextAnalysis.topics.slice(0, 4));
       setExtractionState("COMPLETED");
     } catch (err) {
       console.error("Extraction failed:", err);
@@ -225,23 +399,29 @@ export default function Dashboard() {
       setExtractionState("COMPLETED");
     }
   };
+  const clusterPages = useMemo(() => activeClusterPages(researchSession), [researchSession]);
   const savePayload = (type = "page") => ({
     topic: analysis.title,
     link: analysis.url,
     workbook,
     summary: analysis.summary,
     notes: `${analysis.insight}\n\nTopics: ${analysis.topics.join(", ")}`,
+    contextId: activeContext.contextId,
+    contextFingerprint: activeContext.contextFingerprint,
+    contextTerms: activeContext.contextTerms,
     outputs: {
       summary: analysis.summary,
       answer: chatLines[chatLines.length - 1]?.a || "",
       question: chatLines[chatLines.length - 1]?.q || "",
       selectedText: analysis.text.slice(0, 4000),
       studyNotes: analysis.keyPoints.join("\n"),
-      relatedSources: sourceCards(analysis).map((source, index) => ({
+      relatedSources: semanticSources.map((source, index) => ({
         id: index + 1,
-        text: source.desc,
+        text: source.description,
         title: source.title,
-        url: source.url
+        url: source.url,
+        favicon: source.favicon,
+        domain: source.domain
       })),
       flashcards: makeFlashcards(analysis),
       viva: makeVivaQuestions(analysis),
@@ -250,20 +430,49 @@ export default function Dashboard() {
       tags: selectedTags
     }
   });
+  const sessionPayload = () => {
+    const relatedPages = clusterPages.length ? clusterPages : [activePage].filter(Boolean);
+    const pageSummaries = relatedPages.map((page, index) => `${index + 1}. ${page.title || "Saved page"} - ${page.url || "N/A"}`).join("\n");
+    return {
+      ...savePayload("session"),
+      topic: `Session - ${analysis.topics[0] || analysis.title}`,
+      summary: `Full session saved with ${relatedPages.length} semantically related page${relatedPages.length === 1 ? "" : "s"} about ${analysis.topics.slice(0, 3).join(", ")}.`,
+      notes: `${analysis.summary}\n\nRelated extracted pages:\n${pageSummaries}`,
+      outputs: {
+        ...savePayload("session").outputs,
+        saveType: "session",
+        sessionPages: relatedPages.map(page => ({
+          title: page.title,
+          url: page.url,
+          contextId: page.contextId,
+          summary: page.summary || ""
+        })),
+        contextualSynthesis: analysis.keyPoints.join("\n")
+      }
+    };
+  };
   const handleSave = async (type = "page") => {
     setIsSaving(true);
     setSaveMessage("");
     try {
-      await api.post("/api/research", savePayload(type));
+      const payload = type === "session" ? sessionPayload() : savePayload(type);
+      await saveLocalWorkbook(payload.workbook);
+      await saveLocalResearchItem(payload);
       setWorkbookOptions(options => options.some(option => option.name === workbook) ? options : [{
         name: workbook,
         meta: "Saved workbook",
         color: "from-blue-500 to-violet-600"
       }, ...options]);
-      setSaveMessage(type === "session" ? "Session saved to Research Hub" : "Page saved to Research Hub");
+      try {
+        await api.post("/api/research", payload);
+        setSaveMessage(type === "session" ? "Session saved" : "Page saved");
+      } catch (apiError) {
+        console.warn("Backend save unavailable, kept local copy", apiError?.message);
+        setSaveMessage(type === "session" ? "Session saved locally" : "Page saved locally");
+      }
     } catch (err) {
       console.error("Save failed:", err);
-      setSaveMessage("Start the backend server, then save again.");
+      setSaveMessage("Saved locally with browser storage.");
     } finally {
       setIsSaving(false);
     }
@@ -279,8 +488,12 @@ export default function Dashboard() {
     }]);
     try {
       const res = await api.post("/api/ai/ask", {
-        context: analysis.text,
-        question
+        context: activeContext.cleanedContent,
+        question,
+        title: activeContext.pageTitle,
+        contextId: activeContext.contextId,
+        dominantEntities: activeContext.dominantEntities || [],
+        topicKeywords: activeContext.topicKeywords || []
       });
       const answer = res.data?.answer || analysis.insight;
       setChatLines(lines => [...lines.slice(0, -1), {
@@ -299,7 +512,7 @@ export default function Dashboard() {
   return <div className="relative flex h-full w-full flex-col overflow-hidden bg-[#020614] text-white font-sans selection:bg-blue-500/30">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(70,91,255,0.20),transparent_35%),radial-gradient(circle_at_90%_35%,rgba(143,68,255,0.10),transparent_34%)]" />
 
-      <header className="relative z-20 flex h-[76px] shrink-0 items-center justify-between border-b border-white/[0.08] px-5">
+      {!isSidebarMode && <header className="relative z-20 flex h-[76px] shrink-0 items-center justify-between border-b border-white/[0.08] px-5">
         {viewMode === "HOME" ? <div className="min-w-0">
             <div className="flex items-center gap-3">
               <img src="icon.png" alt="" className="h-9 w-9 rounded-xl object-contain" />
@@ -321,9 +534,9 @@ export default function Dashboard() {
           <button className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03] hover:text-white"><Minus size={15} /></button>
           <button className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03] hover:text-white"><X size={16} /></button>
         </div>
-      </header>
+      </header>}
 
-      <main className="relative z-10 flex-1 overflow-y-auto px-5 pb-32 pt-4 no-scrollbar">
+      <main className={`relative z-10 flex-1 overflow-y-auto px-5 pb-32 no-scrollbar ${isSidebarMode ? "pt-5" : "pt-4"}`}>
         {viewMode === "HOME" ? <div className="space-y-4">
             <PageContextCard analysis={analysis} onRefresh={handleStartExtraction} />
             <ExtractionCard state={extractionState} analysis={analysis} onExtract={handleStartExtraction} />
@@ -331,11 +544,11 @@ export default function Dashboard() {
               {tools.map(tool => <ToolCard key={tool.id} tool={tool} onClick={() => setViewMode(tool.id)} />)}
             </div>
             {chatLines.map((line, index) => <ChatPreview key={index} line={line} />)}
-          </div> : <FeatureView mode={viewMode} analysis={analysis} selectedText={selectedText} />}
+          </div> : <FeatureView mode={viewMode} analysis={analysis} selectedText={selectedText} onBack={() => setViewMode("HOME")} showInlineBack={isSidebarMode} />}
       </main>
 
       <footer className="absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-[#020614] via-[#020614]/95 to-transparent px-4 pb-4 pt-12">
-        {showSaveDrawer && <SaveDrawer workbook={workbook} setWorkbook={setWorkbook} workbookOptions={workbookOptions} selectedSaveTypes={selectedSaveTypes} setSelectedSaveTypes={setSelectedSaveTypes} selectedTags={selectedTags} setSelectedTags={setSelectedTags} isSaving={isSaving} saveMessage={saveMessage} onClose={() => setShowSaveDrawer(false)} onSave={() => handleSave("workbook")} />}
+        {showSaveDrawer && <SaveDrawer workbook={workbook} setWorkbook={setWorkbook} workbookOptions={workbookOptions} selectedSaveTypes={selectedSaveTypes} setSelectedSaveTypes={setSelectedSaveTypes} selectedTags={selectedTags} setSelectedTags={setSelectedTags} isSaving={isSaving} saveMessage={saveMessage} onClose={() => setShowSaveDrawer(false)} onSave={() => handleSave("workbook")} onSaveSession={() => handleSave("session")} />}
 
         <div className="flex h-[68px] items-center gap-2 rounded-2xl border border-white/10 bg-[#080d1d]/90 p-2 shadow-2xl backdrop-blur-2xl">
           <button onClick={() => setShowSaveDrawer(v => !v)} className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl border text-[8px] font-black uppercase transition ${showSaveDrawer ? "border-blue-400 bg-blue-600 text-white" : "border-blue-500/20 bg-blue-500/[0.08] text-blue-300 hover:text-white"}`}><BookmarkPlus size={15} />Save</button>
@@ -415,25 +628,72 @@ function ToolCard({
 function FeatureView({
   mode,
   analysis,
-  selectedText
+  selectedText,
+  onBack,
+  showInlineBack = false
 }) {
-  if (mode === "SUMMARY") return <FeaturePanel title="AI Summary" color="#b45cff"><p>{analysis.summary}</p><ul className="space-y-2">{analysis.keyPoints.slice(0, 3).map(p => <FeatureBullet key={p} color="#b45cff">{p}</FeatureBullet>)}</ul></FeaturePanel>;
-  if (mode === "EXPLAIN") return <FeaturePanel title="Explanation" color="#22d3ee"><p>{selectedText ? `Selected text: ${selectedText}` : "Highlight text on the webpage, then return here for a contextual explanation."}</p><p>{selectedText ? `In simple terms, this connects to ${analysis.topics.slice(0, 2).join(" and ").toLowerCase()}. ${analysis.insight}` : analysis.insight}</p></FeaturePanel>;
-  if (mode === "SOURCES") return <FeaturePanel title="Related Sources" color="#00f58a">{sourceCards(analysis).map(source => <SourceRow key={source.url} source={source} />)}</FeaturePanel>;
-  if (mode === "POINTS") return <FeaturePanel title="Key Points" color="#ffd21f"><ul className="space-y-3">{analysis.keyPoints.map(point => <FeatureBullet key={point} color="#ffd21f">{point}</FeatureBullet>)}</ul></FeaturePanel>;
-  if (mode === "CARDS") return <FeaturePanel title="Flashcards" color="#ff5cdf"><div className="grid grid-cols-2 gap-3">{makeFlashcards(analysis).slice(0, 4).map(card => <Flashcard key={card.q} card={card} />)}</div><div className="mt-3 flex justify-center gap-1.5"><span className="h-1.5 w-5 rounded-full bg-violet-400" /><span className="h-1.5 w-1.5 rounded-full bg-white/20" /><span className="h-1.5 w-1.5 rounded-full bg-white/20" /></div></FeaturePanel>;
-  return <FeaturePanel title="Viva Questions" color="#a855ff"><div className="space-y-3">{makeVivaQuestions(analysis).map((item, index) => <div key={item.q} className="text-[12px] leading-relaxed"><p className="font-bold text-white">Q{index + 1}. {item.q}</p><p className="mt-1 text-gray-400">A. {item.a}</p></div>)}</div></FeaturePanel>;
+  const vivaQuestions = makeVivaQuestions(analysis);
+  const panelProps = {
+    onBack: showInlineBack ? onBack : null
+  };
+  if (mode === "SUMMARY") return <FeaturePanel title="AI Summary" color="#b45cff" {...panelProps}><p>{analysis.summary}</p><ul className="space-y-2">{analysis.keyPoints.slice(0, 3).map((p, index) => <FeatureBullet key={`${index}-${p}`} color="#b45cff">{p}</FeatureBullet>)}</ul></FeaturePanel>;
+  if (mode === "EXPLAIN") return <FeaturePanel title="Explanation" color="#22d3ee" {...panelProps}><p>{selectedText ? `Selected text: ${selectedText}` : "Highlight text on the webpage, then return here for a contextual explanation."}</p><p>{selectedText ? `In simple terms, this connects to ${analysis.topics.slice(0, 2).join(" and ").toLowerCase()}. ${analysis.insight}` : analysis.insight}</p></FeaturePanel>;
+  if (mode === "SOURCES") return <RelatedSourcesPanel analysis={analysis} panelProps={panelProps} />;
+  if (mode === "POINTS") return <FeaturePanel title="Key Points" color="#ffd21f" {...panelProps}><ul className="max-h-[430px] space-y-3 overflow-y-auto pr-1">{analysis.keyPoints.map((point, index) => <FeatureBullet key={`${index}-${point}`} color="#ffd21f">{point}</FeatureBullet>)}</ul></FeaturePanel>;
+  if (mode === "CARDS") return <FeaturePanel title="Flashcards" color="#ff5cdf" {...panelProps}><div className="grid grid-cols-2 gap-3">{makeFlashcards(analysis).slice(0, 4).map(card => <Flashcard key={card.q} card={card} />)}</div><div className="mt-3 flex justify-center gap-1.5"><span className="h-1.5 w-5 rounded-full bg-violet-400" /><span className="h-1.5 w-1.5 rounded-full bg-white/20" /><span className="h-1.5 w-1.5 rounded-full bg-white/20" /></div></FeaturePanel>;
+  return <FeaturePanel title="Viva Questions" color="#a855ff" {...panelProps}><div className="max-h-[430px] space-y-3 overflow-y-auto pr-1">{vivaQuestions.map((item, index) => <div key={item.q} className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 text-[12px] leading-relaxed"><p className="font-bold text-white">Q{index + 1}. {item.q}</p><p className="mt-1 text-gray-400">A. {item.a}</p></div>)}</div></FeaturePanel>;
+}
+function RelatedSourcesPanel({
+  analysis,
+  panelProps
+}) {
+  const [sources, setSources] = useState(sourceCards(analysis));
+  const [isLoading, setIsLoading] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const loadSources = async () => {
+      setIsLoading(true);
+      try {
+        const directSources = await getSemanticSources({
+          title: analysis.title,
+          query: [...(analysis.topicKeywords || []), ...(analysis.dominantEntities || [])].join(" "),
+          context: analysis.cleanedContent || analysis.summary,
+          dominantEntities: analysis.dominantEntities || [],
+          topicKeywords: analysis.topicKeywords || analysis.topics || []
+        });
+        if (!cancelled && directSources.length) {
+          setSources(directSources);
+        }
+      } catch (err) {
+        console.warn("Related sources unavailable", err?.message);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+    loadSources();
+    return () => {
+      cancelled = true;
+    };
+  }, [analysis.title, analysis.summary, analysis.topics.join("|")]);
+  return <FeaturePanel title="Related Sources" color="#00f58a" {...panelProps}>
+      {isLoading && <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-300"><Loader2 size={14} className="animate-spin" /> Finding real related sources...</div>}
+      {sources.length ? sources.map(source => <SourceRow key={source.url} source={source} />) : !isLoading && <p className="text-xs text-gray-500">No direct sources found yet.</p>}
+    </FeaturePanel>;
 }
 function FeaturePanel({
   title,
   color,
+  onBack,
   children
 }) {
   return <section className="rounded-2xl border border-white/[0.10] bg-[#060b19]/85 text-[13px] leading-relaxed text-gray-300 shadow-2xl backdrop-blur-xl">
       <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
-        <h2 className="text-[11px] font-black uppercase tracking-[0.16em]" style={{
-        color
-      }}>{title}</h2>
+        <div className="flex min-w-0 items-center gap-2">
+          {onBack && <button onClick={onBack} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-gray-300 transition hover:border-white/20 hover:text-white" title="Back to Aide panel"><ArrowLeft size={16} /></button>}
+          <h2 className="truncate text-[11px] font-black uppercase tracking-[0.16em]" style={{
+          color
+        }}>{title}</h2>
+        </div>
         <Copy size={16} className="text-gray-500" />
       </div>
       <div className="space-y-4 p-4">{children}</div>
@@ -450,7 +710,31 @@ function FeatureBullet({
 function SourceRow({
   source
 }) {
-  return <a href={source.url} target="_blank" rel="noreferrer" className="flex gap-3 rounded-xl border border-white/[0.05] bg-white/[0.03] p-3 transition hover:bg-white/[0.06]"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-300" /><span className="min-w-0 flex-1"><span className="block text-[12px] font-bold text-white">{source.title}</span><span className="mt-1 block truncate text-[11px] text-blue-400">{source.url}</span></span><ExternalLink size={14} className="text-gray-500" /></a>;
+  const openSource = event => {
+    event.preventDefault();
+    if (!source.url) return;
+    try {
+      if (typeof chrome !== "undefined" && chrome.runtime?.sendMessage) {
+        chrome.runtime.sendMessage({
+          type: "OPEN_SOURCE_WITH_SIDEBAR",
+          url: source.url
+        }, () => {
+          if (chrome.runtime.lastError) window.open(source.url, "_blank", "noopener,noreferrer");
+        });
+        return;
+      }
+    } catch (err) {}
+    window.open(source.url, "_blank", "noopener,noreferrer");
+  };
+  return <a href={source.url} onClick={openSource} target="_blank" rel="noreferrer" className="flex gap-3 rounded-xl border border-white/[0.05] bg-white/[0.03] p-3 transition hover:bg-white/[0.06]">
+      {source.favicon ? <img src={source.favicon} alt="" className="mt-0.5 h-4 w-4 shrink-0 rounded" /> : <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-300" />}
+      <span className="min-w-0 flex-1">
+        <span className="block text-[12px] font-bold text-white">{source.title}</span>
+        {source.description && <span className="mt-1 line-clamp-2 block text-[11px] text-gray-400">{source.description}</span>}
+        <span className="mt-1 block truncate text-[10px] font-bold text-blue-400">{source.domain || source.url}</span>
+      </span>
+      <ExternalLink size={14} className="text-gray-500" />
+    </a>;
 }
 function Flashcard({
   card
@@ -490,7 +774,8 @@ function SaveDrawer({
   isSaving,
   saveMessage,
   onClose,
-  onSave
+  onSave,
+  onSaveSession
 }) {
   const [isCreatingWorkbook, setIsCreatingWorkbook] = useState(false);
   const [draftWorkbook, setDraftWorkbook] = useState("");
@@ -582,6 +867,9 @@ function SaveDrawer({
           <button onClick={onSave} disabled={isSaving || selectedSaveTypes.length === 0} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-violet-600 px-4 py-3.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-lg shadow-blue-600/25 transition active:scale-[0.99] disabled:opacity-60">
             {isSaving ? <Loader2 size={15} className="animate-spin" /> : <BookmarkPlus size={15} />} Save to Workbook
           </button>
+          <button onClick={onSaveSession} disabled={isSaving} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/25 bg-emerald-500/[0.08] px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-200 transition hover:bg-emerald-500/[0.12] disabled:opacity-60">
+            {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save Full Session
+          </button>
         </div>
       </div>
 
@@ -591,3 +879,10 @@ function SaveDrawer({
       {saveMessage && <p className="mt-2 text-center text-[10px] font-bold text-emerald-300">{saveMessage}</p>}
     </div>;
 }
+
+
+
+
+
+
+

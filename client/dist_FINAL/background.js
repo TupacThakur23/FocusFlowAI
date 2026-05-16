@@ -1,6 +1,74 @@
 const rawContentCache = new Map();
 const pageCache = new Map();
 const contentScriptRegistry = new Map();
+const SIDEBAR_PREF_KEY = 'sidebarPreference';
+const SOURCE_NAV_KEY = 'focusflowSourceNavigation';
+const STOP_WORDS = new Set(['the', 'and', 'for', 'with', 'that', 'this', 'from', 'are', 'was', 'were', 'page', 'content', 'research', 'source', 'article', 'what', 'which', 'about']);
+const cleanContextText = value => String(value || '').toLowerCase().replace(/https?:\/\/\S+/g, ' ').replace(/[^a-z0-9\s-]/g, ' ').replace(/\s+/g, ' ').trim();
+const contextTerms = content => {
+  const source = cleanContextText(`${content.title || ''} ${(content.topics || []).join(' ')} ${content.text || content.content || content.summary || ''}`.slice(0, 12000));
+  const counts = new Map();
+  source.split(/\s+/).filter(word => word.length > 2 && !STOP_WORDS.has(word)).forEach(word => counts.set(word, (counts.get(word) || 0) + 1));
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 18).map(([term]) => term);
+};
+const termSimilarity = (a = [], b = []) => {
+  const left = new Set(a);
+  const right = new Set(b);
+  if (!left.size || !right.size) return 0;
+  let overlap = 0;
+  left.forEach(term => {
+    if (right.has(term)) overlap++;
+  });
+  return overlap / Math.sqrt(left.size * right.size);
+};
+const fingerprintFor = content => {
+  const terms = contextTerms(content);
+  const seed = (terms.slice(0, 2).join('_') || cleanContextText(content.title).split(/\s+/).slice(0, 2).join('_') || 'context_general').replace(/[^a-z0-9]+/g, '_').slice(0, 48);
+  return {
+    id: `context_${seed}`,
+    terms,
+    label: terms.slice(0, 3).join(' ') || content.title || 'Active context'
+  };
+};
+const assignContext = (session, content) => {
+  const fingerprint = fingerprintFor(content);
+  const clusters = session.contextClusters || {};
+  let bestId = null;
+  let bestScore = 0;
+  Object.entries(clusters).forEach(([id, cluster]) => {
+    const score = termSimilarity(fingerprint.terms, cluster.terms || []);
+    if (score > bestScore) {
+      bestScore = score;
+      bestId = id;
+    }
+  });
+  const threshold = 0.28;
+  const contextId = bestScore >= threshold && bestId ? bestId : `${fingerprint.id}_${Date.now().toString(36)}`;
+  const existing = clusters[contextId] || {
+    id: contextId,
+    fingerprint: fingerprint.id,
+    terms: fingerprint.terms,
+    label: fingerprint.label,
+    pages: [],
+    createdAt: new Date().toISOString()
+  };
+  const mergedTerms = [...new Set([...(existing.terms || []), ...fingerprint.terms])].slice(0, 22);
+  clusters[contextId] = {
+    ...existing,
+    terms: mergedTerms,
+    label: existing.label || fingerprint.label,
+    lastSimilarity: bestScore,
+    updatedAt: new Date().toISOString()
+  };
+  session.contextClusters = clusters;
+  session.activeContextId = contextId;
+  session.contextFingerprint = fingerprint.id;
+  return {
+    contextId,
+    fingerprint,
+    similarity: bestScore
+  };
+};
 const getActiveTab = async () => {
   try {
     const tabs = await chrome.tabs.query({
@@ -26,6 +94,34 @@ const updateTabState = async tab => {
     chrome.runtime.sendMessage({
       type: 'TAB_CHANGED',
       tab: tabInfo
+    });
+  });
+  chrome.storage.local.get([SIDEBAR_PREF_KEY, SOURCE_NAV_KEY], data => {
+    const sourceNav = data[SOURCE_NAV_KEY];
+    if (sourceNav?.url && Date.now() < sourceNav.expiresAt && (tab.url.startsWith(sourceNav.url) || sourceNav.host && (() => { try { return new URL(tab.url).hostname === sourceNav.host; } catch { return false; } })())) {
+      const sidebarPreference = {
+        hasUserOpenedSidebar: true,
+        isSidebarEnabled: true,
+        sidebarMode: 'full',
+        isMinimized: false
+      };
+      chrome.storage.local.set({
+        [SIDEBAR_PREF_KEY]: sidebarPreference,
+        [SOURCE_NAV_KEY]: null
+      });
+      safeSendMessage(tab.id, {
+        type: 'OPEN_SIDEBAR',
+        reason: 'source_navigation',
+        sidebarPreference
+      });
+      return;
+    }
+    const pref = data[SIDEBAR_PREF_KEY] || {};
+    if (!pref.hasUserOpenedSidebar || !pref.isSidebarEnabled || pref.sidebarMode === 'closed') return;
+    safeSendMessage(tab.id, {
+      type: pref.sidebarMode === 'minimized' ? 'MINIMIZE_SIDEBAR' : 'OPEN_SIDEBAR',
+      reason: 'restore_sidebar_preference',
+      sidebarPreference: pref
     });
   });
 };
@@ -89,11 +185,18 @@ const manageSession = async (content, tabId) => {
       let session = data.aideResearchSession ? JSON.parse(data.aideResearchSession) : {
         id: `session_${Date.now()}`,
         pages: [],
+        contextClusters: {},
+        activeContextId: null,
         createdAt: new Date().toISOString()
       };
+      const assigned = assignContext(session, content);
       rawContentCache.set(content.url, content.text || content.content);
       const metadataOnly = {
-        ...content
+        ...content,
+        contextId: assigned.contextId,
+        contextFingerprint: assigned.fingerprint.id,
+        contextTerms: assigned.fingerprint.terms,
+        contextSimilarity: assigned.similarity
       };
       delete metadataOnly.text;
       delete metadataOnly.content;
@@ -107,9 +210,12 @@ const manageSession = async (content, tabId) => {
         timestamp: new Date().toISOString()
       };
       if (existingIndex > -1) session.pages[existingIndex] = pageEntry;else session.pages.push(pageEntry);
+      const clusterPages = session.contextClusters[assigned.contextId].pages || [];
+      session.contextClusters[assigned.contextId].pages = [...new Set([...clusterPages, content.url])];
       session.updatedAt = new Date().toISOString();
       chrome.storage.local.set({
-        aideResearchSession: JSON.stringify(session)
+        aideResearchSession: JSON.stringify(session),
+        activeContextId: assigned.contextId
       }, () => {
         chrome.runtime.sendMessage({
           type: 'SESSION_UPDATED',
@@ -197,6 +303,86 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     return true;
   }
+  if (['OPEN_SIDEBAR_REQUEST', 'MINIMIZE_SIDEBAR_REQUEST', 'CLOSE_SIDEBAR_REQUEST', 'TOGGLE_SIDEBAR_REQUEST'].includes(type)) {
+    (async () => {
+      const tab = await getActiveTab();
+      if (!tab?.id) {
+        sendResponse({ success: false, error: 'No active tab available' });
+        return;
+      }
+      const contentType = type.replace('_REQUEST', '');
+      if (contentType === 'CLOSE_SIDEBAR') {
+        chrome.storage.local.set({
+          [SOURCE_NAV_KEY]: null
+        });
+      }
+      const response = await safeSendMessage(tab.id, { type: contentType });
+      sendResponse(response || { success: true });
+    })();
+    return true;
+  }
+  if (type === 'OPEN_SOURCE_WITH_SIDEBAR' && request.url) {
+    chrome.storage.local.set({
+      [SOURCE_NAV_KEY]: {
+        url: request.url,
+        host: (() => { try { return new URL(request.url).hostname; } catch { return null; } })(),
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 30000
+      }
+    }, () => {
+      chrome.tabs.create({
+        url: request.url
+      }, tab => sendResponse({
+        success: !chrome.runtime.lastError,
+        tabId: tab?.id
+      }));
+    });
+    return true;
+  }  if (type === 'SIDEBAR_STATE_CHANGED') {
+    const hasExplicitPreference = Boolean(request.sidebarPreference || request.sidebarMode);
+    chrome.storage.local.get([SIDEBAR_PREF_KEY], data => {
+      const existingPreference = data[SIDEBAR_PREF_KEY] || {
+        hasUserOpenedSidebar: false,
+        isSidebarEnabled: false,
+        sidebarMode: 'closed',
+        isMinimized: false
+      };
+      const sidebarPreference = hasExplicitPreference ? request.sidebarPreference || {
+        hasUserOpenedSidebar: request.sidebarMode !== 'closed',
+        isSidebarEnabled: request.sidebarMode !== 'closed',
+        sidebarMode: request.sidebarMode,
+        isMinimized: request.sidebarMode === 'minimized'
+      } : existingPreference;
+      chrome.storage.local.set({
+        [SIDEBAR_PREF_KEY]: sidebarPreference,
+        activeSidebarState: request.state || {},
+        currentFeatureView: request.currentFeatureView || request.state?.currentFeatureView || 'HOME',
+        activeContextId: request.activeContextId || request.state?.activeContextId || null
+      }, () => sendResponse({ success: true }));
+    });
+    return true;
+  }
+  if (type === 'GET_SIDEBAR_STATE') {
+    chrome.storage.local.get([SIDEBAR_PREF_KEY, 'activeSidebarState', 'currentFeatureView', 'activeContextId'], data => {
+      const pref = data[SIDEBAR_PREF_KEY] || {};
+      sendResponse({
+        success: true,
+        state: {
+          isOpen: pref.sidebarMode === 'full',
+          isVisible: pref.sidebarMode === 'full' || pref.sidebarMode === 'minimized',
+          sidebarMode: pref.sidebarMode || 'closed',
+          hasUserOpenedSidebar: Boolean(pref.hasUserOpenedSidebar),
+          isSidebarEnabled: Boolean(pref.isSidebarEnabled),
+          isMinimized: pref.sidebarMode === 'minimized',
+          sidebarPreference: pref,
+          activeSidebarState: data.activeSidebarState || {},
+          currentFeatureView: data.currentFeatureView || 'HOME',
+          activeContextId: data.activeContextId || null
+        }
+      });
+    });
+    return true;
+  }
   return false;
 });
 chrome.tabs.onActivated.addListener(info => {
@@ -210,3 +396,8 @@ chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
     updateTabState(tab);
   }
 });
+
+
+
+
+

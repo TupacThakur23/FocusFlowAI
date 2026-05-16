@@ -43,6 +43,19 @@
       };
     }
   };
+  const restoreSidebarFromPreference = async () => {
+    try {
+      chrome.storage.local.get(['sidebarPreference'], data => {
+        const pref = data.sidebarPreference || {};
+        if (!pref.hasUserOpenedSidebar || !pref.isSidebarEnabled || pref.sidebarMode === 'closed') return;
+        if (pref.sidebarMode === 'minimized') {
+          sidebarManager.minimizeSidebar();
+        } else {
+          sidebarManager.forceOpen();
+        }
+      });
+    } catch (err) {}
+  };
   try {
     const {
       sidebarManager
@@ -64,6 +77,7 @@
           type: 'PAGE_CONTEXT_RESET',
           url: window.location.href
         });
+        restoreSidebarFromPreference();
       }
     };
     const originalPush = history.pushState;
@@ -82,7 +96,13 @@
       switch (type) {
         case 'OPEN_SIDEBAR':
         case 'OPEN_AIDE_SIDEBAR':
-          sidebarManager.forceOpen();
+          sidebarManager.openSidebar();
+          sendResponse({
+            success: true
+          });
+          break;
+        case 'MINIMIZE_SIDEBAR':
+          sidebarManager.minimizeSidebar();
           sendResponse({
             success: true
           });
@@ -97,7 +117,7 @@
           sidebarManager.toggleSidebar();
           sendResponse({
             success: true,
-            visible: sidebarManager.isOpen
+            visible: sidebarManager.isVisible
           });
           break;
         case 'EXTRACT_CONTENT':
@@ -137,6 +157,7 @@
       }
       return false;
     });
+    restoreSidebarFromPreference();
     safeSendMessage({
       type: 'CONTENT_SCRIPT_READY',
       url: window.location.href,
@@ -144,3 +165,4 @@
     });
   } catch (error) {}
 })();
+

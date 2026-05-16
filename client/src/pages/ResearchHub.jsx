@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { BookOpen, Search, Plus, Folder, Tag, Clock, ChevronRight, FileText, ExternalLink, Trash2, RefreshCw, LayoutGrid, Library, Bookmark, Sparkles, Filter, MoreHorizontal, ChevronDown, ArrowUpRight, Zap, Settings, HelpCircle, Bell, Home, Users, CheckCircle2, FileJson, ArrowRight, Star, BrainCircuit } from "lucide-react";
 import Workbook from "./Workbook";
 import api from "../services/api";
+import { listLocalResearch, listLocalWorkbooks, saveLocalWorkbook } from "../lib/localResearchStore";
 export default function ResearchHub() {
   const [researchData, setResearchData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
@@ -18,13 +19,22 @@ export default function ResearchHub() {
     setIsLoading(true);
     try {
       const [researchRes, workbookRes] = await Promise.all([api.get("/api/research"), api.get("/api/research/workbooks")]);
-      const research = Array.isArray(researchRes.data) ? researchRes.data : [];
-      const workbooks = Array.isArray(workbookRes.data) && workbookRes.data.length ? workbookRes.data : ["Research Workbook"];
+      const remoteResearch = Array.isArray(researchRes.data) ? researchRes.data : [];
+      const localResearch = await listLocalResearch();
+      const research = [...localResearch, ...remoteResearch].filter((item, index, arr) => index === arr.findIndex(entry => String(entry._id || entry.link || entry.topic) === String(item._id || item.link || item.topic)));
+      const remoteWorkbooks = Array.isArray(workbookRes.data) && workbookRes.data.length ? workbookRes.data : ["Research Workbook"];
+      const localWorkbooks = await listLocalWorkbooks();
+      const workbooks = [...new Set([...localWorkbooks, ...remoteWorkbooks, "Research Workbook"].filter(Boolean))];
       setResearchData(research);
       setFilteredData(research);
       setSavedWorkbooks(workbooks);
     } catch (error) {
       console.error("Failed to fetch research:", error);
+      const research = await listLocalResearch();
+      const workbooks = await listLocalWorkbooks();
+      setResearchData(research);
+      setFilteredData(research);
+      setSavedWorkbooks(workbooks.length ? workbooks : ["Research Workbook"]);
     } finally {
       setIsLoading(false);
     }
@@ -62,9 +72,14 @@ export default function ResearchHub() {
     const name = newWorkbookName.trim();
     if (!name) return;
     try {
-      await api.post("/api/research/workbooks", {
-        name
-      });
+      await saveLocalWorkbook(name);
+      try {
+        await api.post("/api/research/workbooks", {
+          name
+        });
+      } catch (error) {
+        console.warn("Backend workbook create unavailable, kept local workbook", error?.message);
+      }
       setSavedWorkbooks(items => [name, ...items.filter(item => item !== name)]);
       setNewWorkbookName("");
       setIsCreatingWorkbook(false);
@@ -413,3 +428,7 @@ function CopilotQuery({
        <span className="text-[12px] text-gray-300 group-hover:text-white transition-colors truncate">{text}</span>
     </button>;
 }
+
+
+
+

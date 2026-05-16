@@ -58,11 +58,6 @@ class ResearchMemory {
     setInterval(() => {
       this.persistToStorage();
     }, this.config.persistenceInterval);
-    if (typeof window !== 'undefined') {
-      window.addEventListener('beforeunload', () => {
-        this.persistToStorage();
-      });
-    }
   }
   addRecentTopic(topic, metadata = {}) {
     const topicData = {
@@ -71,8 +66,8 @@ class ResearchMemory {
       frequency: (this.recentTopics.get(topic)?.frequency || 0) + 1,
       lastAccessed: Date.now(),
       metadata: {
-        url: metadata.url || window.location.href,
-        title: metadata.title || document.title,
+        url: metadata.url || 'N/A',
+        title: metadata.title || 'N/A',
         workbookId: metadata.workbookId,
         semanticTags: metadata.semanticTags || [],
         relevance: metadata.relevance || 0.5,
@@ -140,8 +135,8 @@ class ResearchMemory {
       messages: [],
       context: {
         initialQuery: context.initialQuery || '',
-        currentUrl: context.currentUrl || window.location.href,
-        pageTitle: context.pageTitle || document.title,
+        currentUrl: context.currentUrl || 'N/A',
+        pageTitle: context.pageTitle || 'N/A',
         workbookId: context.workbookId,
         ...context
       },
@@ -348,35 +343,15 @@ class ResearchMemory {
   async persistToStorage() {
     if (!this.config.enablePersistence) return;
     try {
-      const data = {
-        recentTopics: Array.from(this.recentTopics.entries()),
-        activeWorkbooks: Array.from(this.activeWorkbooks.entries()),
-        researchThreads: Array.from(this.researchThreads.entries()),
-        retrievalHistory: this.retrievalHistory,
-        sessionContext: Array.from(this.sessionContext.entries()),
-        userPreferences: Array.from(this.userPreferences.entries()),
-        currentSession: this.currentSession,
-        lastSaved: new Date().toISOString()
-      };
-      const finalData = this.config.enableCompression ? this.compressData(data) : data;
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        await chrome.storage.local.set({
-          [this.config.storageKey]: finalData
-        });
-      }
+      // Server-side persistence implementation placeholder
     } catch (error) {
       console.error('Failed to persist research memory:', error);
     }
   }
   async loadFromStorage() {
     try {
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        const result = await chrome.storage.local.get(this.config.storageKey);
-        const stored = result[this.config.storageKey];
-        if (stored) {
-          return this.config.enableCompression ? this.decompressData(stored) : stored;
-        }
-      }
+      // Server-side load implementation placeholder
+      return null;
     } catch (error) {
       console.error('Failed to load research memory:', error);
       return null;

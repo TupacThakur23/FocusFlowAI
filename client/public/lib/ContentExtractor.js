@@ -14,7 +14,17 @@ export class ContentExtractor {
     try {
       if (signal?.aborted) return this._getFallbackContent('Aborted before start');
       const clone = document.cloneNode(true);
-      const unwantedSelectors = ['script', 'style', 'noscript', 'iframe', 'svg', 'nav', 'footer', 'aside', '.sidebar', '#sidebar', '.menu', '#menu', '.ad', '.ads', '.advertisement', '[role="banner"]', '[role="navigation"]', '[role="contentinfo"]', '.comments', '.cookie-banner', '#cookie-notice', '.newsletter-overlay', '.popup-newsletter', '.share-buttons', '.social-sidebar', '.newsletter-signup'];
+      const unwantedSelectors = [
+        'script', 'style', 'noscript', 'iframe', 'svg', 'nav', 'header', 'footer', 'aside',
+        '.sidebar', '#sidebar', '.menu', '#menu', '.ad', '.ads', '.advertisement',
+        '[role="banner"]', '[role="navigation"]', '[role="contentinfo"]',
+        '.comments', '.cookie-banner', '#cookie-notice', '.newsletter-overlay',
+        '.popup-newsletter', '.share-buttons', '.social-sidebar', '.newsletter-signup',
+        '#mw-navigation', '#mw-panel', '.vector-header-container', '.vector-page-toolbar',
+        '.vector-toc', '.vector-sticky-pinned-container', '.mw-portlet-lang', '#p-lang',
+        '.uls-language-list', '.interlanguage-link', '.mw-interlanguage-selector',
+        '.mw-editsection', '.infobox', '.navbox', '.catlinks', '.printfooter'
+      ];
       unwantedSelectors.forEach(selector => {
         try {
           clone.querySelectorAll(selector).forEach(el => el.remove());
@@ -22,7 +32,7 @@ export class ContentExtractor {
       });
       if (signal?.aborted) return this._getFallbackContent('Aborted during cleaning');
       let primaryNode = null;
-      const primarySelectors = ['article', 'main', '[role="main"]', '.content', '#content', '#main', '.post', '.entry'];
+      const primarySelectors = ['#mw-content-text .mw-parser-output', '#mw-content-text', 'article', 'main', '[role="main"]', '.content', '#content', '#main', '.post', '.entry'];
       for (const sel of primarySelectors) {
         try {
           const el = clone.querySelector(sel);
@@ -35,18 +45,18 @@ export class ContentExtractor {
       if (!primaryNode) primaryNode = clone.body || clone;
       let extractedText = this._processNode(primaryNode);
       if (signal?.aborted) return this._getFallbackContent('Aborted during semantic extraction');
-      extractedText = extractedText.replace(/\n{3,}/g, '\n\n').replace(/ {2,}/g, ' ').trim();
+      extractedText = this._cleanExtractedText(extractedText);
       if (!extractedText || extractedText.length < 100) {
-        extractedText = document.body.innerText || document.body.textContent || '';
+        extractedText = this._cleanExtractedText(document.body.innerText || document.body.textContent || '');
       }
       const getMeta = n => {
         const m = document.querySelector(`meta[name="${n}"], meta[property="${n}"], meta[property="og:${n}"]`);
         return m ? m.getAttribute('content') : null;
       };
       const h1 = document.querySelector('h1');
-      const smartTitle = getMeta('title') || (h1 ? h1.innerText.trim() : null) || document.title;
+      const smartTitle = this._cleanTitle(getMeta('title') || (h1 ? h1.innerText.trim() : null) || document.title);
       const firstPara = Array.from(document.querySelectorAll('p')).find(p => p.innerText.trim().length > 50)?.innerText.trim();
-      const smartDescription = getMeta('description') || firstPara || '';
+      const smartDescription = this._cleanExtractedText(getMeta('description') || firstPara || '');
       const getFavicon = () => {
         const link = document.querySelector('link[rel*="icon"]');
         return link ? link.href : `${window.location.origin}/favicon.ico`;
@@ -67,7 +77,7 @@ export class ContentExtractor {
         },
         wordCount,
         readingTime,
-        method: 'advanced_semantic_v2'
+        method: 'advanced_semantic_v2_wiki_nav_fix'
       };
     } catch (e) {
       return this._getFallbackContent(e.message);
@@ -95,9 +105,34 @@ export class ContentExtractor {
         return result;
     }
   }
+  _cleanExtractedText(text = '') {
+    return String(text)
+      .replace(/\r/g, '')
+      .split(/\n+/)
+      .map(line => line.replace(/\s+/g, ' ').trim())
+      .filter(line => line && !this._isLanguageListLine(line) && !this._isBoilerplateLine(line))
+      .join('\n\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/ {2,}/g, ' ')
+      .trim();
+  }
+  _isBoilerplateLine(line = '') {
+    const clean = String(line).replace(/^#+\s*/, '').replace(/\s+/g, ' ').trim();
+    return /^(contents?|appearance|hide|show|move to sidebar|navigation|main menu|personal tools|toggle|search|create account|log in|read|edit|view history|tools|languages?|references|external links|see also)$/i.test(clean);
+  }
+  _isLanguageListLine(line = '') {
+    const clean = String(line).replace(/\s+/g, ' ').trim();
+    const separatorCount = (clean.match(/\s[-\u2013\u2014\u2022|]\s/g) || []).length;
+    return clean.length > 80 && (separatorCount > 4 || /\b\d+\s+languages\b/i.test(clean));
+  }
+  _cleanTitle(title = '') {
+    let clean = String(title || '').replace(/^#+\s*/, '').replace(/\s+/g, ' ').replace(/\b\d+\s+languages\b.*$/i, '').replace(/\s[-\u2013\u2014|]\sWikipedia$/i, '').replace(/^(?:(?:contents?|appearance|hide|show|move to sidebar|navigation|main menu|personal tools|toggle|search|create account|log in|read|edit|view history|tools)\s+)+/i, '').replace(/\s+/g, ' ').trim();
+    if (this._isLanguageListLine(clean)) clean = clean.split(/\s[-\u2013\u2014\u2022|]\s/)[0] || '';
+    return clean || 'Current webpage';
+  }
   _getFallbackContent(reason) {
     return {
-      title: document.title,
+      title: this._cleanTitle(document.title),
       url: window.location.href,
       hostname: window.location.hostname.replace(/^www\./, ''),
       content: '',

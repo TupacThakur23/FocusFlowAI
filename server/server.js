@@ -39,9 +39,21 @@ app.use((err, req, res, next) => {
     error: err.message || "Internal server error"
   });
 });
-mongoose.connect(process.env.MONGO_URI).then(() => {
-  console.log("MongoDB connected");
+let serverStarted = false;
+const startServer = () => {
+  if (serverStarted) return;
+  serverStarted = true;
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
-}).catch(err => console.log("MongoDB connection failed:", err.message));
+};
+mongoose.connect(process.env.MONGO_URI, {
+  serverSelectionTimeoutMS: 5000
+}).then(() => {
+  console.log("MongoDB connected");
+  startServer();
+}).catch(err => {
+  console.log("MongoDB connection failed:", err.message);
+  console.log("Starting API with in-memory research storage for this session.");
+  startServer();
+});
