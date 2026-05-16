@@ -17,27 +17,21 @@ export default function ResearchHub() {
   const [initialWorkbookPrompt, setInitialWorkbookPrompt] = useState("");
   const refreshResearch = async () => {
     setIsLoading(true);
+    const localResearch = await listLocalResearch();
+    const localWorkbooks = await listLocalWorkbooks();
+    let research = localResearch;
+    let workbooks = [...new Set([...localWorkbooks, "Research Workbook"].filter(Boolean))];
     try {
       const [researchRes, workbookRes] = await Promise.all([api.get("/api/research"), api.get("/api/research/workbooks")]);
       const remoteResearch = Array.isArray(researchRes.data) ? researchRes.data : [];
-      const localResearch = await listLocalResearch();
-      const research = [...localResearch, ...remoteResearch].filter((item, index, arr) => index === arr.findIndex(entry => String(entry._id || entry.link || entry.topic) === String(item._id || item.link || item.topic)));
-      const remoteWorkbooks = Array.isArray(workbookRes.data) && workbookRes.data.length ? workbookRes.data : ["Research Workbook"];
-      const localWorkbooks = await listLocalWorkbooks();
-      const workbooks = [...new Set([...localWorkbooks, ...remoteWorkbooks, "Research Workbook"].filter(Boolean))];
-      setResearchData(research);
-      setFilteredData(research);
-      setSavedWorkbooks(workbooks);
-    } catch (error) {
-      console.error("Failed to fetch research:", error);
-      const research = await listLocalResearch();
-      const workbooks = await listLocalWorkbooks();
-      setResearchData(research);
-      setFilteredData(research);
-      setSavedWorkbooks(workbooks.length ? workbooks : ["Research Workbook"]);
-    } finally {
-      setIsLoading(false);
-    }
+      research = [...localResearch, ...remoteResearch].filter((item, index, arr) => index === arr.findIndex(entry => String(entry._id || entry.link || entry.topic) === String(item._id || item.link || item.topic)));
+      const remoteWorkbooks = Array.isArray(workbookRes.data) && workbookRes.data.length ? workbookRes.data : [];
+      workbooks = [...new Set([...localWorkbooks, ...remoteWorkbooks, "Research Workbook"].filter(Boolean))];
+    } catch {}
+    setResearchData(research);
+    setFilteredData(research);
+    setSavedWorkbooks(workbooks);
+    setIsLoading(false);
   };
   useEffect(() => {
     refreshResearch();
@@ -85,7 +79,7 @@ export default function ResearchHub() {
       setIsCreatingWorkbook(false);
       openWorkbook(name);
     } catch (error) {
-      console.error("Failed to create workbook:", error);
+      console.warn("Workbook creation fallback used");
     }
   };
   const openCopilot = (prompt = "What are the key themes in my research?") => {
@@ -93,37 +87,30 @@ export default function ResearchHub() {
     openWorkbook(target, prompt);
   };
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await api.post("/api/research/semantic-search", {
-          query: searchQuery
-        });
-        const data = res.data;
-        const localResults = researchData.filter(item => (item?.topic || "").toLowerCase().includes(searchQuery.toLowerCase()) || item?.summary && item.summary.toLowerCase().includes(searchQuery.toLowerCase()) || item?.notes && item.notes.toLowerCase().includes(searchQuery.toLowerCase()) || item?.workbook && item.workbook.toLowerCase().includes(searchQuery.toLowerCase()));
-        setFilteredData(Array.isArray(data) && data.length > 0 ? data : localResults);
-      } catch (error) {
-        console.error("Semantic search failed", error);
-      } finally {
-        setIsSearching(false);
-      }
-    };
     if (!searchQuery.trim()) {
       setFilteredData(researchData);
       setIsSearching(false);
       return;
     }
     setIsSearching(true);
-    const debounceTimer = setTimeout(fetchData, 500);
+    const debounceTimer = setTimeout(async () => {
+      const localResults = researchData.filter(item => (item?.topic || "").toLowerCase().includes(searchQuery.toLowerCase()) || item?.summary && item.summary.toLowerCase().includes(searchQuery.toLowerCase()) || item?.notes && item.notes.toLowerCase().includes(searchQuery.toLowerCase()) || item?.workbook && item.workbook.toLowerCase().includes(searchQuery.toLowerCase()));
+      try {
+        const res = await api.post("/api/research/semantic-search", { query: searchQuery });
+        const data = res.data;
+        setFilteredData(Array.isArray(data) && data.length > 0 ? data : localResults);
+      } catch {
+        setFilteredData(localResults);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 500);
     return () => clearTimeout(debounceTimer);
   }, [searchQuery, researchData]);
   const handleDelete = async id => {
-    try {
-      await api.delete(`/api/research/${id}`);
-      setResearchData(prev => prev.filter(item => item._id !== id));
-      setFilteredData(prev => prev.filter(item => item._id !== id));
-    } catch (error) {
-      console.error("Failed to delete:", error);
-    }
+    setResearchData(prev => prev.filter(item => item._id !== id));
+    setFilteredData(prev => prev.filter(item => item._id !== id));
+    try { await api.delete(`/api/research/${id}`); } catch {}
   };
   const totalWorkbooks = workbookSummaries.length;
   const totalItems = researchData.length;

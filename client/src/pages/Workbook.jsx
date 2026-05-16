@@ -36,19 +36,15 @@ export default function Workbook({
   const chatEndRef = useRef(null);
   const initialPromptSent = useRef(false);
   const refreshWorkbookData = async () => {
+    const localData = await listLocalResearch(title);
+    let data = localData;
     try {
       const res = await api.get(`/api/research?workbook=${encodeURIComponent(title)}`);
       const remoteData = Array.isArray(res.data) ? res.data : [];
-      const localData = await listLocalResearch(title);
-      const data = [...localData, ...remoteData].filter((item, index, arr) => index === arr.findIndex(entry => String(entry._id || entry.link || entry.topic) === String(item._id || item.link || item.topic)));
-      setResearchItems(data);
-      setSelectedItem(current => current && data.some(item => item._id === current._id) ? current : data[0] || null);
-    } catch (err) {
-      console.error("Failed to fetch workbook items", err);
-      const data = await listLocalResearch(title);
-      setResearchItems(data);
-      setSelectedItem(current => current && data.some(item => item._id === current._id) ? current : data[0] || null);
-    }
+      data = [...localData, ...remoteData].filter((item, index, arr) => index === arr.findIndex(entry => String(entry._id || entry.link || entry.topic) === String(item._id || item.link || item.topic)));
+    } catch {}
+    setResearchItems(data);
+    setSelectedItem(current => current && data.some(item => item._id === current._id) ? current : data[0] || null);
   };
   const refreshInsights = async () => {
     setIsInsightsLoading(true);
@@ -59,8 +55,7 @@ export default function Workbook({
         keyInsights: [],
         topEntities: []
       });
-    } catch (err) {
-      console.error("Failed to fetch insights", err);
+    } catch {
       const items = await listLocalResearch(title);
       const terms = [...new Set(items.flatMap(item => extractContextTerms(`${item.topic} ${item.summary} ${item.notes} ${(item.tags || []).join(" ")}`)))].slice(0, 6);
       setInsights({
@@ -170,8 +165,67 @@ export default function Workbook({
     setMessages(prev => [...prev, userMsg]);
     setQuery("");
     setIsChatLoading(true);
+    const generateLocalResponse = (queryText) => {
+      const localItems = filteredResearchItems.length ? filteredResearchItems : researchItems;
+      const lowerQ = queryText.toLowerCase();
+      if (lowerQ.includes("summarize")) {
+        return {
+          introText: `Here's a synthesis of the ${localItems.length} items saved in "${title}":`,
+          insights: localItems.slice(0, 4).map((item, i) => ({
+            title: item.topic || "Research Theme",
+            desc: item.summary || item.notes || "Saved from your research session.",
+            sources: item.link ? `Source ${i + 1}` : "Saved Note",
+            color: insightBadgeColors[i % insightBadgeColors.length]
+          }))
+        };
+      }
+      if (lowerQ.includes("connection")) {
+        return {
+          introText: `I've identified semantic relationships across your saved research:`,
+          insights: localItems.slice(0, 4).map((item, i) => ({
+            title: `Connection: ${item.topic || "Research Item"}`,
+            desc: `Linked via: ${(item.tags || []).join(", ") || "shared research context"}. Connects to broader themes in ${title}.`,
+            sources: "Semantic Link",
+            color: insightBadgeColors[i % insightBadgeColors.length]
+          }))
+        };
+      }
+      if (lowerQ.includes("study guide") || lowerQ.includes("roadmap")) {
+        return {
+          introText: `Here's a study roadmap based on your research in "${title}":`,
+          insights: localItems.slice(0, 4).map((item, i) => ({
+            title: `Section ${i + 1}: ${item.topic || "Topic"}`,
+            desc: `Core concepts: ${(item.summary || item.notes || "Review saved notes.").slice(0, 150)}`,
+            sources: "Study Module",
+            color: insightBadgeColors[i % insightBadgeColors.length]
+          }))
+        };
+      }
+      if (lowerQ.includes("flashcard")) {
+        return {
+          introText: `Active recall prompts from your saved insights in "${title}":`,
+          insights: localItems.slice(0, 5).map((item, i) => ({
+            title: `Question: ${item.topic || "Key Concept"}?`,
+            desc: `Answer: ${(item.summary || item.notes || "Review the full item context.").slice(0, 150)}`,
+            sources: "Flashcard",
+            color: insightBadgeColors[i % insightBadgeColors.length]
+          }))
+        };
+      }
+      return {
+        introText: localItems.length
+          ? `I've analyzed your research on "${title}". Here are the key findings:`
+          : `I'm ready to help you research "${title}". Save some pages from the Aide sidebar to get started.`,
+        insights: localItems.slice(0, 3).map((item, i) => ({
+          title: item.topic || "Research Insight",
+          desc: item.summary || item.notes || "Saved from your research session.",
+          sources: item.link ? "Saved Source" : "Note",
+          color: insightBadgeColors[i % insightBadgeColors.length]
+        }))
+      };
+    };
     try {
-      const res = await fetch("http://localhost:5000/api/ai/workbook-chat", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/ai/workbook-chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -182,72 +236,16 @@ export default function Workbook({
           contextId: activeContextId
         })
       });
+      if (!res.ok) throw new Error("Backend unavailable");
       const data = await res.json();
       setMessages(prev => [...prev, {
         role: "assistant",
         data
       }]);
-    } catch (err) {
-      console.error("Chat failed", err);
-      const localItems = filteredResearchItems.length ? filteredResearchItems : researchItems;
-      const lowerQ = userMsg.text.toLowerCase();
-      let localResponse;
-      if (lowerQ.includes("summarize")) {
-        localResponse = {
-          introText: `Here's a synthesis of the ${localItems.length} items saved in "${title}":`,
-          insights: localItems.slice(0, 4).map((item, i) => ({
-            title: item.topic || "Research Theme",
-            desc: item.summary || item.notes || "Saved from your research session.",
-            sources: item.link ? `Source ${i + 1}` : "Saved Note",
-            color: insightBadgeColors[i % insightBadgeColors.length]
-          }))
-        };
-      } else if (lowerQ.includes("connection")) {
-        localResponse = {
-          introText: `I've identified semantic relationships across your saved research:`,
-          insights: localItems.slice(0, 4).map((item, i) => ({
-            title: `Connection: ${item.topic || "Research Item"}`,
-            desc: `Linked via: ${(item.tags || []).join(", ") || "shared research context"}. Connects to broader themes in ${title}.`,
-            sources: "Semantic Link",
-            color: insightBadgeColors[i % insightBadgeColors.length]
-          }))
-        };
-      } else if (lowerQ.includes("study guide") || lowerQ.includes("roadmap")) {
-        localResponse = {
-          introText: `Here's a study roadmap based on your research in "${title}":`,
-          insights: localItems.slice(0, 4).map((item, i) => ({
-            title: `Section ${i + 1}: ${item.topic || "Topic"}`,
-            desc: `Core concepts: ${(item.summary || item.notes || "Review saved notes.").slice(0, 150)}`,
-            sources: "Study Module",
-            color: insightBadgeColors[i % insightBadgeColors.length]
-          }))
-        };
-      } else if (lowerQ.includes("flashcard")) {
-        localResponse = {
-          introText: `Active recall prompts from your saved insights in "${title}":`,
-          insights: localItems.slice(0, 5).map((item, i) => ({
-            title: `Question: ${item.topic || "Key Concept"}?`,
-            desc: `Answer: ${(item.summary || item.notes || "Review the full item context.").slice(0, 150)}`,
-            sources: "Flashcard",
-            color: insightBadgeColors[i % insightBadgeColors.length]
-          }))
-        };
-      } else {
-        localResponse = {
-          introText: localItems.length
-            ? `I've analyzed your research on "${title}". Here are the key findings:`
-            : `I'm ready to help you research "${title}". Save some pages from the Aide sidebar to get started.`,
-          insights: localItems.slice(0, 3).map((item, i) => ({
-            title: item.topic || "Research Insight",
-            desc: item.summary || item.notes || "Saved from your research session.",
-            sources: item.link ? "Saved Source" : "Note",
-            color: insightBadgeColors[i % insightBadgeColors.length]
-          }))
-        };
-      }
+    } catch {
       setMessages(prev => [...prev, {
         role: "assistant",
-        data: localResponse
+        data: generateLocalResponse(userMsg.text)
       }]);
     } finally {
       setIsChatLoading(false);
@@ -276,7 +274,7 @@ export default function Workbook({
       };
       await saveLocalResearchItem(payload);
       try {
-        await api.post("/api/research", payload);
+        await api.post("/api/research", payload).catch(() => {});
       } catch (error) {
         console.warn("Backend note save unavailable, kept local note", error?.message);
       }

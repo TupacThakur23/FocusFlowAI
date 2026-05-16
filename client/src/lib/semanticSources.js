@@ -78,22 +78,32 @@ export const getSemanticSources = async ({ title = "", query = "", context = "",
   const entityQuery = [...dominantEntities, ...topicKeywords].filter(Boolean).slice(0, 10).join(" ");
   const searchQuery = clean(`${title} ${entityQuery} ${query || context}`.slice(0, 320));
   if (!searchQuery) return [];
+  let sources = [];
   try {
-    const res = await api.post("/api/ai/related-sources", {
-      title,
-      query: searchQuery,
-      context,
-      dominantEntities,
-      topicKeywords
-    });
-    const direct = normalize(res.data?.sources || []);
-    if (direct.length) return direct;
+    const [wikiResults, crossrefResults] = await Promise.all([
+      fetchWikipediaSources(searchQuery).catch(() => []),
+      fetchCrossrefSources(searchQuery).catch(() => [])
+    ]);
+    sources = normalize([...wikiResults, ...crossrefResults]);
   } catch {}
-  try {
-    const direct = normalize([...(await fetchWikipediaSources(searchQuery)), ...(await fetchCrossrefSources(searchQuery))]);
-    if (direct.length) return direct;
-  } catch {}
-  return normalize(fallbackSources(searchQuery, title));
+  if (sources.length < 6) {
+    try {
+      const res = await api.post("/api/ai/related-sources", {
+        title,
+        query: searchQuery,
+        context,
+        dominantEntities,
+        topicKeywords
+      });
+      const backendSources = normalize(res.data?.sources || []);
+      const seen = new Set(sources.map(s => s.url));
+      backendSources.forEach(s => { if (!seen.has(s.url)) { sources.push(s); seen.add(s.url); } });
+    } catch {}
+  }
+  if (sources.length === 0) {
+    sources = normalize(fallbackSources(searchQuery, title));
+  }
+  return sources.slice(0, 10);
 };
 
 
